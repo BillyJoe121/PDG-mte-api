@@ -1,0 +1,90 @@
+package co.edu.icesi.pdg.mte.catalog;
+
+import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1")
+public class CatalogController {
+
+    private final CatalogService catalogService;
+
+    public CatalogController(CatalogService catalogService) {
+        this.catalogService = catalogService;
+    }
+
+    @GetMapping("/measurement-units")
+    List<CatalogDtos.MeasurementUnitResponse> listUnits() {
+        return catalogService.listUnits();
+    }
+
+    @PostMapping("/measurement-units")
+    @ResponseStatus(HttpStatus.CREATED)
+    CatalogDtos.MeasurementUnitResponse createUnit(@Valid @RequestBody CatalogDtos.MeasurementUnitRequest request) {
+        return catalogService.createUnit(request);
+    }
+
+    @PutMapping("/measurement-units/{id}")
+    CatalogDtos.MeasurementUnitResponse updateUnit(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.MeasurementUnitRequest request
+    ) {
+        return catalogService.updateUnit(id, request);
+    }
+
+    @PatchMapping("/measurement-units/{id}/active")
+    CatalogDtos.MeasurementUnitResponse updateUnitActive(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.MeasurementUnitActiveRequest request
+    ) {
+        return catalogService.updateUnitActive(id, request);
+    }
+
+    @DeleteMapping("/measurement-units/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteUnit(@PathVariable Long id) {
+        catalogService.deleteUnit(id);
+    }
+
+    @GetMapping("/academic-periods")
+    List<CatalogDtos.AcademicPeriodResponse> listPeriods() {
+        return catalogService.listPeriods();
+    }
+
+    @PostMapping("/academic-periods")
+    @ResponseStatus(HttpStatus.CREATED)
+    CatalogDtos.AcademicPeriodResponse createPeriod(@Valid @RequestBody CatalogDtos.AcademicPeriodRequest request) {
+        return catalogService.createPeriod(request);
+    }
+
+    @PutMapping("/academic-periods/{id}")
+    CatalogDtos.AcademicPeriodResponse updatePeriod(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.AcademicPeriodRequest request
+    ) {
+        return catalogService.updatePeriod(id, request);
+    }
+
+    @PatchMapping("/academic-periods/{id}/status")
+    CatalogDtos.AcademicPeriodResponse updatePeriodStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.AcademicPeriodStatusRequest request
+    ) {
+        return catalogService.updatePeriodStatus(id, request);
+    }
+
+    @DeleteMapping("/academic-periods/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deletePeriod(@PathVariable Long id) {
+        catalogService.deletePeriod(id);
+    }
+
+    @GetMapping("/departments")
+    List<CatalogDtos.DepartmentResponse> listDepartments() {
+        return catalogService.listDepartments();
+    }
+}

@@ -1,0 +1,49 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: pdg-mte-api
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:mte;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:create-drop}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    default-property-inclusion: non_null
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: INFO
+    org.springframework.web: INFO
+    org.springframework.boot.autoconfigure: INFO
+
+mte:
+  auth:
+    mode: ${MTE_AUTH_MODE:mock}
+    external-base-url: ${TRAYECTORIA_BASE_URL:http://localhost:8080/api/v1}
+    introspection-path: ${TRAYECTORIA_ME_PATH:/auth/me}
+  seed:
+    enabled: ${MTE_SEED_ENABLED:true}
+  integration:
+    trayectoria:
+      mode: ${MTE_TRAYECTORIA_PROJECTS_MODE:mock}
+      external-base-url: ${TRAYECTORIA_BASE_URL:http://localhost:8080/api/v1}
+      projects-path: ${TRAYECTORIA_PROJECTS_PATH:/proyectos}
+      source-name: ${TRAYECTORIA_SOURCE_NAME:TRAYECTORIA_DOCENTE}
