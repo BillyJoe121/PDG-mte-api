@@ -1,6 +1,8 @@
 package co.edu.icesi.pdg.mte.integration;
 
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.audit.AuditAction;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
@@ -24,17 +26,20 @@ public class ProjectKeyResultLinkService {
     private final ProjectRepository projectRepository;
     private final KeyResultRepository keyResultRepository;
     private final KeyResultProgressService keyResultProgressService;
+    private final AuditService auditService;
 
     public ProjectKeyResultLinkService(
             ProjectKeyResultLinkRepository linkRepository,
             ProjectRepository projectRepository,
             KeyResultRepository keyResultRepository,
-            KeyResultProgressService keyResultProgressService
+            KeyResultProgressService keyResultProgressService,
+            AuditService auditService
     ) {
         this.linkRepository = linkRepository;
         this.projectRepository = projectRepository;
         this.keyResultRepository = keyResultRepository;
         this.keyResultProgressService = keyResultProgressService;
+        this.auditService = auditService;
     }
 
     public ProjectDtos.ProjectKeyResultLinkResponse link(ProjectDtos.ProjectKeyResultLinkRequest request) {
@@ -50,7 +55,9 @@ public class ProjectKeyResultLinkService {
         link.setContributionWeight(request.contributionWeight());
         ProjectKeyResultLink saved = linkRepository.save(link);
         keyResultProgressService.recalculateKeyResult(keyResult.getId());
-        return toResponse(saved);
+        ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
+        auditService.record(AuditAction.LINK_CREATED, "PROJECT_KEY_RESULT_LINK", response.id(), "Proyecto vinculado a Key Result.", null, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -78,9 +85,11 @@ public class ProjectKeyResultLinkService {
     public void unlink(Long id) {
         ProjectKeyResultLink link = linkRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Vinculo Proyecto-KR no encontrado."));
+        ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
         link.setActive(false);
         linkRepository.save(link);
         keyResultProgressService.recalculateKeyResult(link.getKeyResult().getId());
+        auditService.record(AuditAction.LINK_REMOVED, "PROJECT_KEY_RESULT_LINK", id, "Proyecto desvinculado de Key Result.", before, toResponse(link));
     }
 
     @Transactional(readOnly = true)

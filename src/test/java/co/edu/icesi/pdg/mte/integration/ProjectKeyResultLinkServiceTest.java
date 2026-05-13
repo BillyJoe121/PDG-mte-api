@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.integration;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.common.BusinessException;
@@ -39,6 +40,8 @@ class ProjectKeyResultLinkServiceTest {
     private KeyResultRepository keyResultRepository;
     @Mock
     private KeyResultProgressService progressService;
+    @Mock
+    private AuditService auditService;
 
     private ProjectKeyResultLinkService service;
     private Project project;
@@ -46,7 +49,7 @@ class ProjectKeyResultLinkServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, progressService);
+        service = new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, progressService, auditService);
         MeasurementUnit unit = TestFixtures.unit(1L);
         Department department = TestFixtures.department(1L);
         Objective objective = TestFixtures.objective(

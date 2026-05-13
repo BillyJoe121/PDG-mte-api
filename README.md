@@ -16,6 +16,51 @@ La API queda en `http://localhost:8081`.
 - H2 console: `http://localhost:8081/h2-console`
 - Health: `GET http://localhost:8081/api/v1/health`
 
+## Perfiles y base de datos
+
+Por defecto se usa el perfil `dev`, con H2 en memoria y esquema recreado al iniciar:
+
+```text
+spring.profiles.default=dev
+DB_URL=jdbc:h2:mem:mte;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+JPA_DDL_AUTO=create-drop
+FLYWAY_ENABLED=false
+```
+
+Para produccion o demo remota con PostgreSQL/Supabase usa el perfil `prod`:
+
+```text
+SPRING_PROFILES_ACTIVE=prod
+DB_URL=jdbc:postgresql://<host>:<port>/<database>?sslmode=require
+DB_USERNAME=<usuario>
+DB_PASSWORD=<password>
+DB_DRIVER=org.postgresql.Driver
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+MTE_SEED_ENABLED=false
+```
+
+El esquema productivo se gestiona con Flyway desde:
+
+```text
+src/main/resources/db/migration
+```
+
+La migracion inicial es `V1__initial_schema.sql`.
+
+Para Render, el comando de build/start recomendado es:
+
+```bash
+./mvnw clean package -DskipTests
+java -jar target/pdg-mte-api-0.0.1-SNAPSHOT.jar
+```
+
+Configura CORS con el dominio del frontend desplegado:
+
+```text
+MTE_CORS_ALLOWED_ORIGINS=https://tu-front.onrender.com,https://tu-front.vercel.app
+```
+
 ## Autenticacion
 
 Por defecto corre en modo demo:

@@ -49,6 +49,14 @@
             <version>2.8.13</version>
         </dependency>
         <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
@@ -95,6 +103,7 @@
                         <exclude>**/strategy/Objective.class</exclude>
                         <exclude>**/strategy/KeyResult.class</exclude>
                         <exclude>**/integration/ProjectKeyResultLink.class</exclude>
+                        <exclude>**/audit/AuditLog.class</exclude>
                         <exclude>**/security/SecurityConfig.class</exclude>
                     </excludes>
                 </configuration>

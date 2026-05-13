@@ -91,6 +91,25 @@ public final class ProjectDtos {
     ) {
     }
 
+    public record ProjectDetailResponse(
+            ProjectResponse project,
+            ProjectKpiResponse kpis,
+            List<ProjectProgressResponse> history,
+            List<ProjectKeyResultLinkResponse> linkedKeyResults,
+            ImpactChainResponse contributionChain
+    ) {
+    }
+
+    public record ProjectKpiResponse(
+            int progressEntries,
+            int linkedKeyResults,
+            BigDecimal declaredContributionWeight,
+            BigDecimal appliedContribution,
+            boolean completed,
+            boolean overweightWarning
+    ) {
+    }
+
     public record ProjectSyncResponse(
             int imported,
             int updated,

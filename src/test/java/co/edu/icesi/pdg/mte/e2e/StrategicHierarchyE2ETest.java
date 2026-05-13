@@ -164,6 +164,8 @@ class StrategicHierarchyE2ETest {
         assertThat(link.get("overweightWarning").asBoolean()).isFalse();
         assertThat(links).hasSize(1);
         assertThat(chainBefore.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("0.00");
+        JsonNode linkAudit = doGet("/api/v1/audit-logs?entityType=PROJECT_KEY_RESULT_LINK&entityId=" + link.get("id").asLong());
+        assertThat(linkAudit.findValues("action").stream().map(JsonNode::asText)).contains("LINK_CREATED");
 
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}

@@ -68,6 +68,18 @@ class ProjectModuleE2ETest {
         JsonNode history = doGet("/api/v1/projects/" + projectId + "/history");
         assertThat(history).hasSize(1);
         assertThat(doGet("/api/v1/projects/" + projectId).get("globalProgress").decimalValue()).isEqualByComparingTo("64.50");
+        JsonNode fullDetail = doGet("/api/v1/projects/" + projectId + "/detail");
+        assertThat(fullDetail.get("history")).hasSize(1);
+        assertThat(fullDetail.get("kpis").get("progressEntries").asInt()).isEqualTo(1);
+        assertThat(fullDetail.get("contributionChain").get("projectId").asLong()).isEqualTo(projectId);
+        JsonNode audit = doGet("/api/v1/audit-logs?entityType=PROJECT&entityId=" + projectId);
+        assertThat(audit.findValues("action").stream().map(JsonNode::asText))
+                .contains("CREATE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED");
+        assertThat(doGet("/api/v1/audit-logs?action=CREATE")).isNotEmpty();
+        mockMvc.perform(get("/api/v1/audit-logs")
+                        .param("entityType", "   ")
+                        .param("entityId", "   "))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -128,6 +140,7 @@ class ProjectModuleE2ETest {
         doPost("/api/v1/projects/99999/progress", """
                 {"progressPercent": 10, "comment": "x"}
                 """, 404);
+        doGet("/api/v1/projects/99999/detail", 404);
         doPost("/api/v1/projects/" + projectId + "/progress", """
                 {"progressPercent": 150, "comment": "x"}
                 """, 400);
@@ -138,6 +151,8 @@ class ProjectModuleE2ETest {
         mockMvc.perform(get("/api/v1/projects").param("status", "INVALIDO"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/v1/projects").param("type", "INVALIDO"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/audit-logs").param("action", "INVALIDO"))
                 .andExpect(status().isBadRequest());
     }
 

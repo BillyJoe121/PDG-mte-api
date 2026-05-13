@@ -2,14 +2,19 @@ package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
+import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
+import co.edu.icesi.pdg.mte.strategy.Objective;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,16 +47,31 @@ class ProjectServiceTest {
     private TrayectoriaProjectClient trayectoriaProjectClient;
     @Mock
     private KeyResultProgressService keyResultProgressService;
+    @Mock
+    private ProjectKeyResultLinkRepository linkRepository;
+    @Mock
+    private AuditService auditService;
 
     private IntegrationProperties integrationProperties;
     private ProjectService service;
     private Department department;
+    private KeyResult keyResult;
 
     @BeforeEach
     void setUp() {
         integrationProperties = new IntegrationProperties();
-        service = new ProjectService(projectRepository, progressRepository, departmentRepository, trayectoriaProjectClient, integrationProperties, keyResultProgressService);
+        service = new ProjectService(projectRepository, progressRepository, departmentRepository, trayectoriaProjectClient,
+                integrationProperties, keyResultProgressService, linkRepository, auditService);
         department = TestFixtures.department(1L);
+        Objective objective = TestFixtures.objective(
+                1L,
+                TestFixtures.unit(1L),
+                TestFixtures.period(1L),
+                department,
+                TestFixtures.goal(1L, TestFixtures.unit(1L)),
+                TestFixtures.strategicBet(1L)
+        );
+        keyResult = objective.getKeyResults().get(0);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 ExternalUserContext.mock(),
                 null,
@@ -304,6 +324,58 @@ class ProjectServiceTest {
     }
 
     @Test
+    void returnsCompleteProjectDetailWithHistoryLinksContributionChainAndKpis() {
+        Project project = localProject();
+        project.setStatus(ProjectStatus.FINALIZADO);
+        ProjectProgressEntry entry = new ProjectProgressEntry();
+        entry.setProject(project);
+        entry.setProgressPercent(BigDecimal.valueOf(80));
+        entry.setComment("Avance");
+        ProjectKeyResultLink link = link(project, keyResult, 60);
+        ProjectKeyResultLink overweightLink = link(project, keyResult, 50);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(entry));
+        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link, overweightLink));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link, overweightLink));
+
+        var detail = service.detail(1L);
+
+        assertThat(detail.project().name()).isEqualTo("Proyecto MSP");
+        assertThat(detail.history()).hasSize(1);
+        assertThat(detail.linkedKeyResults()).hasSize(2);
+        assertThat(detail.contributionChain().impacts()).hasSize(2);
+        assertThat(detail.kpis().progressEntries()).isEqualTo(1);
+        assertThat(detail.kpis().linkedKeyResults()).isEqualTo(2);
+        assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("110.00");
+        assertThat(detail.kpis().appliedContribution()).isEqualByComparingTo("110.00");
+        assertThat(detail.kpis().completed()).isTrue();
+        assertThat(detail.kpis().overweightWarning()).isTrue();
+    }
+
+    @Test
+    void returnsProjectDetailWithZeroAppliedContributionForActiveProjectAndNullExternalLinkProject() {
+        Project project = localProject();
+        ProjectKeyResultLink linkWithoutLocalProject = link(null, keyResult, 40);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
+        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutLocalProject));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutLocalProject));
+
+        var detail = service.detail(1L);
+
+        assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("40.00");
+        assertThat(detail.kpis().appliedContribution()).isEqualByComparingTo("0.00");
+        assertThat(detail.kpis().completed()).isFalse();
+        assertThat(detail.kpis().overweightWarning()).isFalse();
+        assertThat(detail.linkedKeyResults().get(0).projectId()).isNull();
+        assertThat(detail.linkedKeyResults().get(0).overweightWarning()).isFalse();
+        assertThat(detail.contributionChain().impacts().get(0).period()).isNull();
+        assertThat(detail.contributionChain().impacts().get(0).projectCompleted()).isFalse();
+    }
+
+    @Test
     void listsProjectsWithNoFiltersAndBlankSearch() {
         when(projectRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                 .thenReturn(List.of(localProject()));
@@ -336,6 +408,7 @@ class ProjectServiceTest {
 
     private Project localProject() {
         Project project = new Project();
+        project.setId(1L);
         project.setName("Proyecto MSP");
         project.setDescription("Descripcion");
         project.setType(ProjectType.INVESTIGACION);
@@ -347,6 +420,14 @@ class ProjectServiceTest {
         project.setGlobalProgress(BigDecimal.ZERO);
         project.setTutors(List.of("Tutora Uno"));
         return project;
+    }
+
+    private ProjectKeyResultLink link(Project project, KeyResult keyResult, int weight) {
+        ProjectKeyResultLink link = new ProjectKeyResultLink();
+        link.setProject(project);
+        link.setKeyResult(keyResult);
+        link.setContributionWeight(BigDecimal.valueOf(weight));
+        return link;
     }
 
     private ExternalProjectPayload externalPayload(

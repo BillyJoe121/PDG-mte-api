@@ -2,13 +2,18 @@ package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.audit.AuditAction;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
+import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +38,8 @@ public class ProjectService {
     private final TrayectoriaProjectClient trayectoriaProjectClient;
     private final IntegrationProperties integrationProperties;
     private final KeyResultProgressService keyResultProgressService;
+    private final ProjectKeyResultLinkRepository linkRepository;
+    private final AuditService auditService;
 
     public ProjectService(
             ProjectRepository projectRepository,
@@ -39,7 +47,9 @@ public class ProjectService {
             DepartmentRepository departmentRepository,
             TrayectoriaProjectClient trayectoriaProjectClient,
             IntegrationProperties integrationProperties,
-            KeyResultProgressService keyResultProgressService
+            KeyResultProgressService keyResultProgressService,
+            ProjectKeyResultLinkRepository linkRepository,
+            AuditService auditService
     ) {
         this.projectRepository = projectRepository;
         this.progressRepository = progressRepository;
@@ -47,6 +57,8 @@ public class ProjectService {
         this.trayectoriaProjectClient = trayectoriaProjectClient;
         this.integrationProperties = integrationProperties;
         this.keyResultProgressService = keyResultProgressService;
+        this.linkRepository = linkRepository;
+        this.auditService = auditService;
     }
 
     public ProjectDtos.ProjectResponse create(ProjectDtos.ProjectRequest request) {
@@ -56,7 +68,9 @@ public class ProjectService {
         project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
         project.setOrigin(ProjectOrigin.LOCAL);
         project.setSyncStatus(ProjectSyncStatus.LOCAL_ONLY);
-        return Mapper.toResponse(projectRepository.save(project));
+        ProjectDtos.ProjectResponse response = Mapper.toResponse(projectRepository.save(project));
+        auditService.record(AuditAction.CREATE, "PROJECT", response.id(), "Proyecto creado: " + response.name(), null, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -98,26 +112,54 @@ public class ProjectService {
         return Mapper.toResponse(findProject(id));
     }
 
+    @Transactional(readOnly = true)
+    public ProjectDtos.ProjectDetailResponse detail(Long id) {
+        Project project = findProject(id);
+        List<ProjectDtos.ProjectProgressResponse> history = progressRepository.findByProjectIdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(Mapper::toResponse)
+                .toList();
+        List<ProjectKeyResultLink> links = linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(id);
+        List<ProjectDtos.ProjectKeyResultLinkResponse> linkedKeyResults = links.stream()
+                .map(this::toLinkResponse)
+                .toList();
+        ProjectDtos.ImpactChainResponse contributionChain = contributionChain(project, links);
+        return new ProjectDtos.ProjectDetailResponse(
+                Mapper.toResponse(project),
+                kpis(project, history, links),
+                history,
+                linkedKeyResults,
+                contributionChain
+        );
+    }
+
     public ProjectDtos.ProjectResponse update(Long id, ProjectDtos.ProjectUpdateRequest request) {
         Project project = findProject(id);
+        ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), request.actualEndDate(), request.tutors());
-        return Mapper.toResponse(projectRepository.save(project));
+        ProjectDtos.ProjectResponse response = Mapper.toResponse(projectRepository.save(project));
+        auditService.record(AuditAction.UPDATE, "PROJECT", response.id(), "Proyecto actualizado: " + response.name(), before, response);
+        return response;
     }
 
     public ProjectDtos.ProjectResponse updateStatus(Long id, ProjectDtos.ProjectStatusRequest request) {
         Project project = findProject(id);
+        ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         project.setStatus(request.status());
         if (request.status() == ProjectStatus.FINALIZADO && project.getActualEndDate() == null) {
             project.setActualEndDate(java.time.LocalDate.now());
         }
         Project saved = projectRepository.save(project);
         keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
-        return Mapper.toResponse(saved);
+        ProjectDtos.ProjectResponse response = Mapper.toResponse(saved);
+        auditService.record(AuditAction.STATUS_CHANGE, "PROJECT", response.id(), "Estado de proyecto actualizado a " + response.status(), before, response);
+        return response;
     }
 
     public ProjectDtos.ProjectProgressResponse registerProgress(Long id, ProjectDtos.ProjectProgressRequest request) {
         Project project = findProject(id);
+        ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         ProjectProgressEntry entry = new ProjectProgressEntry();
         entry.setProject(project);
         entry.setProgressPercent(request.progressPercent());
@@ -127,7 +169,9 @@ public class ProjectService {
 
         project.setGlobalProgress(request.progressPercent());
         projectRepository.save(project);
-        return Mapper.toResponse(progressRepository.save(entry));
+        ProjectDtos.ProjectProgressResponse response = Mapper.toResponse(progressRepository.save(entry));
+        auditService.record(AuditAction.PROGRESS_REGISTERED, "PROJECT", id, "Avance de proyecto registrado: " + response.progressPercent() + "%", before, Mapper.toResponse(project));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -174,7 +218,91 @@ public class ProjectService {
                 warnings.add("No se pudo sincronizar proyecto externo " + payload.externalProjectId() + ": " + exception.getMessage());
             }
         }
-        return new ProjectDtos.ProjectSyncResponse(imported, updated, failed, warnings);
+        ProjectDtos.ProjectSyncResponse response = new ProjectDtos.ProjectSyncResponse(imported, updated, failed, warnings);
+        auditService.record(AuditAction.EXTERNAL_SYNC, "PROJECT_SYNC", integrationProperties.getSourceName(), "Sincronizacion de proyectos externos ejecutada.", null, response);
+        return response;
+    }
+
+    private ProjectDtos.ProjectKpiResponse kpis(
+            Project project,
+            List<ProjectDtos.ProjectProgressResponse> history,
+            List<ProjectKeyResultLink> links
+    ) {
+        BigDecimal declaredContribution = links.stream()
+                .map(ProjectKeyResultLink::getContributionWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal appliedContribution = project.getStatus() == ProjectStatus.FINALIZADO
+                ? declaredContribution
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        return new ProjectDtos.ProjectKpiResponse(
+                history.size(),
+                links.size(),
+                declaredContribution,
+                appliedContribution,
+                project.getStatus() == ProjectStatus.FINALIZADO,
+                declaredContribution.compareTo(BigDecimal.valueOf(100)) > 0
+        );
+    }
+
+    private ProjectDtos.ImpactChainResponse contributionChain(Project project, List<ProjectKeyResultLink> links) {
+        return new ProjectDtos.ImpactChainResponse(
+                project.getId(),
+                project.getName(),
+                project.getGlobalProgress(),
+                project.getStatus(),
+                links.stream().map(this::toImpactItem).toList()
+        );
+    }
+
+    private ProjectDtos.ProjectKeyResultLinkResponse toLinkResponse(ProjectKeyResultLink link) {
+        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
+        return new ProjectDtos.ProjectKeyResultLinkResponse(
+                link.getId(),
+                link.getProject() == null ? null : link.getProject().getId(),
+                link.getProject() == null ? null : link.getProject().getName(),
+                link.getKeyResult().getId(),
+                link.getKeyResult().getDescription(),
+                link.getContributionWeight(),
+                totalWeight,
+                totalWeight.compareTo(BigDecimal.valueOf(100)) > 0,
+                link.isActive(),
+                link.getCreatedAt()
+        );
+    }
+
+    private ProjectDtos.ImpactChainItemResponse toImpactItem(ProjectKeyResultLink link) {
+        KeyResult keyResult = link.getKeyResult();
+        boolean completed = link.getProject() != null && link.getProject().getStatus() == ProjectStatus.FINALIZADO;
+        BigDecimal appliedContribution = completed ? link.getContributionWeight() : BigDecimal.ZERO;
+        return new ProjectDtos.ImpactChainItemResponse(
+                link.getId(),
+                keyResult.getId(),
+                keyResult.getDescription(),
+                keyResult.getObjective().getId(),
+                keyResult.getObjective().getName(),
+                link.getContributionWeight(),
+                appliedContribution.setScale(2, RoundingMode.HALF_UP),
+                completed,
+                periodOf(link.getProject())
+        );
+    }
+
+    private BigDecimal totalWeightForKeyResult(Long keyResultId) {
+        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
+                .stream()
+                .map(ProjectKeyResultLink::getContributionWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String periodOf(Project project) {
+        if (project == null) {
+            return null;
+        }
+        return project.getEndPeriod() == null || project.getEndPeriod().isBlank()
+                ? project.getStartPeriod()
+                : project.getEndPeriod();
     }
 
     private void applyLocalFields(

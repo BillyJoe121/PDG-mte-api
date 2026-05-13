@@ -42,6 +42,11 @@ public class ProjectController {
         return projectService.get(id);
     }
 
+    @GetMapping("/{id}/detail")
+    public ProjectDtos.ProjectDetailResponse detail(@PathVariable Long id) {
+        return projectService.detail(id);
+    }
+
     @PutMapping("/{id}")
     public ProjectDtos.ProjectResponse update(
             @PathVariable Long id,
@@ -74,6 +79,11 @@ public class ProjectController {
 
     @GetMapping("/{id}/impact-chain")
     public ProjectDtos.ImpactChainResponse impactChain(@PathVariable Long id) {
+        return linkService.impactChain(id);
+    }
+
+    @GetMapping("/{id}/contribution-chain")
+    public ProjectDtos.ImpactChainResponse contributionChain(@PathVariable Long id) {
         return linkService.impactChain(id);
     }
 

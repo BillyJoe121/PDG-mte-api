@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: pdg-mte-api
+  profiles:
+    default: dev
   datasource:
     url: ${DB_URL:jdbc:h2:mem:mte;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH}
     username: ${DB_USERNAME:sa}
@@ -20,6 +22,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
   jackson:
     default-property-inclusion: non_null
 
@@ -35,6 +41,8 @@ logging:
     org.springframework.boot.autoconfigure: INFO
 
 mte:
+  cors:
+    allowed-origins: ${MTE_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4200}
   auth:
     mode: ${MTE_AUTH_MODE:mock}
     external-base-url: ${TRAYECTORIA_BASE_URL:http://localhost:8080/api/v1}
