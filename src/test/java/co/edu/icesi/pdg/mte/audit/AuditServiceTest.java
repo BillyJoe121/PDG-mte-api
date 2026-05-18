@@ -9,13 +9,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -68,5 +72,46 @@ class AuditServiceTest {
         assertThat(log.getActorUsername()).isNull();
         assertThat(log.getBeforeSnapshot()).contains("@");
         assertThat(log.getAfterSnapshot()).contains("@");
+    }
+
+    @Test
+    void listsAndSummarizesAuditLogsWithValidDateRange() {
+        AuditService service = new AuditService(repository, new ObjectMapper());
+        AuditLog create = log(AuditAction.CREATE, "PROJECT", "1");
+        AuditLog update = log(AuditAction.UPDATE, "PROJECT", "1");
+        when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(create, update));
+
+        Instant from = Instant.parse("2026-01-01T00:00:00Z");
+        Instant to = Instant.parse("2026-12-31T23:59:59Z");
+        var logs = service.list(null, "project", "1", from, to);
+        var summary = service.summary(null, "project", "1", from, to);
+
+        assertThat(logs).hasSize(2);
+        assertThat(summary.totalEvents()).isEqualTo(2);
+        assertThat(summary.byAction()).extracting("key").contains("CREATE", "UPDATE");
+        assertThat(summary.byEntityType()).extracting("key").contains("PROJECT");
+    }
+
+    @Test
+    void rejectsInvalidDateRange() {
+        AuditService service = new AuditService(repository, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.list(
+                null,
+                null,
+                null,
+                Instant.parse("2026-12-31T00:00:00Z"),
+                Instant.parse("2026-01-01T00:00:00Z")
+        )).isInstanceOf(co.edu.icesi.pdg.mte.common.BusinessException.class)
+                .hasMessageContaining("rango");
+    }
+
+    private AuditLog log(AuditAction action, String entityType, String entityId) {
+        AuditLog log = new AuditLog();
+        log.setAction(action);
+        log.setEntityType(entityType);
+        log.setEntityId(entityId);
+        log.setSummary(action.name());
+        return log;
     }
 }

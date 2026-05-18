@@ -4,27 +4,26 @@ import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
-import co.edu.icesi.pdg.mte.catalog.Department;
-import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
+import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
+import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,47 +33,62 @@ import java.util.Locale;
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectProgressEntryRepository progressRepository;
-    private final DepartmentRepository departmentRepository;
     private final TrayectoriaProjectClient trayectoriaProjectClient;
     private final IntegrationProperties integrationProperties;
     private final KeyResultProgressService keyResultProgressService;
+    private final KeyResultRepository keyResultRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final AuditService auditService;
+    private final AccessControlService accessControlService;
+    private final ProjectPeriodService periodService;
+    private final ProjectResponseAssembler responseAssembler;
+    private final ProjectFieldMapper fieldMapper;
 
     public ProjectService(
             ProjectRepository projectRepository,
             ProjectProgressEntryRepository progressRepository,
-            DepartmentRepository departmentRepository,
             TrayectoriaProjectClient trayectoriaProjectClient,
             IntegrationProperties integrationProperties,
             KeyResultProgressService keyResultProgressService,
+            KeyResultRepository keyResultRepository,
             ProjectKeyResultLinkRepository linkRepository,
-            AuditService auditService
+            AuditService auditService,
+            AccessControlService accessControlService,
+            ProjectPeriodService periodService,
+            ProjectResponseAssembler responseAssembler,
+            ProjectFieldMapper fieldMapper
     ) {
         this.projectRepository = projectRepository;
         this.progressRepository = progressRepository;
-        this.departmentRepository = departmentRepository;
         this.trayectoriaProjectClient = trayectoriaProjectClient;
         this.integrationProperties = integrationProperties;
         this.keyResultProgressService = keyResultProgressService;
+        this.keyResultRepository = keyResultRepository;
         this.linkRepository = linkRepository;
         this.auditService = auditService;
+        this.accessControlService = accessControlService;
+        this.periodService = periodService;
+        this.responseAssembler = responseAssembler;
+        this.fieldMapper = fieldMapper;
     }
 
     public ProjectDtos.ProjectResponse create(ProjectDtos.ProjectRequest request) {
         Project project = new Project();
-        applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
+        fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), null, request.tutors());
         project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
         project.setOrigin(ProjectOrigin.LOCAL);
         project.setSyncStatus(ProjectSyncStatus.LOCAL_ONLY);
-        ProjectDtos.ProjectResponse response = Mapper.toResponse(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        createImmediateLinks(saved, request.keyResultLinks());
+        ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(saved);
         auditService.record(AuditAction.CREATE, "PROJECT", response.id(), "Proyecto creado: " + response.name(), null, response);
         return response;
     }
 
     @Transactional(readOnly = true)
     public List<ProjectDtos.ProjectResponse> list(String search, ProjectStatus status, ProjectType type, Long departmentId, String period) {
+        ProjectPeriodService.PeriodRange requestedPeriod = period == null || period.isBlank() ? null : periodService.parse(period.trim());
         Specification<Project> specification = (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (search != null && !search.isBlank()) {
@@ -93,23 +107,18 @@ public class ProjectService {
             if (departmentId != null) {
                 predicates.add(builder.equal(root.get("department").get("id"), departmentId));
             }
-            if (period != null && !period.isBlank()) {
-                predicates.add(builder.or(
-                        builder.equal(root.get("startPeriod"), period),
-                        builder.equal(root.get("endPeriod"), period)
-                ));
-            }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
         return projectRepository.findAll(specification)
                 .stream()
-                .map(Mapper::toResponse)
+                .filter(project -> requestedPeriod == null || periodService.overlaps(project, requestedPeriod))
+                .map(responseAssembler::toProjectResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ProjectDtos.ProjectResponse get(Long id) {
-        return Mapper.toResponse(findProject(id));
+        return responseAssembler.toProjectResponse(findProject(id));
     }
 
     @Transactional(readOnly = true)
@@ -121,12 +130,12 @@ public class ProjectService {
                 .toList();
         List<ProjectKeyResultLink> links = linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(id);
         List<ProjectDtos.ProjectKeyResultLinkResponse> linkedKeyResults = links.stream()
-                .map(this::toLinkResponse)
+                .map(responseAssembler::toLinkResponse)
                 .toList();
-        ProjectDtos.ImpactChainResponse contributionChain = contributionChain(project, links);
+        ProjectDtos.ImpactChainResponse contributionChain = responseAssembler.contributionChain(project, links);
         return new ProjectDtos.ProjectDetailResponse(
-                Mapper.toResponse(project),
-                kpis(project, history, links),
+                responseAssembler.toProjectResponse(project),
+                responseAssembler.kpis(project, history, links),
                 history,
                 linkedKeyResults,
                 contributionChain
@@ -136,15 +145,18 @@ public class ProjectService {
     public ProjectDtos.ProjectResponse update(Long id, ProjectDtos.ProjectUpdateRequest request) {
         Project project = findProject(id);
         ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
-        applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
+        fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), request.actualEndDate(), request.tutors());
-        ProjectDtos.ProjectResponse response = Mapper.toResponse(projectRepository.save(project));
+        ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(projectRepository.save(project));
         auditService.record(AuditAction.UPDATE, "PROJECT", response.id(), "Proyecto actualizado: " + response.name(), before, response);
         return response;
     }
 
     public ProjectDtos.ProjectResponse updateStatus(Long id, ProjectDtos.ProjectStatusRequest request) {
         Project project = findProject(id);
+        if (!accessControlService.canChangeProjectStatus(project.getStatus(), request.status(), currentRoles())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "El rol actual no puede ejecutar la transicion de estado solicitada.");
+        }
         ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         project.setStatus(request.status());
         if (request.status() == ProjectStatus.FINALIZADO && project.getActualEndDate() == null) {
@@ -152,7 +164,7 @@ public class ProjectService {
         }
         Project saved = projectRepository.save(project);
         keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
-        ProjectDtos.ProjectResponse response = Mapper.toResponse(saved);
+        ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(saved);
         auditService.record(AuditAction.STATUS_CHANGE, "PROJECT", response.id(), "Estado de proyecto actualizado a " + response.status(), before, response);
         return response;
     }
@@ -203,7 +215,7 @@ public class ProjectService {
                 Project project = projectRepository
                         .findByExternalSourceAndExternalProjectId(integrationProperties.getSourceName(), payload.externalProjectId())
                         .orElseGet(Project::new);
-                applyExternalPayload(project, payload);
+                fieldMapper.applyExternalPayload(project, payload);
                 Project saved = projectRepository.save(project);
                 if (saved.getId() != null) {
                     keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
@@ -223,208 +235,29 @@ public class ProjectService {
         return response;
     }
 
-    private ProjectDtos.ProjectKpiResponse kpis(
-            Project project,
-            List<ProjectDtos.ProjectProgressResponse> history,
-            List<ProjectKeyResultLink> links
-    ) {
-        BigDecimal declaredContribution = links.stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal appliedContribution = project.getStatus() == ProjectStatus.FINALIZADO
-                ? declaredContribution
-                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        return new ProjectDtos.ProjectKpiResponse(
-                history.size(),
-                links.size(),
-                declaredContribution,
-                appliedContribution,
-                project.getStatus() == ProjectStatus.FINALIZADO,
-                declaredContribution.compareTo(BigDecimal.valueOf(100)) > 0
-        );
-    }
-
-    private ProjectDtos.ImpactChainResponse contributionChain(Project project, List<ProjectKeyResultLink> links) {
-        return new ProjectDtos.ImpactChainResponse(
-                project.getId(),
-                project.getName(),
-                project.getGlobalProgress(),
-                project.getStatus(),
-                links.stream().map(this::toImpactItem).toList()
-        );
-    }
-
-    private ProjectDtos.ProjectKeyResultLinkResponse toLinkResponse(ProjectKeyResultLink link) {
-        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
-        return new ProjectDtos.ProjectKeyResultLinkResponse(
-                link.getId(),
-                link.getProject() == null ? null : link.getProject().getId(),
-                link.getProject() == null ? null : link.getProject().getName(),
-                link.getKeyResult().getId(),
-                link.getKeyResult().getDescription(),
-                link.getContributionWeight(),
-                totalWeight,
-                totalWeight.compareTo(BigDecimal.valueOf(100)) > 0,
-                link.isActive(),
-                link.getCreatedAt()
-        );
-    }
-
-    private ProjectDtos.ImpactChainItemResponse toImpactItem(ProjectKeyResultLink link) {
-        KeyResult keyResult = link.getKeyResult();
-        boolean completed = link.getProject() != null && link.getProject().getStatus() == ProjectStatus.FINALIZADO;
-        BigDecimal appliedContribution = completed ? link.getContributionWeight() : BigDecimal.ZERO;
-        return new ProjectDtos.ImpactChainItemResponse(
-                link.getId(),
-                keyResult.getId(),
-                keyResult.getDescription(),
-                keyResult.getObjective().getId(),
-                keyResult.getObjective().getName(),
-                link.getContributionWeight(),
-                appliedContribution.setScale(2, RoundingMode.HALF_UP),
-                completed,
-                periodOf(link.getProject())
-        );
-    }
-
-    private BigDecimal totalWeightForKeyResult(Long keyResultId) {
-        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
-                .stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private String periodOf(Project project) {
-        if (project == null) {
-            return null;
+    private void createImmediateLinks(Project project, List<ProjectDtos.ProjectKeyResultDraftRequest> links) {
+        if (links == null || links.isEmpty()) {
+            return;
         }
-        return project.getEndPeriod() == null || project.getEndPeriod().isBlank()
-                ? project.getStartPeriod()
-                : project.getEndPeriod();
-    }
-
-    private void applyLocalFields(
-            Project project,
-            String name,
-            String description,
-            ProjectType type,
-            Long departmentId,
-            String startPeriod,
-            String endPeriod,
-            java.time.LocalDate startDate,
-            java.time.LocalDate endDate,
-            java.time.LocalDate actualEndDate,
-            List<String> tutors
-    ) {
-        validateDateRange(startDate, endDate);
-        project.setName(name.trim());
-        project.setDescription(description.trim());
-        project.setType(type);
-        project.setDepartment(findDepartment(departmentId));
-        project.setDepartmentName(project.getDepartment().getName());
-        project.setStartPeriod(startPeriod.trim());
-        project.setEndPeriod(endPeriod == null ? null : endPeriod.trim());
-        project.setStartDate(startDate);
-        project.setEndDate(endDate);
-        project.setActualEndDate(actualEndDate);
-        project.setTutors(cleanTutors(tutors));
-    }
-
-    private void applyExternalPayload(Project project, ExternalProjectPayload payload) {
-        project.setExternalProjectId(payload.externalProjectId());
-        project.setExternalSource(integrationProperties.getSourceName());
-        project.setName(defaultText(payload.name(), "Proyecto externo " + payload.externalProjectId()));
-        project.setDescription(defaultText(payload.description(), "Proyecto sincronizado desde Trayectoria Docente."));
-        project.setType(mapType(payload.type()));
-        Department department = findDepartmentByName(payload.departmentName());
-        project.setDepartment(department);
-        project.setDepartmentName(department == null ? payload.departmentName() : department.getName());
-        project.setStatus(mapStatus(payload.status()));
-        project.setStartPeriod(defaultText(payload.startPeriod(), "2026-1"));
-        project.setEndPeriod(payload.endPeriod());
-        project.setStartDate(payload.startDate());
-        project.setEndDate(payload.endDate());
-        project.setTutors(cleanTutors(payload.tutors()));
-        project.setOrigin(ProjectOrigin.SYNCED);
-        project.setSyncStatus(ProjectSyncStatus.SYNCED);
-        project.setLastSyncedAt(Instant.now());
-        project.setRawExternalPayload(payload.rawPayload());
-    }
-
-    private ProjectType mapType(String rawType) {
-        if (rawType == null) {
-            return ProjectType.INVESTIGACION;
+        for (ProjectDtos.ProjectKeyResultDraftRequest request : links) {
+            KeyResult keyResult = keyResultRepository.findById(request.keyResultId())
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
+            if (linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(project.getId(), keyResult.getId())) {
+                throw new BusinessException(HttpStatus.CONFLICT, "El proyecto ya esta vinculado a este Key Result.");
+            }
+            ProjectKeyResultLink link = new ProjectKeyResultLink();
+            link.setProject(project);
+            link.setKeyResult(keyResult);
+            link.setContributionWeight(request.contributionWeight());
+            link.setContributionType(request.contributionType());
+            linkRepository.save(link);
+            keyResultProgressService.recalculateKeyResult(keyResult.getId());
         }
-        String normalized = rawType.trim().toUpperCase(Locale.ROOT);
-        if (normalized.contains("GRADO")) {
-            return ProjectType.GRADO;
-        }
-        if (normalized.contains("EXTENSION") || normalized.contains("EXTENS")) {
-            return ProjectType.EXTENSION;
-        }
-        if (normalized.contains("MACRO")) {
-            return ProjectType.MACROPROYECTO;
-        }
-        return ProjectType.INVESTIGACION;
-    }
-
-    private ProjectStatus mapStatus(String rawStatus) {
-        if (rawStatus == null) {
-            return ProjectStatus.BORRADOR;
-        }
-        String normalized = rawStatus.trim().toUpperCase(Locale.ROOT);
-        if (normalized.contains("CURSO") || normalized.contains("ACTIVO")) {
-            return ProjectStatus.ACTIVO;
-        }
-        if (normalized.contains("FINAL")) {
-            return ProjectStatus.FINALIZADO;
-        }
-        if (normalized.contains("SUSP")) {
-            return ProjectStatus.SUSPENDIDO;
-        }
-        if (normalized.contains("ARCH")) {
-            return ProjectStatus.ARCHIVADO;
-        }
-        return ProjectStatus.BORRADOR;
-    }
-
-    private List<String> cleanTutors(List<String> tutors) {
-        if (tutors == null) {
-            return List.of();
-        }
-        return tutors.stream()
-                .filter(tutor -> tutor != null && !tutor.isBlank())
-                .map(String::trim)
-                .toList();
-    }
-
-    private Department findDepartment(Long id) {
-        return departmentRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Departamento no encontrado."));
-    }
-
-    private Department findDepartmentByName(String name) {
-        if (name == null || name.isBlank()) {
-            return null;
-        }
-        return departmentRepository.findByNameIgnoreCase(name).orElse(null);
     }
 
     private Project findProject(Long id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proyecto no encontrado."));
-    }
-
-    private String defaultText(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.trim();
-    }
-
-    private void validateDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
-        if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "La fecha de fin debe ser posterior a la fecha de inicio.");
-        }
     }
 
     private Long currentExternalUserId() {
@@ -439,10 +272,25 @@ public class ProjectService {
         return null;
     }
 
+    private List<String> currentRoles() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return List.of();
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof ExternalUserContext context) {
+            return context.roles();
+        }
+        return authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .toList();
+    }
+
     public String bearerValue(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return null;
         }
         return authorizationHeader;
     }
+
 }

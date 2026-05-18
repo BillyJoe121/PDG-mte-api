@@ -63,17 +63,18 @@ public final class StrategyDtos {
     }
 
     public record KeyResultRequest(
+            @NotBlank String name,
             @NotBlank String description,
             @NotBlank String metric,
             @NotNull BigDecimal baseValue,
             @NotNull BigDecimal targetValue,
-            BigDecimal currentValue,
             @NotNull Long measurementUnitId
     ) {
     }
 
     public record KeyResultResponse(
             Long id,
+            String name,
             String description,
             String metric,
             BigDecimal baseValue,
@@ -83,11 +84,6 @@ public final class StrategyDtos {
             Long measurementUnitId,
             String measurementUnitName,
             Instant createdAt
-    ) {
-    }
-
-    public record KeyResultCurrentValueRequest(
-            @NotNull BigDecimal currentValue
     ) {
     }
 
@@ -118,6 +114,12 @@ public final class StrategyDtos {
             String strategicBetName,
             BigDecimal completionPercentage,
             List<KeyResultResponse> keyResults
+    ) {
+    }
+
+    public record ObjectiveDetailResponse(
+            ObjectiveResponse objective,
+            List<CoverageTrendPointResponse> coverageTrend
     ) {
     }
 
@@ -177,6 +179,13 @@ public final class StrategyDtos {
             int inProgressKeyResults,
             int completedProjects,
             int inProgressProjects
+    ) {
+    }
+
+    public record CoverageTrendPointResponse(
+            java.time.Instant timestamp,
+            BigDecimal coveragePercentage,
+            String source
     ) {
     }
 }

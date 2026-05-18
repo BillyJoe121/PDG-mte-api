@@ -93,6 +93,55 @@ class ExternalAuthClientTest {
     }
 
     @Test
+    void joinsProfessorNameWhenOnlyNameIsPresent() throws Exception {
+        startServer(200, """
+                {
+                  "id_usuario": 9,
+                  "username": "profesor",
+                  "roles": ["PROFESOR"],
+                  "profesor": {
+                    "nombre": "Camila"
+                  }
+                }
+                """);
+
+        ExternalUserContext context = client().introspect("Bearer token");
+
+        assertThat(context.professorName()).isEqualTo("Camila");
+        assertThat(context.departmentName()).isNull();
+    }
+
+    @Test
+    void rejectsMalformedNumericIdentifiersFromExternalProvider() throws Exception {
+        startServer(200, """
+                {
+                  "id_usuario": "no-numerico",
+                  "username": "admin",
+                  "roles": ["ADMIN"]
+                }
+                """);
+
+        assertThatThrownBy(() -> client().introspect("Bearer token"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Token externo invalido");
+    }
+
+    @Test
+    void rejectsNullEntriesInsideExternalRoleList() throws Exception {
+        startServer(200, """
+                {
+                  "id_usuario": 10,
+                  "username": "admin",
+                  "roles": ["ADMIN", null]
+                }
+                """);
+
+        assertThatThrownBy(() -> client().introspect("Bearer token"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Token externo invalido");
+    }
+
+    @Test
     void rejectsExternalServiceErrors() throws Exception {
         startServer(500, """
                 {"message": "boom"}

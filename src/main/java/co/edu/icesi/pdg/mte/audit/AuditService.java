@@ -1,17 +1,20 @@
 package co.edu.icesi.pdg.mte.audit;
 
 import co.edu.icesi.pdg.mte.api.dto.AuditDtos;
+import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -38,7 +41,8 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public List<AuditDtos.AuditLogResponse> list(AuditAction action, String entityType, String entityId) {
+    public List<AuditDtos.AuditLogResponse> list(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
+        validateRange(from, to);
         Specification<AuditLog> specification = (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (action != null) {
@@ -50,12 +54,44 @@ public class AuditService {
             if (entityId != null && !entityId.isBlank()) {
                 predicates.add(builder.equal(root.get("entityId"), entityId.trim()));
             }
+            if (from != null) {
+                predicates.add(builder.greaterThanOrEqualTo(root.get("createdAt"), from));
+            }
+            if (to != null) {
+                predicates.add(builder.lessThanOrEqualTo(root.get("createdAt"), to));
+            }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
         return repository.findAll(specification, Sort.by(Sort.Direction.DESC, "createdAt"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AuditDtos.AuditSummaryResponse summary(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
+        List<AuditDtos.AuditLogResponse> logs = list(action, entityType, entityId, from, to);
+        List<AuditDtos.AuditCountResponse> byAction = logs.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        log -> log.action().name(),
+                        java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.counting()
+                ))
+                .entrySet()
+                .stream()
+                .map(entry -> new AuditDtos.AuditCountResponse(entry.getKey(), entry.getValue()))
+                .toList();
+        List<AuditDtos.AuditCountResponse> byEntityType = logs.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        AuditDtos.AuditLogResponse::entityType,
+                        java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.counting()
+                ))
+                .entrySet()
+                .stream()
+                .map(entry -> new AuditDtos.AuditCountResponse(entry.getKey(), entry.getValue()))
+                .toList();
+        return new AuditDtos.AuditSummaryResponse(logs.size(), byAction, byEntityType);
     }
 
     private void applyActor(AuditLog log) {
@@ -76,6 +112,12 @@ public class AuditService {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
             return String.valueOf(value);
+        }
+    }
+
+    private void validateRange(Instant from, Instant to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El rango de fechas de auditoria es invalido.");
         }
     }
 

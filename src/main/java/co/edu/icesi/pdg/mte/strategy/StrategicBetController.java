@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class StrategicBetController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA')")
     StrategyDtos.StrategicBetResponse create(@Valid @RequestBody StrategyDtos.StrategicBetRequest request) {
         return strategyService.createStrategicBet(request);
     }

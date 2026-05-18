@@ -13,6 +13,8 @@ import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 
@@ -98,11 +100,12 @@ public final class Mapper {
     public static StrategyDtos.KeyResultResponse toResponse(KeyResult keyResult) {
         return new StrategyDtos.KeyResultResponse(
                 keyResult.getId(),
+                keyResult.getName(),
                 keyResult.getDescription(),
                 keyResult.getMetric(),
                 keyResult.getBaseValue(),
                 keyResult.getTargetValue(),
-                keyResult.getCurrentValue(),
+                calculatedCurrentValue(keyResult),
                 keyResult.getProgressPercentage(),
                 keyResult.getMeasurementUnit().getId(),
                 keyResult.getMeasurementUnit().getName(),
@@ -150,12 +153,24 @@ public final class Mapper {
                 project.getActualEndDate(),
                 project.getGlobalProgress(),
                 project.getTutors().stream().toList(),
+                List.of(),
                 project.getOrigin(),
                 project.getSyncStatus(),
                 project.getLastSyncedAt(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );
+    }
+
+    private static BigDecimal calculatedCurrentValue(KeyResult keyResult) {
+        BigDecimal baseValue = keyResult.getBaseValue() == null ? BigDecimal.ZERO : keyResult.getBaseValue();
+        BigDecimal targetValue = keyResult.getTargetValue() == null ? baseValue : keyResult.getTargetValue();
+        BigDecimal progress = keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
+        return targetValue.subtract(baseValue)
+                .multiply(progress)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                .add(baseValue)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     public static ProjectDtos.ProjectProgressResponse toResponse(ProjectProgressEntry entry) {

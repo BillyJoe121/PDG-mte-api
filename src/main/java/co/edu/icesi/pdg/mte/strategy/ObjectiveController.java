@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class ObjectiveController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
     StrategyDtos.ObjectiveResponse create(@Valid @RequestBody StrategyDtos.ObjectiveRequest request) {
         return strategyService.createObjective(request);
     }
@@ -48,7 +50,13 @@ public class ObjectiveController {
         return strategyService.getObjective(id);
     }
 
+    @GetMapping("/{id}/detail")
+    StrategyDtos.ObjectiveDetailResponse detail(@PathVariable Long id) {
+        return strategyService.getObjectiveDetail(id);
+    }
+
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
     StrategyDtos.ObjectiveResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.ObjectiveUpdateRequest request
@@ -63,10 +71,16 @@ public class ObjectiveController {
 
     @PostMapping("/{id}/key-results")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
     StrategyDtos.KeyResultResponse addKeyResult(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
     ) {
         return strategyService.addKeyResult(id, request);
+    }
+
+    @GetMapping("/{id}/coverage-trend")
+    List<StrategyDtos.CoverageTrendPointResponse> coverageTrend(@PathVariable Long id) {
+        return strategyService.coverageTrend(id);
     }
 }

@@ -1,6 +1,7 @@
 package co.edu.icesi.pdg.mte.dashboard;
 
 import co.edu.icesi.pdg.mte.api.dto.DashboardDtos;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -10,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
+@PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO','PROFESOR')")
 public class DashboardController {
     private final DashboardService dashboardService;
 

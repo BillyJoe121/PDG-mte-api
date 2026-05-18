@@ -23,6 +23,9 @@ public class KeyResult {
     private String description;
 
     @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
     private String metric;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -83,6 +86,14 @@ public class KeyResult {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getMetric() {

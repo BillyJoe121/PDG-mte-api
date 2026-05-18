@@ -2,7 +2,9 @@ package co.edu.icesi.pdg.mte.catalog;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
@@ -41,6 +43,12 @@ class CatalogServiceTest {
 
     @Mock
     private ObjectiveRepository objectiveRepository;
+
+    @Mock
+    private ProjectRepository projectRepository;
+
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private CatalogService service;
@@ -252,11 +260,11 @@ class CatalogServiceTest {
                 "2026-2",
                 LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 12, 15),
-                PeriodStatus.FUTURO
+                PeriodStatus.PLANIFICACION
         ));
 
         assertThat(response.name()).isEqualTo("2026-2");
-        assertThat(response.status()).isEqualTo(PeriodStatus.FUTURO);
+        assertThat(response.status()).isEqualTo(PeriodStatus.PLANIFICACION);
     }
 
     @Test
@@ -288,6 +296,20 @@ class CatalogServiceTest {
     }
 
     @Test
+    void togglesAcademicPeriodActiveState() {
+        AcademicPeriod period = TestFixtures.period(1L);
+        period.setStatus(PeriodStatus.PLANIFICACION);
+        when(periodRepository.findById(1L)).thenReturn(Optional.of(period));
+        when(periodRepository.save(period)).thenReturn(period);
+
+        var activeResponse = service.updatePeriodActive(1L, new CatalogDtos.AcademicPeriodActiveRequest(true));
+        var inactiveResponse = service.updatePeriodActive(1L, new CatalogDtos.AcademicPeriodActiveRequest(false));
+
+        assertThat(activeResponse.status()).isEqualTo(PeriodStatus.ACTIVO);
+        assertThat(inactiveResponse.status()).isEqualTo(PeriodStatus.CERRADO);
+    }
+
+    @Test
     void deletesAcademicPeriodWhenItIsNotInUse() {
         AcademicPeriod period = TestFixtures.period(1L);
         when(periodRepository.findById(1L)).thenReturn(Optional.of(period));
@@ -305,7 +327,7 @@ class CatalogServiceTest {
                 "2026-2",
                 LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 12, 15),
-                PeriodStatus.FUTURO
+                PeriodStatus.PLANIFICACION
         ))).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("no encontrado");
     }
@@ -319,7 +341,7 @@ class CatalogServiceTest {
                 "2026-2",
                 LocalDate.of(2026, 12, 15),
                 LocalDate.of(2026, 7, 1),
-                PeriodStatus.FUTURO
+                PeriodStatus.PLANIFICACION
         ))).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("fecha de fin");
     }
@@ -336,7 +358,7 @@ class CatalogServiceTest {
                 "2026-2",
                 LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 12, 15),
-                PeriodStatus.FUTURO
+                PeriodStatus.PLANIFICACION
         ))).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Ya existe");
     }
@@ -366,6 +388,19 @@ class CatalogServiceTest {
     }
 
     @Test
+    void rejectsDeletingAcademicPeriodUsedByProject() {
+        AcademicPeriod period = TestFixtures.period(1L);
+        when(periodRepository.findById(1L)).thenReturn(Optional.of(period));
+        when(projectRepository.existsByStartPeriodOrEndPeriod("2026-1", "2026-1")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deletePeriod(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("en uso");
+
+        verify(periodRepository, never()).delete(any());
+    }
+
+    @Test
     void rejectsDeletingMissingAcademicPeriod() {
         when(periodRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -376,12 +411,25 @@ class CatalogServiceTest {
 
     @Test
     void listsCatalogs() {
-        when(unitRepository.findAll()).thenReturn(List.of(TestFixtures.unit(1L)));
-        when(periodRepository.findAll()).thenReturn(List.of(TestFixtures.period(1L)));
+        MeasurementUnit zetaUnit = TestFixtures.unit(1L);
+        zetaUnit.setName("Zeta");
+        MeasurementUnit alphaUnit = TestFixtures.unit(2L);
+        alphaUnit.setName("Alpha");
+        AcademicPeriod laterPeriod = TestFixtures.period(1L);
+        laterPeriod.setName("2026-2");
+        laterPeriod.setStartDate(LocalDate.of(2026, 7, 1));
+        AcademicPeriod earlierPeriod = TestFixtures.period(2L);
+        earlierPeriod.setName("2026-1");
+        earlierPeriod.setStartDate(LocalDate.of(2026, 1, 1));
+
+        when(unitRepository.findAll()).thenReturn(List.of(zetaUnit, alphaUnit));
+        when(periodRepository.findAll()).thenReturn(List.of(laterPeriod, earlierPeriod));
         when(departmentRepository.findAll()).thenReturn(List.of(TestFixtures.department(1L)));
 
-        assertThat(service.listUnits()).hasSize(1);
-        assertThat(service.listPeriods()).hasSize(1);
+        assertThat(service.listUnits()).extracting(CatalogDtos.MeasurementUnitResponse::name)
+                .containsExactly("Alpha", "Zeta");
+        assertThat(service.listPeriods()).extracting(CatalogDtos.AcademicPeriodResponse::name)
+                .containsExactly("2026-1", "2026-2");
         assertThat(service.listDepartments()).hasSize(1);
     }
 }

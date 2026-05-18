@@ -53,6 +53,7 @@ public class ProjectKeyResultLinkService {
         link.setProject(project);
         link.setKeyResult(keyResult);
         link.setContributionWeight(request.contributionWeight());
+        link.setContributionType(request.contributionType());
         ProjectKeyResultLink saved = linkRepository.save(link);
         keyResultProgressService.recalculateKeyResult(keyResult.getId());
         ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
@@ -117,6 +118,7 @@ public class ProjectKeyResultLinkService {
                 link.getKeyResult().getId(),
                 link.getKeyResult().getDescription(),
                 link.getContributionWeight(),
+                link.getContributionType(),
                 totalWeight,
                 totalWeight.compareTo(BigDecimal.valueOf(100)) > 0,
                 link.isActive(),
@@ -135,6 +137,7 @@ public class ProjectKeyResultLinkService {
                 keyResult.getObjective().getId(),
                 keyResult.getObjective().getName(),
                 link.getContributionWeight(),
+                link.getContributionType(),
                 appliedContribution.setScale(2, RoundingMode.HALF_UP),
                 completed,
                 periodOf(link.getProject())

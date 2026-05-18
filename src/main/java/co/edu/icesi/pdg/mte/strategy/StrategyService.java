@@ -2,12 +2,11 @@ package co.edu.icesi.pdg.mte.strategy;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
+import co.edu.icesi.pdg.mte.audit.AuditAction;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.*;
 import co.edu.icesi.pdg.mte.common.BusinessException;
-import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
-import co.edu.icesi.pdg.mte.project.Project;
-import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,17 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Service
 @Transactional
 public class StrategyService {
-
     private final StrategicBetRepository strategicBetRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final ObjectiveRepository objectiveRepository;
@@ -37,6 +30,10 @@ public class StrategyService {
     private final AcademicPeriodRepository periodRepository;
     private final DepartmentRepository departmentRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
+    private final AuditService auditService;
+    private final StrategyExecutionSummaryService executionSummaryService;
+    private final StrategicHierarchyTreeService hierarchyTreeService;
+    private final ObjectiveCoverageTrendService coverageTrendService;
 
     public StrategyService(
             StrategicBetRepository strategicBetRepository,
@@ -46,7 +43,11 @@ public class StrategyService {
             MeasurementUnitRepository unitRepository,
             AcademicPeriodRepository periodRepository,
             DepartmentRepository departmentRepository,
-            ProjectKeyResultLinkRepository linkRepository
+            ProjectKeyResultLinkRepository linkRepository,
+            AuditService auditService,
+            StrategyExecutionSummaryService executionSummaryService,
+            StrategicHierarchyTreeService hierarchyTreeService,
+            ObjectiveCoverageTrendService coverageTrendService
     ) {
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
@@ -56,13 +57,17 @@ public class StrategyService {
         this.periodRepository = periodRepository;
         this.departmentRepository = departmentRepository;
         this.linkRepository = linkRepository;
+        this.auditService = auditService;
+        this.executionSummaryService = executionSummaryService;
+        this.hierarchyTreeService = hierarchyTreeService;
+        this.coverageTrendService = coverageTrendService;
     }
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.StrategicBetResponse> listStrategicBets(String period) {
         return strategicBetRepository.findAll()
                 .stream()
-                .map(bet -> Mapper.toResponse(bet, executionSummaryForBet(bet.getId(), period)))
+                .map(bet -> Mapper.toResponse(bet, executionSummaryService.forBet(bet.getId(), period)))
                 .toList();
     }
 
@@ -76,19 +81,21 @@ public class StrategyService {
         bet.setDescription(request.description().trim());
         bet.setStartDate(request.startDate());
         bet.setEndDate(request.endDate());
-        return Mapper.toResponse(strategicBetRepository.save(bet), emptyExecutionSummary());
+        StrategyDtos.StrategicBetResponse response = Mapper.toResponse(strategicBetRepository.save(bet), executionSummaryService.empty());
+        auditService.record(AuditAction.CREATE, "STRATEGIC_BET", response.id(), "Apuesta estrategica creada: " + response.name(), null, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
     public StrategyDtos.StrategicBetResponse getStrategicBet(Long id, String period) {
         StrategicBet bet = findStrategicBet(id);
-        return Mapper.toResponse(bet, executionSummaryForBet(id, period));
+        return Mapper.toResponse(bet, executionSummaryService.forBet(id, period));
     }
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.GoalResponse> listGoals(String period) {
         return goalRepository.findAll().stream()
-                .map(goal -> Mapper.toResponse(goal, executionSummaryForGoal(goal.getId(), period)))
+                .map(goal -> Mapper.toResponse(goal, executionSummaryService.forGoal(goal.getId(), period)))
                 .toList();
     }
 
@@ -102,24 +109,32 @@ public class StrategyService {
         goal.setStartDate(request.startDate());
         goal.setEndDate(request.endDate());
         goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
-        return Mapper.toResponse(goalRepository.save(goal));
+        StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
+        auditService.record(AuditAction.CREATE, "GOAL", response.id(), "Meta institucional creada: " + response.name(), null, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
     public StrategyDtos.GoalResponse getGoal(Long id, String period) {
-        return Mapper.toResponse(findGoal(id), executionSummaryForGoal(id, period));
+        return Mapper.toResponse(findGoal(id), executionSummaryService.forGoal(id, period));
     }
 
     public StrategyDtos.GoalResponse attachGoalPeriod(Long goalId, Long periodId) {
         InstitutionalGoal goal = findGoal(goalId);
+        StrategyDtos.GoalResponse before = Mapper.toResponse(goal);
         goal.getPeriods().add(findPeriod(periodId));
-        return Mapper.toResponse(goalRepository.save(goal));
+        StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
+        auditService.record(AuditAction.UPDATE, "GOAL", response.id(), "Periodo academico asociado a meta.", before, response);
+        return response;
     }
 
     public StrategyDtos.GoalResponse detachGoalPeriod(Long goalId, Long periodId) {
         InstitutionalGoal goal = findGoal(goalId);
+        StrategyDtos.GoalResponse before = Mapper.toResponse(goal);
         goal.getPeriods().removeIf(period -> period.getId().equals(periodId));
-        return Mapper.toResponse(goalRepository.save(goal));
+        StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
+        auditService.record(AuditAction.UPDATE, "GOAL", response.id(), "Periodo academico desasociado de meta.", before, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -168,7 +183,9 @@ public class StrategyService {
         for (StrategyDtos.KeyResultRequest keyResultRequest : request.keyResults()) {
             objective.addKeyResult(buildKeyResult(keyResultRequest));
         }
-        return Mapper.toResponse(objectiveRepository.save(objective));
+        StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
+        auditService.record(AuditAction.CREATE, "OBJECTIVE", response.id(), "Objetivo creado: " + response.name(), null, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -176,31 +193,24 @@ public class StrategyService {
         return Mapper.toResponse(findObjective(id));
     }
 
+    @Transactional(readOnly = true)
+    public StrategyDtos.ObjectiveDetailResponse getObjectiveDetail(Long id) {
+        return new StrategyDtos.ObjectiveDetailResponse(getObjective(id), coverageTrend(id));
+    }
+
     public StrategyDtos.ObjectiveResponse updateObjective(Long id, StrategyDtos.ObjectiveUpdateRequest request) {
         Objective objective = findObjective(id);
+        StrategyDtos.ObjectiveResponse before = Mapper.toResponse(objective);
         objective.setName(request.name().trim());
         objective.setDescription(request.description().trim());
-        return Mapper.toResponse(objectiveRepository.save(objective));
+        StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
+        auditService.record(AuditAction.UPDATE, "OBJECTIVE", response.id(), "Objetivo actualizado: " + response.name(), before, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.StrategicHierarchyNodeResponse> getStrategicHierarchyTree(String period) {
-        List<Objective> objectives = objectiveRepository.findAll();
-        List<StrategyDtos.StrategicHierarchyNodeResponse> betRoots = strategicBetRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(StrategicBet::getName))
-                .map(bet -> strategicBetNode(bet, objectives, period))
-                .toList();
-        List<StrategyDtos.StrategicHierarchyNodeResponse> goalRoots = goalRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(InstitutionalGoal::getName))
-                .map(goal -> goalNode(goal, objectives, period))
-                .toList();
-
-        List<StrategyDtos.StrategicHierarchyNodeResponse> roots = new ArrayList<>();
-        roots.addAll(betRoots);
-        roots.addAll(goalRoots);
-        return roots;
+        return hierarchyTreeService.tree(period);
     }
 
     @Transactional(readOnly = true)
@@ -216,26 +226,24 @@ public class StrategyService {
         Objective objective = findObjective(objectiveId);
         KeyResult keyResult = buildKeyResult(request);
         keyResult.setObjective(objective);
-        return Mapper.toResponse(keyResultRepository.save(keyResult));
+        StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        auditService.record(AuditAction.CREATE, "KEY_RESULT", response.id(), "Key Result creado: " + response.name(), null, response);
+        return response;
     }
 
     public StrategyDtos.KeyResultResponse updateKeyResult(Long keyResultId, StrategyDtos.KeyResultRequest request) {
         KeyResult keyResult = findKeyResult(keyResultId);
+        StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
+        keyResult.setName(request.name().trim());
         keyResult.setDescription(request.description().trim());
         keyResult.setMetric(request.metric().trim());
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
-        keyResult.setCurrentValue(request.currentValue());
         keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
         keyResult.recalculateProgress();
-        return Mapper.toResponse(keyResultRepository.save(keyResult));
-    }
-
-    public StrategyDtos.KeyResultResponse updateCurrentValue(Long keyResultId, StrategyDtos.KeyResultCurrentValueRequest request) {
-        KeyResult keyResult = findKeyResult(keyResultId);
-        keyResult.setCurrentValue(request.currentValue());
-        keyResult.recalculateProgress();
-        return Mapper.toResponse(keyResultRepository.save(keyResult));
+        StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        auditService.record(AuditAction.UPDATE, "KEY_RESULT", response.id(), "Key Result actualizado: " + response.name(), before, response);
+        return response;
     }
 
     public void deleteKeyResult(Long keyResultId) {
@@ -245,6 +253,11 @@ public class StrategyService {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un KR con proyectos vinculados.");
         }
         keyResultRepository.delete(keyResult);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.CoverageTrendPointResponse> coverageTrend(Long objectiveId) {
+        return coverageTrendService.coverageTrend(objectiveId);
     }
 
     private StrategyDtos.ObjectiveCardResponse toObjectiveCard(Objective objective) {
@@ -267,111 +280,13 @@ public class StrategyService {
         );
     }
 
-    private StrategyDtos.StrategicHierarchyNodeResponse strategicBetNode(StrategicBet bet, List<Objective> objectives, String period) {
-        List<StrategyDtos.StrategicHierarchyNodeResponse> children = objectives.stream()
-                .filter(objective -> objective.getStrategicBet().getId().equals(bet.getId()))
-                .sorted(Comparator.comparing(Objective::getName))
-                .map(objective -> objectiveNode(objective, "Meta: " + objective.getGoal().getName()))
-                .toList();
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "STRATEGIC_BET",
-                bet.getId().toString(),
-                bet.getName(),
-                bet.getDescription(),
-                null,
-                executionSummaryForBet(bet.getId(), period),
-                null,
-                children
-        );
-    }
-
-    private StrategyDtos.StrategicHierarchyNodeResponse goalNode(InstitutionalGoal goal, List<Objective> objectives, String period) {
-        List<StrategyDtos.StrategicHierarchyNodeResponse> children = objectives.stream()
-                .filter(objective -> objective.getGoal().getId().equals(goal.getId()))
-                .sorted(Comparator.comparing(Objective::getName))
-                .map(objective -> objectiveNode(objective, "Apuesta: " + objective.getStrategicBet().getName()))
-                .toList();
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "GOAL",
-                goal.getId().toString(),
-                goal.getName(),
-                goal.getDescription(),
-                null,
-                executionSummaryForGoal(goal.getId(), period),
-                goal.getMeasurementUnit().getName(),
-                children
-        );
-    }
-
-    private StrategyDtos.StrategicHierarchyNodeResponse objectiveNode(Objective objective, String badge) {
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "OBJECTIVE",
-                objective.getId().toString(),
-                objective.getName(),
-                objective.getDescription(),
-                objective.completionPercentage(),
-                null,
-                badge,
-                objective.getKeyResults()
-                        .stream()
-                        .sorted(Comparator.comparing(KeyResult::getId))
-                        .map(this::keyResultNode)
-                        .toList()
-        );
-    }
-
-    private StrategyDtos.StrategicHierarchyNodeResponse keyResultNode(KeyResult keyResult) {
-        List<StrategyDtos.StrategicHierarchyNodeResponse> projectChildren = linkRepository
-                .findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId())
-                .stream()
-                .map(this::projectNode)
-                .toList();
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "KEY_RESULT",
-                keyResult.getId().toString(),
-                keyResult.getDescription(),
-                keyResult.getMetric(),
-                keyResult.getProgressPercentage(),
-                null,
-                keyResult.getMeasurementUnit().getName(),
-                projectChildren
-        );
-    }
-
-    private StrategyDtos.StrategicHierarchyNodeResponse projectNode(ProjectKeyResultLink link) {
-        if (link.getProject() != null) {
-            var project = link.getProject();
-            return new StrategyDtos.StrategicHierarchyNodeResponse(
-                    "PROJECT",
-                    project.getId().toString(),
-                    project.getName(),
-                    project.getDescription(),
-                    project.getStatus() == ProjectStatus.FINALIZADO ? BigDecimal.valueOf(100) : BigDecimal.ZERO,
-                    null,
-                    "Peso: " + link.getContributionWeight() + "%",
-                    List.of()
-            );
-        }
-        String externalProjectId = link.getExternalProjectId() == null ? "sin-id" : link.getExternalProjectId().toString();
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "PROJECT",
-                externalProjectId,
-                "Proyecto externo " + externalProjectId,
-                link.getExternalProjectSource(),
-                null,
-                null,
-                "Peso: " + link.getContributionWeight() + "%",
-                List.of()
-        );
-    }
-
     private KeyResult buildKeyResult(StrategyDtos.KeyResultRequest request) {
         KeyResult keyResult = new KeyResult();
+        keyResult.setName(request.name().trim());
         keyResult.setDescription(request.description().trim());
         keyResult.setMetric(request.metric().trim());
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
-        keyResult.setCurrentValue(request.currentValue());
         keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
         keyResult.recalculateProgress();
         return keyResult;
@@ -381,93 +296,6 @@ public class StrategyService {
         if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "La fecha de cierre debe ser posterior a la fecha de inicio.");
         }
-    }
-
-    private StrategyDtos.ExecutionSummaryResponse executionSummaryForBet(Long betId, String periodFilter) {
-        List<Objective> objectives = objectiveRepository.findAll()
-                .stream()
-                .filter(objective -> objective.getStrategicBet().getId().equals(betId))
-                .toList();
-        return buildExecutionSummary(objectives, periodFilter);
-    }
-
-    private StrategyDtos.ExecutionSummaryResponse executionSummaryForGoal(Long goalId, String periodFilter) {
-        List<Objective> objectives = objectiveRepository.findAll()
-                .stream()
-                .filter(objective -> objective.getGoal().getId().equals(goalId))
-                .toList();
-        return buildExecutionSummary(objectives, periodFilter);
-    }
-
-    private StrategyDtos.ExecutionSummaryResponse emptyExecutionSummary() {
-        return new StrategyDtos.ExecutionSummaryResponse(
-                "0 objetivos completos, 0 en desarrollo. 0 KPIs completos, 0 en desarrollo. 0 proyectos completados, 0 en desarrollo.",
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                List.of()
-        );
-    }
-
-    private StrategyDtos.ExecutionSummaryResponse buildExecutionSummary(List<Objective> objectives, String periodFilter) {
-        Map<String, ExecutionAccumulator> byPeriod = new LinkedHashMap<>();
-        ExecutionAccumulator total = new ExecutionAccumulator();
-
-        for (Objective objective : objectives) {
-            Set<String> objectivePeriods = new LinkedHashSet<>();
-            for (KeyResult keyResult : objective.getKeyResults()) {
-                List<ProjectKeyResultLink> links = linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId());
-                if (links.isEmpty()) {
-                    String period = objective.getAcademicPeriod().getName();
-                    if (periodMatches(period, periodFilter)) {
-                        objectivePeriods.add(period);
-                        byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addKeyResult(keyResult);
-                    }
-                    continue;
-                }
-                for (ProjectKeyResultLink link : links) {
-                    Project project = link.getProject();
-                    String period = periodOf(project, objective);
-                    if (!periodMatches(period, periodFilter)) {
-                        continue;
-                    }
-                    objectivePeriods.add(period);
-                    byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addKeyResult(keyResult);
-                    byPeriod.get(period).addProject(project);
-                }
-            }
-            for (String period : objectivePeriods) {
-                byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addObjective(objective);
-            }
-        }
-
-        byPeriod.values().forEach(total::merge);
-        List<StrategyDtos.PeriodExecutionSummaryResponse> periodResponses = byPeriod.values()
-                .stream()
-                .sorted(Comparator.comparing(ExecutionAccumulator::period))
-                .map(ExecutionAccumulator::toPeriodResponse)
-                .toList();
-        return total.toResponse(periodResponses);
-    }
-
-    private boolean periodMatches(String period, String periodFilter) {
-        return periodFilter == null || periodFilter.isBlank() || period.equals(periodFilter.trim());
-    }
-
-    private String periodOf(Project project, Objective fallbackObjective) {
-        if (project == null) {
-            return fallbackObjective.getAcademicPeriod().getName();
-        }
-        if (project.getEndPeriod() != null && !project.getEndPeriod().isBlank()) {
-            return project.getEndPeriod();
-        }
-        if (project.getStartPeriod() != null && !project.getStartPeriod().isBlank()) {
-            return project.getStartPeriod();
-        }
-        return fallbackObjective.getAcademicPeriod().getName();
     }
 
     private MeasurementUnit findUnit(Long id) {
@@ -517,107 +345,4 @@ public class StrategyService {
         return null;
     }
 
-    private static final class ExecutionAccumulator {
-        private final String period;
-        private final Set<Long> completedObjectives = new LinkedHashSet<>();
-        private final Set<Long> inProgressObjectives = new LinkedHashSet<>();
-        private final Set<Long> completedKeyResults = new LinkedHashSet<>();
-        private final Set<Long> inProgressKeyResults = new LinkedHashSet<>();
-        private final Set<Long> completedProjects = new LinkedHashSet<>();
-        private final Set<Long> inProgressProjects = new LinkedHashSet<>();
-
-        private ExecutionAccumulator() {
-            this.period = "TOTAL";
-        }
-
-        private ExecutionAccumulator(String period) {
-            this.period = period;
-        }
-
-        private String period() {
-            return period;
-        }
-
-        private void addObjective(Objective objective) {
-            if (objective.completionPercentage().compareTo(BigDecimal.valueOf(100)) >= 0) {
-                completedObjectives.add(objective.getId());
-                inProgressObjectives.remove(objective.getId());
-                return;
-            }
-            if (!completedObjectives.contains(objective.getId())) {
-                inProgressObjectives.add(objective.getId());
-            }
-        }
-
-        private void addKeyResult(KeyResult keyResult) {
-            BigDecimal progress = keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
-            if (progress.compareTo(BigDecimal.valueOf(100)) >= 0) {
-                completedKeyResults.add(keyResult.getId());
-                inProgressKeyResults.remove(keyResult.getId());
-                return;
-            }
-            if (!completedKeyResults.contains(keyResult.getId())) {
-                inProgressKeyResults.add(keyResult.getId());
-            }
-        }
-
-        private void addProject(Project project) {
-            if (project == null || project.getId() == null) {
-                return;
-            }
-            if (project.getStatus() == ProjectStatus.FINALIZADO) {
-                completedProjects.add(project.getId());
-                inProgressProjects.remove(project.getId());
-                return;
-            }
-            if (!completedProjects.contains(project.getId())) {
-                inProgressProjects.add(project.getId());
-            }
-        }
-
-        private void merge(ExecutionAccumulator other) {
-            completedObjectives.addAll(other.completedObjectives);
-            inProgressObjectives.addAll(other.inProgressObjectives);
-            inProgressObjectives.removeAll(completedObjectives);
-            completedKeyResults.addAll(other.completedKeyResults);
-            inProgressKeyResults.addAll(other.inProgressKeyResults);
-            inProgressKeyResults.removeAll(completedKeyResults);
-            completedProjects.addAll(other.completedProjects);
-            inProgressProjects.addAll(other.inProgressProjects);
-            inProgressProjects.removeAll(completedProjects);
-        }
-
-        private StrategyDtos.PeriodExecutionSummaryResponse toPeriodResponse() {
-            return new StrategyDtos.PeriodExecutionSummaryResponse(
-                    period,
-                    completedObjectives.size(),
-                    inProgressObjectives.size(),
-                    completedKeyResults.size(),
-                    inProgressKeyResults.size(),
-                    completedProjects.size(),
-                    inProgressProjects.size()
-            );
-        }
-
-        private StrategyDtos.ExecutionSummaryResponse toResponse(List<StrategyDtos.PeriodExecutionSummaryResponse> periods) {
-            return new StrategyDtos.ExecutionSummaryResponse(
-                    "%d objetivos completos, %d en desarrollo. %d KPIs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo."
-                            .formatted(
-                                    completedObjectives.size(),
-                                    inProgressObjectives.size(),
-                                    completedKeyResults.size(),
-                                    inProgressKeyResults.size(),
-                                    completedProjects.size(),
-                                    inProgressProjects.size()
-                            ),
-                    completedObjectives.size(),
-                    inProgressObjectives.size(),
-                    completedKeyResults.size(),
-                    inProgressKeyResults.size(),
-                    completedProjects.size(),
-                    inProgressProjects.size(),
-                    periods
-            );
-        }
-    }
 }

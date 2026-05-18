@@ -18,5 +18,7 @@ spring:
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
 
 mte:
+  auth:
+    mode: ${MTE_AUTH_MODE:external}
   seed:
     enabled: ${MTE_SEED_ENABLED:false}

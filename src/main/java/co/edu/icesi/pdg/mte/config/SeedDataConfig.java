@@ -44,7 +44,7 @@ public class SeedDataConfig {
 
     private void seedPeriods(AcademicPeriodRepository repository) {
         createPeriod(repository, "2026-1", LocalDate.of(2026, 1, 15), LocalDate.of(2026, 6, 30), PeriodStatus.ACTIVO);
-        createPeriod(repository, "2026-2", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 12, 15), PeriodStatus.FUTURO);
+        createPeriod(repository, "2026-2", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 12, 15), PeriodStatus.PLANIFICACION);
     }
 
     private void createPeriod(

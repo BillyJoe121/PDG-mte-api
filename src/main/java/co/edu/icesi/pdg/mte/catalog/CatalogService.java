@@ -2,7 +2,10 @@ package co.edu.icesi.pdg.mte.catalog;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
+import co.edu.icesi.pdg.mte.audit.AuditAction;
+import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
@@ -10,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +27,8 @@ public class CatalogService {
     private final InstitutionalGoalRepository goalRepository;
     private final KeyResultRepository keyResultRepository;
     private final ObjectiveRepository objectiveRepository;
+    private final ProjectRepository projectRepository;
+    private final AuditService auditService;
 
     public CatalogService(
             MeasurementUnitRepository unitRepository,
@@ -30,7 +36,9 @@ public class CatalogService {
             DepartmentRepository departmentRepository,
             InstitutionalGoalRepository goalRepository,
             KeyResultRepository keyResultRepository,
-            ObjectiveRepository objectiveRepository
+            ObjectiveRepository objectiveRepository,
+            ProjectRepository projectRepository,
+            AuditService auditService
     ) {
         this.unitRepository = unitRepository;
         this.periodRepository = periodRepository;
@@ -38,11 +46,16 @@ public class CatalogService {
         this.goalRepository = goalRepository;
         this.keyResultRepository = keyResultRepository;
         this.objectiveRepository = objectiveRepository;
+        this.projectRepository = projectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.MeasurementUnitResponse> listUnits() {
-        return unitRepository.findAll().stream().map(Mapper::toResponse).toList();
+        return unitRepository.findAll().stream()
+                .sorted(Comparator.comparing(MeasurementUnit::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(Mapper::toResponse)
+                .toList();
     }
 
     public CatalogDtos.MeasurementUnitResponse createUnit(CatalogDtos.MeasurementUnitRequest request) {
@@ -54,22 +67,30 @@ public class CatalogService {
         unit.setName(name);
         unit.setType(request.type());
         unit.setDescription(request.description());
-        return Mapper.toResponse(unitRepository.save(unit));
+        CatalogDtos.MeasurementUnitResponse response = Mapper.toResponse(unitRepository.save(unit));
+        auditService.record(AuditAction.CREATE, "MEASUREMENT_UNIT", response.id(), "Unidad de medida creada: " + response.name(), null, response);
+        return response;
     }
 
     public CatalogDtos.MeasurementUnitResponse updateUnit(Long id, CatalogDtos.MeasurementUnitRequest request) {
         MeasurementUnit unit = findUnit(id);
+        CatalogDtos.MeasurementUnitResponse before = Mapper.toResponse(unit);
         assertUnitNameIsAvailable(request.name(), id);
         unit.setName(request.name().trim());
         unit.setType(request.type());
         unit.setDescription(request.description());
-        return Mapper.toResponse(unitRepository.save(unit));
+        CatalogDtos.MeasurementUnitResponse response = Mapper.toResponse(unitRepository.save(unit));
+        auditService.record(AuditAction.UPDATE, "MEASUREMENT_UNIT", response.id(), "Unidad de medida actualizada: " + response.name(), before, response);
+        return response;
     }
 
     public CatalogDtos.MeasurementUnitResponse updateUnitActive(Long id, CatalogDtos.MeasurementUnitActiveRequest request) {
         MeasurementUnit unit = findUnit(id);
+        CatalogDtos.MeasurementUnitResponse before = Mapper.toResponse(unit);
         unit.setActive(request.active());
-        return Mapper.toResponse(unitRepository.save(unit));
+        CatalogDtos.MeasurementUnitResponse response = Mapper.toResponse(unitRepository.save(unit));
+        auditService.record(AuditAction.STATUS_CHANGE, "MEASUREMENT_UNIT", response.id(), "Estado de unidad actualizado a " + response.active(), before, response);
+        return response;
     }
 
     public void deleteUnit(Long id) {
@@ -82,7 +103,10 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.AcademicPeriodResponse> listPeriods() {
-        return periodRepository.findAll().stream().map(Mapper::toResponse).toList();
+        return periodRepository.findAll().stream()
+                .sorted(Comparator.comparing(AcademicPeriod::getStartDate).thenComparing(AcademicPeriod::getName))
+                .map(Mapper::toResponse)
+                .toList();
     }
 
     public CatalogDtos.AcademicPeriodResponse createPeriod(CatalogDtos.AcademicPeriodRequest request) {
@@ -97,29 +121,47 @@ public class CatalogService {
         period.setStartDate(request.startDate());
         period.setEndDate(request.endDate());
         period.setStatus(request.status());
-        return Mapper.toResponse(periodRepository.save(period));
+        CatalogDtos.AcademicPeriodResponse response = Mapper.toResponse(periodRepository.save(period));
+        auditService.record(AuditAction.CREATE, "ACADEMIC_PERIOD", response.id(), "Periodo academico creado: " + response.name(), null, response);
+        return response;
     }
 
     public CatalogDtos.AcademicPeriodResponse updatePeriod(Long id, CatalogDtos.AcademicPeriodRequest request) {
         AcademicPeriod period = findPeriod(id);
+        CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
         assertPeriodDatesAreValid(request);
         assertPeriodNameIsAvailable(request.name(), id);
         period.setName(request.name().trim());
         period.setStartDate(request.startDate());
         period.setEndDate(request.endDate());
         period.setStatus(request.status());
-        return Mapper.toResponse(periodRepository.save(period));
+        CatalogDtos.AcademicPeriodResponse response = Mapper.toResponse(periodRepository.save(period));
+        auditService.record(AuditAction.UPDATE, "ACADEMIC_PERIOD", response.id(), "Periodo academico actualizado: " + response.name(), before, response);
+        return response;
     }
 
     public CatalogDtos.AcademicPeriodResponse updatePeriodStatus(Long id, CatalogDtos.AcademicPeriodStatusRequest request) {
         AcademicPeriod period = findPeriod(id);
+        CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
         period.setStatus(request.status());
-        return Mapper.toResponse(periodRepository.save(period));
+        CatalogDtos.AcademicPeriodResponse response = Mapper.toResponse(periodRepository.save(period));
+        auditService.record(AuditAction.STATUS_CHANGE, "ACADEMIC_PERIOD", response.id(), "Estado de periodo actualizado a " + response.status(), before, response);
+        return response;
+    }
+
+    public CatalogDtos.AcademicPeriodResponse updatePeriodActive(Long id, CatalogDtos.AcademicPeriodActiveRequest request) {
+        AcademicPeriod period = findPeriod(id);
+        CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
+        PeriodStatus nextStatus = request.active() ? PeriodStatus.ACTIVO : PeriodStatus.CERRADO;
+        period.setStatus(nextStatus);
+        CatalogDtos.AcademicPeriodResponse response = Mapper.toResponse(periodRepository.save(period));
+        auditService.record(AuditAction.STATUS_CHANGE, "ACADEMIC_PERIOD", response.id(), "Periodo " + (request.active() ? "activado" : "desactivado") + ".", before, response);
+        return response;
     }
 
     public void deletePeriod(Long id) {
         AcademicPeriod period = findPeriod(id);
-        if (isPeriodInUse(id)) {
+        if (isPeriodInUse(period)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un periodo academico en uso; cambie su estado a cerrado.");
         }
         periodRepository.delete(period);
@@ -164,7 +206,11 @@ public class CatalogService {
         return goalRepository.existsByMeasurementUnitId(id) || keyResultRepository.existsByMeasurementUnitId(id);
     }
 
-    private boolean isPeriodInUse(Long id) {
-        return goalRepository.existsByPeriodsId(id) || objectiveRepository.existsByAcademicPeriodId(id);
+    private boolean isPeriodInUse(AcademicPeriod period) {
+        Long id = period.getId();
+        String name = period.getName();
+        return goalRepository.existsByPeriodsId(id)
+                || objectiveRepository.existsByAcademicPeriodId(id)
+                || projectRepository.existsByStartPeriodOrEndPeriod(name, name);
     }
 }

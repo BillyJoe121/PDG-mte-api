@@ -81,6 +81,7 @@ public final class TestFixtures {
     public static KeyResult keyResult(Long id, MeasurementUnit unit) {
         KeyResult keyResult = new KeyResult();
         keyResult.setId(id);
+        keyResult.setName("KR");
         keyResult.setDescription("KR");
         keyResult.setMetric("Porcentaje");
         keyResult.setBaseValue(BigDecimal.ZERO);

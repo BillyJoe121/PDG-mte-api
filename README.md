@@ -1,33 +1,401 @@
-# PDG-mte-api
+# PDG MTE API
 
 REST API del Modulo de Trazabilidad Estrategica (MTE) de la Escuela TDI.
 
-El servicio es dueno del dominio estrategico y operativo: Apuestas, Metas, Objetivos, Key Results, Proyectos, avances, periodos, unidades de medida y vinculaciones futuras con proyectos externos. Esta preparado para integrarse con el backend de Trayectoria Docente sin depender de que ese equipo haya terminado sus endpoints.
+El backend gestiona catalogos, jerarquia estrategica, proyectos, vinculaciones proyecto-KR, dashboard, reportes, modo presentacion, auditoria y autenticacion contra la plataforma externa cuando esta disponible.
 
-## Ejecutar
+## Requisitos
+
+- Java 17 o superior.
+- Maven Wrapper incluido en el repo: `mvnw.cmd` en Windows, `./mvnw` en Linux/macOS.
+- PostgreSQL 14+ para ambientes persistentes. Supabase funciona porque expone PostgreSQL.
+- Docker opcional para levantar PostgreSQL local.
+
+## Comandos Rapidos
+
+Windows PowerShell:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+.\mvnw.cmd test
+.\mvnw.cmd verify
+.\mvnw.cmd clean package
+.\mvnw.cmd clean package -DskipTests
+```
+
+Linux/macOS:
+
+```bash
+./mvnw spring-boot:run
+./mvnw test
+./mvnw verify
+./mvnw clean package
+./mvnw clean package -DskipTests
+```
+
+La API queda por defecto en:
+
+```text
+http://localhost:8081
+```
+
+Rutas utiles:
+
+```text
+Swagger UI: http://localhost:8081/swagger-ui.html
+Health:     http://localhost:8081/api/v1/health
+H2 console: http://localhost:8081/h2-console
+```
+
+## Ejecucion Local con H2
+
+El perfil por defecto es `dev`. No necesitas levantar una base externa. Spring Boot crea una base H2 en memoria cada vez que inicia.
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-La API queda en `http://localhost:8081`.
-
-- Swagger UI: `http://localhost:8081/swagger-ui.html`
-- H2 console: `http://localhost:8081/h2-console`
-- Health: `GET http://localhost:8081/api/v1/health`
-
-## Perfiles y base de datos
-
-Por defecto se usa el perfil `dev`, con H2 en memoria y esquema recreado al iniciar:
+Configuracion efectiva en `dev`:
 
 ```text
-spring.profiles.default=dev
+SPRING_PROFILES_ACTIVE=dev
 DB_URL=jdbc:h2:mem:mte;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+DB_USERNAME=sa
+DB_PASSWORD=
+DB_DRIVER=org.h2.Driver
 JPA_DDL_AUTO=create-drop
 FLYWAY_ENABLED=false
+MTE_SEED_ENABLED=true
+MTE_AUTH_MODE=mock
 ```
 
-Para produccion o demo remota con PostgreSQL/Supabase usa el perfil `prod`:
+En H2 console usa:
+
+```text
+JDBC URL: jdbc:h2:mem:mte
+User:     sa
+Password:
+```
+
+## Ejecucion con PostgreSQL Local
+
+Puedes levantar PostgreSQL local con Docker:
+
+```powershell
+docker run --name mte-postgres `
+  -e POSTGRES_DB=mte `
+  -e POSTGRES_USER=mte `
+  -e POSTGRES_PASSWORD=mte `
+  -p 5432:5432 `
+  -d postgres:16
+```
+
+Luego ejecuta el backend en modo `prod` para probar migraciones Flyway y validacion JPA:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE='prod'
+$env:DB_URL='jdbc:postgresql://localhost:5432/mte'
+$env:DB_USERNAME='mte'
+$env:DB_PASSWORD='mte'
+$env:DB_DRIVER='org.postgresql.Driver'
+$env:JPA_DDL_AUTO='validate'
+$env:FLYWAY_ENABLED='true'
+$env:MTE_SEED_ENABLED='false'
+$env:MTE_AUTH_MODE='mock'
+.\mvnw.cmd spring-boot:run
+```
+
+Para borrar la base local y empezar de cero:
+
+```powershell
+docker rm -f mte-postgres
+```
+
+## Supabase / PostgreSQL Remoto
+
+Supabase debe tratarse como una base PostgreSQL administrada. La aplicacion no debe depender de nada especifico de Supabase, solo de variables de entorno.
+
+1. Crea un proyecto en Supabase.
+2. Entra a `Project Settings > Database`.
+3. Copia la cadena de conexion PostgreSQL directa. Para migraciones Flyway es preferible usar conexion directa, no transaction pooler.
+4. Asegurate de incluir SSL:
+
+```text
+jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
+```
+
+Variables recomendadas para Supabase:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE='prod'
+$env:DB_URL='jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require'
+$env:DB_USERNAME='postgres'
+$env:DB_PASSWORD='<password>'
+$env:DB_DRIVER='org.postgresql.Driver'
+$env:JPA_DDL_AUTO='validate'
+$env:FLYWAY_ENABLED='true'
+$env:FLYWAY_BASELINE_ON_MIGRATE='false'
+$env:MTE_SEED_ENABLED='false'
+$env:MTE_AUTH_MODE='external'
+$env:TRAYECTORIA_BASE_URL='https://<url-trayectoria>/api/v1'
+```
+
+Para demo sin autenticacion externa:
+
+```powershell
+$env:MTE_AUTH_MODE='mock'
+```
+
+Con esas variables, inicia la app:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Flyway aplicara automaticamente las migraciones pendientes al arrancar.
+
+## Migraciones de Base de Datos
+
+Las migraciones viven en:
+
+```text
+src/main/resources/db/migration
+```
+
+Migraciones actuales:
+
+```text
+V1__initial_schema.sql
+V2__complete_msp_story_fields.sql
+V3__rename_future_period_status.sql
+```
+
+Reglas:
+
+- Nunca editar una migracion que ya fue aplicada en Supabase, produccion o una base compartida.
+- Para cada cambio nuevo de esquema crea un archivo nuevo: `V4__descripcion_del_cambio.sql`, `V5__...sql`, etc.
+- Mantener SQL compatible con PostgreSQL.
+- Probar primero en PostgreSQL local o en una base Supabase de staging.
+- Usar `JPA_DDL_AUTO=validate` en ambientes persistentes. Hibernate valida, Flyway migra.
+- Usar `FLYWAY_BASELINE_ON_MIGRATE=true` solo una vez si se conecta una base existente que ya tiene tablas pero no tiene `flyway_schema_history`.
+
+Flujo recomendado para cambiar esquema:
+
+```text
+1. Crear entidad/campo en Java.
+2. Crear nueva migracion Vn__descripcion.sql.
+3. Probar con PostgreSQL local en perfil prod.
+4. Ejecutar .\mvnw.cmd test.
+5. Desplegar a Supabase/staging.
+6. Desplegar a produccion.
+```
+
+Cuando la Universidad quiera desplegar en su propia base, solo debe crear una base PostgreSQL y usar las mismas variables:
+
+```text
+DB_URL=jdbc:postgresql://<host>:<port>/<database>
+DB_USERNAME=<usuario>
+DB_PASSWORD=<password>
+DB_DRIVER=org.postgresql.Driver
+FLYWAY_ENABLED=true
+JPA_DDL_AUTO=validate
+```
+
+Si su infraestructura exige SSL, agregar `?sslmode=require` o el modo SSL que indique el DBA.
+
+## Tests
+
+Todos los tests:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Una clase especifica:
+
+```powershell
+.\mvnw.cmd '-Dtest=ProjectServiceTest' test
+```
+
+Varias clases:
+
+```powershell
+.\mvnw.cmd '-Dtest=ProjectServiceTest,StrategyServiceObjectiveTest' test
+```
+
+Un metodo especifico:
+
+```powershell
+.\mvnw.cmd '-Dtest=ProjectServiceTest#createsLocalProjectWhenPayloadIsValid' test
+```
+
+Compilar tests sin ejecutarlos:
+
+```powershell
+.\mvnw.cmd '-DskipTests' test-compile
+```
+
+## Cobertura
+
+El proyecto usa JaCoCo.
+
+Generar reporte:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Abrir reporte HTML:
+
+```powershell
+Start-Process .\target\site\jacoco\index.html
+```
+
+Ejecutar validacion de cobertura:
+
+```powershell
+.\mvnw.cmd verify
+```
+
+Umbrales configurados:
+
+```text
+Line coverage:   91%
+Branch coverage: 85%
+```
+
+## Build y Ejecucion del JAR
+
+Build con tests:
+
+```powershell
+.\mvnw.cmd clean package
+```
+
+Build sin tests:
+
+```powershell
+.\mvnw.cmd clean package -DskipTests
+```
+
+Ejecutar JAR:
+
+```powershell
+java -jar .\target\pdg-mte-api-0.0.1-SNAPSHOT.jar
+```
+
+Con perfil productivo:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE='prod'
+java -jar .\target\pdg-mte-api-0.0.1-SNAPSHOT.jar
+```
+
+## Autenticacion
+
+Modo demo/local:
+
+```text
+MTE_AUTH_MODE=mock
+```
+
+En modo mock, el backend autentica como:
+
+```text
+Usuario: demo.admin
+Roles:   ADMIN, DIRECTOR_ESCUELA
+```
+
+Modo integrado:
+
+```text
+MTE_AUTH_MODE=external
+TRAYECTORIA_BASE_URL=https://<url-trayectoria>/api/v1
+TRAYECTORIA_ME_PATH=/auth/me
+```
+
+En modo externo cada request protegido debe incluir:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Integracion de Proyectos Externos
+
+Modo mock:
+
+```text
+MTE_TRAYECTORIA_PROJECTS_MODE=mock
+```
+
+Modo externo:
+
+```text
+MTE_TRAYECTORIA_PROJECTS_MODE=external
+TRAYECTORIA_BASE_URL=https://<url-trayectoria>/api/v1
+TRAYECTORIA_PROJECTS_PATH=/proyectos
+TRAYECTORIA_SOURCE_NAME=TRAYECTORIA_DOCENTE
+```
+
+Endpoint:
+
+```http
+POST /api/v1/projects/sync/trayectoria
+```
+
+## CORS
+
+Configura los dominios del frontend:
+
+```text
+MTE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:4200
+```
+
+Ejemplo produccion:
+
+```text
+MTE_CORS_ALLOWED_ORIGINS=https://mte.icesi.edu.co,https://mte-front.vercel.app
+```
+
+## Variables de Entorno Principales
+
+```text
+PORT=8081
+SPRING_PROFILES_ACTIVE=dev|prod
+DB_URL=jdbc:...
+DB_USERNAME=...
+DB_PASSWORD=...
+DB_DRIVER=org.h2.Driver|org.postgresql.Driver
+JPA_DDL_AUTO=create-drop|validate
+FLYWAY_ENABLED=false|true
+FLYWAY_BASELINE_ON_MIGRATE=false|true
+MTE_SEED_ENABLED=true|false
+MTE_AUTH_MODE=mock|external
+TRAYECTORIA_BASE_URL=http://localhost:8080/api/v1
+TRAYECTORIA_ME_PATH=/auth/me
+MTE_TRAYECTORIA_PROJECTS_MODE=mock|external
+TRAYECTORIA_PROJECTS_PATH=/proyectos
+TRAYECTORIA_SOURCE_NAME=TRAYECTORIA_DOCENTE
+MTE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:4200
+```
+
+No guardar credenciales reales en Git. El archivo `.env` esta ignorado por `.gitignore`, pero Spring Boot no lo carga automaticamente si no lo configura el IDE, el sistema operativo o la plataforma de despliegue.
+
+## Despliegue
+
+Build:
+
+```bash
+./mvnw clean package -DskipTests
+```
+
+Start:
+
+```bash
+java -jar target/pdg-mte-api-0.0.1-SNAPSHOT.jar
+```
+
+Variables minimas para un despliegue productivo:
 
 ```text
 SPRING_PROFILES_ACTIVE=prod
@@ -38,100 +406,8 @@ DB_DRIVER=org.postgresql.Driver
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
 MTE_SEED_ENABLED=false
-```
-
-El esquema productivo se gestiona con Flyway desde:
-
-```text
-src/main/resources/db/migration
-```
-
-La migracion inicial es `V1__initial_schema.sql`.
-
-Para Render, el comando de build/start recomendado es:
-
-```bash
-./mvnw clean package -DskipTests
-java -jar target/pdg-mte-api-0.0.1-SNAPSHOT.jar
-```
-
-Configura CORS con el dominio del frontend desplegado:
-
-```text
-MTE_CORS_ALLOWED_ORIGINS=https://tu-front.onrender.com,https://tu-front.vercel.app
-```
-
-## Autenticacion
-
-Por defecto corre en modo demo:
-
-```text
-MTE_AUTH_MODE=mock
-```
-
-Para validar el token Bearer contra Trayectoria Docente:
-
-```text
 MTE_AUTH_MODE=external
-TRAYECTORIA_BASE_URL=http://localhost:8080/api/v1
+TRAYECTORIA_BASE_URL=<url-backend-trayectoria>
+MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
 ```
 
-En modo `external`, cada request protegido debe incluir:
-
-```http
-Authorization: Bearer <token>
-```
-
-El MTE llama a `GET /auth/me` del backend externo para obtener roles, permisos y contexto de usuario.
-
-## Proyectos MSP
-
-El MSP gestiona sus propios proyectos. Un proyecto puede ser:
-
-- `LOCAL`: creado directamente en el MSP.
-- `SYNCED`: importado desde Trayectoria Docente y enriquecido localmente.
-
-Endpoints principales:
-
-```http
-POST  /api/v1/projects
-GET   /api/v1/projects?search=&status=&type=&departmentId=&period=
-GET   /api/v1/projects/{id}
-PUT   /api/v1/projects/{id}
-PATCH /api/v1/projects/{id}/status
-POST  /api/v1/projects/{id}/progress
-GET   /api/v1/projects/{id}/history
-POST  /api/v1/projects/sync/trayectoria
-```
-
-La sincronizacion de proyectos corre en modo mock por defecto:
-
-```text
-MTE_TRAYECTORIA_PROJECTS_MODE=mock
-```
-
-Para intentar consumir proyectos desde la plataforma externa:
-
-```text
-MTE_TRAYECTORIA_PROJECTS_MODE=external
-TRAYECTORIA_BASE_URL=http://localhost:8080/api/v1
-TRAYECTORIA_PROJECTS_PATH=/proyectos
-```
-
-El modo externo requiere enviar `Authorization: Bearer <token>` al endpoint de sincronizacion.
-
-## Historias cubiertas en esta base
-
-- HU 1.1: registrar y consultar Apuestas Estrategicas.
-- HU 1.2: registrar Metas Institucionales y asociar/desasociar periodos.
-- HU 1.3: registrar Objetivos con Meta, Apuesta, Departamento, Periodo y al menos un Key Result.
-- HU 1.4: listar Objetivos como tarjetas con filtros y alerta de bajo cumplimiento.
-- HU 1.5: listar, crear, editar, actualizar valor actual y eliminar Key Results si no tienen proyectos vinculados.
-- HU 1.6: editar informacion basica de Objetivos.
-- HU 1.7: visualizar jerarquia estrategica como arbol.
-- HU 2.1: registrar proyectos propios en MSP.
-- HU 2.2: listar y filtrar proyectos.
-- HU 2.3: consultar ficha base de proyecto e historial.
-- HU 2.4: registrar avance de proyecto.
-- HU 2.5: gestionar estado del proyecto.
-- Catalogos minimos: periodos, unidades de medida y departamentos semilla.

@@ -29,6 +29,10 @@ public class ProjectKeyResultLink {
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal contributionWeight;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ContributionType contributionType = ContributionType.DIRECTA;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -81,6 +85,14 @@ public class ProjectKeyResultLink {
 
     public void setContributionWeight(BigDecimal contributionWeight) {
         this.contributionWeight = contributionWeight;
+    }
+
+    public ContributionType getContributionType() {
+        return contributionType;
+    }
+
+    public void setContributionType(ContributionType contributionType) {
+        this.contributionType = contributionType;
     }
 
     public boolean isActive() {

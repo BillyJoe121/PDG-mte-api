@@ -4,6 +4,8 @@ import co.edu.icesi.pdg.mte.project.ProjectOrigin;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectSyncStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
+import co.edu.icesi.pdg.mte.integration.ContributionType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -25,7 +27,8 @@ public final class ProjectDtos {
             @Pattern(regexp = "^\\d{4}-(Q[1-4]|[1-2])$") String endPeriod,
             LocalDate startDate,
             LocalDate endDate,
-            List<@NotBlank String> tutors
+            List<@NotBlank String> tutors,
+            List<@Valid ProjectKeyResultDraftRequest> keyResultLinks
     ) {
     }
 
@@ -72,6 +75,7 @@ public final class ProjectDtos {
             LocalDate actualEndDate,
             BigDecimal globalProgress,
             List<String> tutors,
+            List<ProjectLinkedKeyResultResponse> linkedKeyResults,
             ProjectOrigin origin,
             ProjectSyncStatus syncStatus,
             Instant lastSyncedAt,
@@ -121,7 +125,15 @@ public final class ProjectDtos {
     public record ProjectKeyResultLinkRequest(
             @NotNull Long projectId,
             @NotNull Long keyResultId,
-            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight
+            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
+            @NotNull ContributionType contributionType
+    ) {
+    }
+
+    public record ProjectKeyResultDraftRequest(
+            @NotNull Long keyResultId,
+            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
+            @NotNull ContributionType contributionType
     ) {
     }
 
@@ -132,10 +144,22 @@ public final class ProjectDtos {
             Long keyResultId,
             String keyResultDescription,
             BigDecimal contributionWeight,
+            ContributionType contributionType,
             BigDecimal totalWeightForKeyResult,
             boolean overweightWarning,
             boolean active,
             Instant createdAt
+    ) {
+    }
+
+    public record ProjectLinkedKeyResultResponse(
+            Long linkId,
+            Long keyResultId,
+            String keyResultName,
+            String keyResultDescription,
+            BigDecimal contributionWeight,
+            ContributionType contributionType,
+            boolean active
     ) {
     }
 
@@ -155,6 +179,7 @@ public final class ProjectDtos {
             Long objectiveId,
             String objectiveName,
             BigDecimal contributionWeight,
+            ContributionType contributionType,
             BigDecimal appliedContribution,
             boolean projectCompleted,
             String period

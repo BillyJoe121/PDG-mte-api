@@ -1,8 +1,11 @@
 package co.edu.icesi.pdg.mte.dashboard;
 
 import co.edu.icesi.pdg.mte.api.dto.DashboardDtos;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
+import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
@@ -27,6 +30,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
@@ -42,23 +46,26 @@ public class DashboardService {
     private final DepartmentRepository departmentRepository;
     private final StrategicBetRepository strategicBetRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
+    private final AcademicPeriodRepository periodRepository;
 
     public DashboardService(
             ProjectRepository projectRepository,
             ObjectiveRepository objectiveRepository,
             DepartmentRepository departmentRepository,
             StrategicBetRepository strategicBetRepository,
-            ProjectKeyResultLinkRepository linkRepository
+            ProjectKeyResultLinkRepository linkRepository,
+            AcademicPeriodRepository periodRepository
     ) {
         this.projectRepository = projectRepository;
         this.objectiveRepository = objectiveRepository;
         this.departmentRepository = departmentRepository;
         this.strategicBetRepository = strategicBetRepository;
         this.linkRepository = linkRepository;
+        this.periodRepository = periodRepository;
     }
 
     public DashboardDtos.DashboardSummaryResponse summary(String period) {
-        String normalizedPeriod = normalizePeriod(period);
+        String normalizedPeriod = resolvePeriod(period);
         List<Project> projects = filteredProjects(normalizedPeriod);
         List<Objective> objectives = filteredObjectives(normalizedPeriod);
         List<KeyResult> keyResults = keyResultsFrom(objectives);
@@ -80,7 +87,7 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.CountByStatusResponse> projectsByStatus(String period) {
-        List<Project> projects = filteredProjects(normalizePeriod(period));
+        List<Project> projects = filteredProjects(resolvePeriod(period));
         return List.of(ProjectStatus.values())
                 .stream()
                 .map(status -> new DashboardDtos.CountByStatusResponse(status.name(), countProjects(projects, status)))
@@ -94,7 +101,7 @@ public class DashboardService {
         buckets.put("AT_RISK", 0L);
         buckets.put("LOW", 0L);
 
-        keyResultsFrom(filteredObjectives(normalizePeriod(period))).stream()
+        keyResultsFrom(filteredObjectives(resolvePeriod(period))).stream()
                 .map(this::progressBucket)
                 .forEach(bucket -> buckets.merge(bucket, 1L, Long::sum));
 
@@ -105,7 +112,7 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.DepartmentExecutionResponse> departments(String period) {
-        String normalizedPeriod = normalizePeriod(period);
+        String normalizedPeriod = resolvePeriod(period);
         List<Project> projects = filteredProjects(normalizedPeriod);
         List<Objective> objectives = filteredObjectives(normalizedPeriod);
 
@@ -117,7 +124,7 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.StrategicBetExecutionResponse> strategicBets(String period) {
-        String normalizedPeriod = normalizePeriod(period);
+        String normalizedPeriod = resolvePeriod(period);
         List<Objective> objectives = filteredObjectives(normalizedPeriod);
 
         return strategicBetRepository.findAll()
@@ -209,25 +216,65 @@ public class DashboardService {
         if (period == null) {
             return true;
         }
-        return period.equals(project.getStartPeriod()) || period.equals(project.getEndPeriod());
+        PeriodRange requestedPeriod = parsePeriod(period);
+        PeriodRange projectStart = parsePeriod(project.getStartPeriod());
+        PeriodRange projectEnd = project.getEndPeriod() == null || project.getEndPeriod().isBlank()
+                ? projectStart
+                : parsePeriod(project.getEndPeriod().trim());
+        return overlaps(new PeriodRange(projectStart.startIndex(), Math.max(projectStart.endIndex(), projectEnd.endIndex())), requestedPeriod);
     }
 
     private boolean periodMatches(Objective objective, String period) {
         if (period == null) {
             return true;
         }
-        return period.equals(objective.getAcademicPeriod().getName());
+        if (objective.getAcademicPeriod() == null || objective.getAcademicPeriod().getName() == null) {
+            return false;
+        }
+        return overlaps(parsePeriod(objective.getAcademicPeriod().getName()), parsePeriod(period));
     }
 
-    private String normalizePeriod(String period) {
+    private String resolvePeriod(String period) {
         if (period == null || period.isBlank()) {
-            return null;
+            return periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)
+                    .map(AcademicPeriod::getName)
+                    .orElse(null);
         }
         String trimmed = period.trim();
         if (!PERIOD_PATTERN.matcher(trimmed).matches()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "El periodo debe tener formato YYYY-Q1..Q4 o YYYY-1..2.");
         }
         return trimmed;
+    }
+
+    private PeriodRange parsePeriod(String period) {
+        if (period == null || period.isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El periodo debe tener formato YYYY-Q1..Q4 o YYYY-1..2.");
+        }
+        Matcher matcher = PERIOD_PATTERN.matcher(period.trim());
+        if (!matcher.matches()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El periodo debe tener formato YYYY-Q1..Q4 o YYYY-1..2.");
+        }
+        int year = Integer.parseInt(period.trim().substring(0, 4));
+        String term = matcher.group(1);
+        int startQuarter;
+        int endQuarter;
+        if (term.startsWith("Q")) {
+            startQuarter = Integer.parseInt(term.substring(1));
+            endQuarter = startQuarter;
+        } else if ("1".equals(term)) {
+            startQuarter = 1;
+            endQuarter = 2;
+        } else {
+            startQuarter = 3;
+            endQuarter = 4;
+        }
+        int yearBase = year * 4;
+        return new PeriodRange(yearBase + startQuarter, yearBase + endQuarter);
+    }
+
+    private boolean overlaps(PeriodRange first, PeriodRange second) {
+        return first.startIndex() <= second.endIndex() && second.startIndex() <= first.endIndex();
     }
 
     private long countProjects(List<Project> projects, ProjectStatus status) {
@@ -280,5 +327,8 @@ public class DashboardService {
                 .map(this::progressOf)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return total.divide(BigDecimal.valueOf(keyResults.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private record PeriodRange(int startIndex, int endIndex) {
     }
 }

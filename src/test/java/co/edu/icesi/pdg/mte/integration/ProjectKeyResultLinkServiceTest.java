@@ -74,9 +74,10 @@ class ProjectKeyResultLinkServiceTest {
         when(linkRepository.save(any(ProjectKeyResultLink.class))).thenReturn(saved);
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(existing, saved));
 
-        var response = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(60)));
+        var response = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(60), ContributionType.DIRECTA));
 
         assertThat(response.projectId()).isEqualTo(1L);
+        assertThat(response.contributionType()).isEqualTo(ContributionType.DIRECTA);
         assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("110.00");
         assertThat(response.overweightWarning()).isTrue();
         verify(progressService).recalculateKeyResult(1L);
@@ -94,6 +95,20 @@ class ProjectKeyResultLinkServiceTest {
         assertThat(service.list(1L, 99L)).isEmpty();
         assertThat(service.list(null, 1L)).hasSize(1);
         assertThat(service.list(null, null)).hasSize(1);
+    }
+
+    @Test
+    void listsActiveExternalStyleLinkWithoutLocalProject() {
+        ProjectKeyResultLink linkWithoutProject = link(null, keyResult, 35);
+        when(linkRepository.findAll()).thenReturn(List.of(linkWithoutProject));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutProject));
+
+        var response = service.list(null, null);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).projectId()).isNull();
+        assertThat(response.get(0).projectName()).isNull();
+        assertThat(response.get(0).totalWeightForKeyResult()).isEqualByComparingTo("35.00");
     }
 
     @Test
@@ -125,6 +140,23 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
+    void impactChainHandlesNullProjectAndBlankEndPeriod() {
+        Project blankEndPeriod = project(3L, ProjectStatus.ACTIVO, "2026-Q1", " ");
+        ProjectKeyResultLink linkWithoutProject = link(null, keyResult, 25);
+        ProjectKeyResultLink blankEndPeriodLink = link(blankEndPeriod, keyResult, 35);
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutProject, blankEndPeriodLink));
+
+        var response = service.impactChain(1L);
+
+        assertThat(response.impacts()).hasSize(2);
+        assertThat(response.impacts().get(0).projectCompleted()).isFalse();
+        assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("0.00");
+        assertThat(response.impacts().get(0).period()).isNull();
+        assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q1");
+    }
+
+    @Test
     void sadPathsRejectInvalidLinkOperations() {
         when(projectRepository.findById(404L)).thenReturn(Optional.empty());
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
@@ -133,13 +165,13 @@ class ProjectKeyResultLinkServiceTest {
         when(linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L)).thenReturn(true);
         when(linkRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(404L, 1L, BigDecimal.TEN)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(404L, 1L, BigDecimal.TEN, ContributionType.DIRECTA)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Proyecto");
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 404L, BigDecimal.TEN)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 404L, BigDecimal.TEN, ContributionType.DIRECTA)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Key Result");
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.TEN)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.TEN, ContributionType.DIRECTA)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ya esta vinculado");
         assertThatThrownBy(() -> service.unlink(404L))

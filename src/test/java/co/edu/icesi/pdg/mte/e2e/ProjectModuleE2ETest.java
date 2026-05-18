@@ -39,6 +39,8 @@ class ProjectModuleE2ETest {
 
         JsonNode listed = doGet("/api/v1/projects?search=Proyecto E2E&type=INVESTIGACION&status=ACTIVO&period=2026-1&departmentId=1");
         assertThat(ids(listed)).contains(projectId);
+        JsonNode listedByQuarterInsideRange = doGet("/api/v1/projects?period=2026-Q3");
+        assertThat(ids(listedByQuarterInsideRange)).contains(projectId);
         assertThat(doGet("/api/v1/projects")).isNotEmpty();
         mockMvc.perform(get("/api/v1/projects")
                         .param("search", "  ")
@@ -152,8 +154,118 @@ class ProjectModuleE2ETest {
                 .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/v1/projects").param("type", "INVALIDO"))
                 .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/projects").param("period", "2026-X"))
+                .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/v1/audit-logs").param("action", "INVALIDO"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createsProjectWithImmediateKeyResultLinkAndRejectsInvalidImmediateLinks() throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units");
+        Long periodId = firstId("/api/v1/academic-periods");
+        Long departmentId = firstId("/api/v1/departments");
+        Long strategicBetId = createStrategicBet("Apuesta proyecto inmediato " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta proyecto inmediato " + SEQUENCE.incrementAndGet(), unitId);
+        Long keyResultId = doPost("/api/v1/objectives", objectivePayload(
+                "Objetivo proyecto inmediato " + SEQUENCE.incrementAndGet(),
+                departmentId,
+                periodId,
+                goalId,
+                strategicBetId,
+                unitId
+        ), 201).get("keyResults").get(0).get("id").asLong();
+
+        JsonNode created = doPost("/api/v1/projects", projectPayloadWithImmediateLink(
+                "Proyecto inmediato " + SEQUENCE.incrementAndGet(),
+                departmentId,
+                keyResultId
+        ), 201);
+        Long projectId = created.get("id").asLong();
+
+        assertThat(created.get("linkedKeyResults")).hasSize(1);
+        assertThat(created.get("linkedKeyResults").get(0).get("keyResultId").asLong()).isEqualTo(keyResultId);
+
+        JsonNode detail = doGet("/api/v1/projects/" + projectId + "/detail");
+        JsonNode chainBefore = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
+        assertThat(detail.get("linkedKeyResults")).hasSize(1);
+        assertThat(chainBefore.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("0.00");
+
+        doPatch("/api/v1/projects/" + projectId + "/status", """
+                {"status": "FINALIZADO"}
+                """, 200);
+        JsonNode chainAfter = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
+        assertThat(chainAfter.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("45.00");
+
+        doPost("/api/v1/projects", projectPayloadWithImmediateLink(
+                "Proyecto KR inexistente " + SEQUENCE.incrementAndGet(),
+                departmentId,
+                99999L
+        ), 404);
+        doPost("/api/v1/projects", """
+                {
+                  "name": "Proyecto link invalido %d",
+                  "description": "Debe fallar por payload incompleto.",
+                  "type": "INVESTIGACION",
+                  "departmentId": %d,
+                  "status": "ACTIVO",
+                  "startPeriod": "2026-1",
+                  "keyResultLinks": [
+                    {"keyResultId": %d, "contributionWeight": 40}
+                  ]
+                }
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 400);
+    }
+
+    @Test
+    void managesProjectKeyResultLinksWarningsDuplicatesAndLogicalUnlink() throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units");
+        Long periodId = firstId("/api/v1/academic-periods");
+        Long departmentId = firstId("/api/v1/departments");
+        Long strategicBetId = createStrategicBet("Apuesta vinculos " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta vinculos " + SEQUENCE.incrementAndGet(), unitId);
+        Long keyResultId = doPost("/api/v1/objectives", objectivePayload(
+                "Objetivo vinculos " + SEQUENCE.incrementAndGet(),
+                departmentId,
+                periodId,
+                goalId,
+                strategicBetId,
+                unitId
+        ), 201).get("keyResults").get(0).get("id").asLong();
+        Long firstProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo A " + SEQUENCE.incrementAndGet()), 201)
+                .get("id").asLong();
+        Long secondProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo B " + SEQUENCE.incrementAndGet()), 201)
+                .get("id").asLong();
+
+        JsonNode firstLink = doPost("/api/v1/project-key-result-links", """
+                {"projectId": %d, "keyResultId": %d, "contributionWeight": 70, "contributionType": "DIRECTA"}
+                """.formatted(firstProjectId, keyResultId), 201);
+        JsonNode secondLink = doPost("/api/v1/project-key-result-links", """
+                {"projectId": %d, "keyResultId": %d, "contributionWeight": 40, "contributionType": "INDIRECTA"}
+                """.formatted(secondProjectId, keyResultId), 201);
+
+        assertThat(firstLink.get("overweightWarning").asBoolean()).isFalse();
+        assertThat(secondLink.get("overweightWarning").asBoolean()).isTrue();
+        assertThat(secondLink.get("totalWeightForKeyResult").decimalValue()).isEqualByComparingTo("110.00");
+        assertThat(doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId)).hasSize(1);
+        assertThat(doGet("/api/v1/project-key-result-links?keyResultId=" + keyResultId)).hasSize(2);
+        assertThat(doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId + "&keyResultId=99999")).isEmpty();
+
+        doPost("/api/v1/project-key-result-links", """
+                {"projectId": %d, "keyResultId": %d, "contributionWeight": 10, "contributionType": "SOPORTE"}
+                """.formatted(firstProjectId, keyResultId), 409);
+        doPost("/api/v1/project-key-result-links", """
+                {"projectId": %d, "keyResultId": %d, "contributionWeight": 10}
+                """.formatted(firstProjectId, keyResultId), 400);
+
+        doDelete("/api/v1/project-key-result-links/" + firstLink.get("id").asLong(), 204);
+        JsonNode remainingByProject = doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId);
+        JsonNode removedAudit = doGet("/api/v1/audit-logs?action=LINK_REMOVED&entityType=PROJECT_KEY_RESULT_LINK&entityId="
+                + firstLink.get("id").asLong());
+
+        assertThat(remainingByProject).isEmpty();
+        assertThat(removedAudit).hasSize(1);
+        doDelete("/api/v1/project-key-result-links/99999", 404);
     }
 
     private String projectPayload(String name) {
@@ -173,6 +285,24 @@ class ProjectModuleE2ETest {
                 """.formatted(name);
     }
 
+    private String projectPayloadWithImmediateLink(String name, Long departmentId, Long keyResultId) {
+        return """
+                {
+                  "name": "%s",
+                  "description": "Proyecto creado con vinculo inmediato a KR.",
+                  "type": "INVESTIGACION",
+                  "departmentId": %d,
+                  "status": "ACTIVO",
+                  "startPeriod": "2026-1",
+                  "endPeriod": "2026-2",
+                  "tutors": ["Tutora inmediata"],
+                  "keyResultLinks": [
+                    {"keyResultId": %d, "contributionWeight": 45, "contributionType": "DIRECTA"}
+                  ]
+                }
+                """.formatted(name, departmentId, keyResultId);
+    }
+
     private String updatePayload(String name) {
         return """
                 {
@@ -188,6 +318,53 @@ class ProjectModuleE2ETest {
                   "tutors": ["Tutora Actualizada"]
                 }
                 """.formatted(name);
+    }
+
+    private Long createStrategicBet(String name) throws Exception {
+        return doPost("/api/v1/strategic-bets", """
+                {
+                  "name": "%s",
+                  "description": "Apuesta para pruebas de proyectos.",
+                  "startDate": "2026-01-01",
+                  "endDate": "2026-12-31"
+                }
+                """.formatted(name), 201).get("id").asLong();
+    }
+
+    private Long createGoal(String name, Long unitId) throws Exception {
+        return doPost("/api/v1/goals", """
+                {
+                  "name": "%s",
+                  "description": "Meta para pruebas de proyectos.",
+                  "expectedValue": 100,
+                  "measurementUnitId": %d
+                }
+                """.formatted(name, unitId), 201).get("id").asLong();
+    }
+
+    private String objectivePayload(String name, Long departmentId, Long periodId, Long goalId, Long strategicBetId, Long unitId) {
+        return """
+                {
+                  "name": "%s",
+                  "description": "Objetivo para vincular proyectos.",
+                  "departmentId": %d,
+                  "academicPeriodId": %d,
+                  "goalId": %d,
+                  "strategicBetId": %d,
+                  "keyResults": [{
+                    "name": "KR proyecto inmediato",
+                    "description": "KR para vinculo inmediato",
+                    "metric": "Porcentaje",
+                    "baseValue": 0,
+                    "targetValue": 100,
+                    "measurementUnitId": %d
+                  }]
+                }
+                """.formatted(name, departmentId, periodId, goalId, strategicBetId, unitId);
+    }
+
+    private Long firstId(String url) throws Exception {
+        return doGet(url).get(0).get("id").asLong();
     }
 
     private JsonNode doGet(String url) throws Exception {
@@ -236,6 +413,11 @@ class ProjectModuleE2ETest {
                 .getResponse()
                 .getContentAsString();
         return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
+    }
+
+    private void doDelete(String url, int expectedStatus) throws Exception {
+        mockMvc.perform(delete(url))
+                .andExpect(status().is(expectedStatus));
     }
 
     private java.util.List<Long> ids(JsonNode nodes) {

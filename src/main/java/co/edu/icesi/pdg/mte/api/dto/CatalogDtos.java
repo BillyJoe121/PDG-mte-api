@@ -54,6 +54,11 @@ public final class CatalogDtos {
     ) {
     }
 
+    public record AcademicPeriodActiveRequest(
+            @NotNull Boolean active
+    ) {
+    }
+
     public record DepartmentResponse(
             Long id,
             String name,

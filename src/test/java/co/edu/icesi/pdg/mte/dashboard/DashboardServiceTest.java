@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.dashboard;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,6 +47,8 @@ class DashboardServiceTest {
     private StrategicBetRepository strategicBetRepository;
     @Mock
     private ProjectKeyResultLinkRepository linkRepository;
+    @Mock
+    private AcademicPeriodRepository periodRepository;
 
     private DashboardService service;
     private Department department;
@@ -57,7 +61,7 @@ class DashboardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DashboardService(projectRepository, objectiveRepository, departmentRepository, strategicBetRepository, linkRepository);
+        service = new DashboardService(projectRepository, objectiveRepository, departmentRepository, strategicBetRepository, linkRepository, periodRepository);
         MeasurementUnit unit = TestFixtures.unit(1L);
         AcademicPeriod period = TestFixtures.period(1L);
         department = TestFixtures.department(1L);
@@ -99,13 +103,16 @@ class DashboardServiceTest {
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(3L)).thenReturn(List.of(link(onTrackKr, null)));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(4L)).thenReturn(List.of(link(completedKr, completed), link(completedKr, withoutId), link(completedKr, outsidePeriod)));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(5L)).thenReturn(List.of(link(nullProgressKr, active)));
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(co.edu.icesi.pdg.mte.catalog.PeriodStatus.ACTIVO))
+                .thenReturn(Optional.of(TestFixtures.period(1L)));
 
         var summary = service.summary("2026-1");
         var byStatus = service.projectsByStatus("2026-1");
+        var byStatusForQuarterInsideRange = service.projectsByStatus("2026-Q3");
         var byProgress = service.keyResultsByProgress("2026-1");
         var departments = service.departments("2026-1");
         var bets = service.strategicBets("2026-1");
-        var unfilteredSummary = service.summary(null);
+        var activePeriodSummary = service.summary(null);
 
         assertThat(summary.activeProjects()).isEqualTo(2);
         assertThat(summary.completedProjects()).isEqualTo(1);
@@ -118,9 +125,10 @@ class DashboardServiceTest {
         assertThat(summary.lowCompletionObjectives()).isEqualTo(1);
         assertThat(summary.averageObjectiveCoverage()).isEqualByComparingTo("30.00");
         assertThat(summary.averageKeyResultCoverage()).isEqualByComparingTo("48.00");
-        assertThat(unfilteredSummary.period()).isNull();
+        assertThat(activePeriodSummary.period()).isEqualTo("2026-1");
         assertThat(byStatus).extracting("status").containsExactly("BORRADOR", "ACTIVO", "FINALIZADO", "SUSPENDIDO", "ARCHIVADO");
         assertThat(byStatus).extracting("count").containsExactly(1L, 2L, 1L, 1L, 0L);
+        assertThat(byStatusForQuarterInsideRange).extracting("count").containsExactly(0L, 2L, 0L, 0L, 1L);
         assertThat(byProgress).extracting("bucket").containsExactly("COMPLETED", "ON_TRACK", "AT_RISK", "LOW");
         assertThat(byProgress).extracting("count").containsExactly(1L, 1L, 1L, 2L);
         assertThat(departments.get(0).activeProjects()).isEqualTo(2);

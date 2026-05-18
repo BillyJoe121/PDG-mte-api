@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.catalog;
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,11 +25,13 @@ public class CatalogController {
 
     @PostMapping("/measurement-units")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.MeasurementUnitResponse createUnit(@Valid @RequestBody CatalogDtos.MeasurementUnitRequest request) {
         return catalogService.createUnit(request);
     }
 
     @PutMapping("/measurement-units/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.MeasurementUnitResponse updateUnit(
             @PathVariable Long id,
             @Valid @RequestBody CatalogDtos.MeasurementUnitRequest request
@@ -37,6 +40,7 @@ public class CatalogController {
     }
 
     @PatchMapping("/measurement-units/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.MeasurementUnitResponse updateUnitActive(
             @PathVariable Long id,
             @Valid @RequestBody CatalogDtos.MeasurementUnitActiveRequest request
@@ -46,6 +50,7 @@ public class CatalogController {
 
     @DeleteMapping("/measurement-units/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
     void deleteUnit(@PathVariable Long id) {
         catalogService.deleteUnit(id);
     }
@@ -57,11 +62,13 @@ public class CatalogController {
 
     @PostMapping("/academic-periods")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.AcademicPeriodResponse createPeriod(@Valid @RequestBody CatalogDtos.AcademicPeriodRequest request) {
         return catalogService.createPeriod(request);
     }
 
     @PutMapping("/academic-periods/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.AcademicPeriodResponse updatePeriod(
             @PathVariable Long id,
             @Valid @RequestBody CatalogDtos.AcademicPeriodRequest request
@@ -70,6 +77,7 @@ public class CatalogController {
     }
 
     @PatchMapping("/academic-periods/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     CatalogDtos.AcademicPeriodResponse updatePeriodStatus(
             @PathVariable Long id,
             @Valid @RequestBody CatalogDtos.AcademicPeriodStatusRequest request
@@ -77,8 +85,18 @@ public class CatalogController {
         return catalogService.updatePeriodStatus(id, request);
     }
 
+    @PatchMapping("/academic-periods/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    CatalogDtos.AcademicPeriodResponse updatePeriodActive(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.AcademicPeriodActiveRequest request
+    ) {
+        return catalogService.updatePeriodActive(id, request);
+    }
+
     @DeleteMapping("/academic-periods/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
     void deletePeriod(@PathVariable Long id) {
         catalogService.deletePeriod(id);
     }

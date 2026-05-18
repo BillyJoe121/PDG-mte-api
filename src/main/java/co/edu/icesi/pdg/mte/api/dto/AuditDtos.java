@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.api.dto;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 
 import java.time.Instant;
+import java.util.List;
 
 public final class AuditDtos {
     private AuditDtos() {
@@ -20,6 +21,19 @@ public final class AuditDtos {
             String beforeSnapshot,
             String afterSnapshot,
             Instant createdAt
+    ) {
+    }
+
+    public record AuditSummaryResponse(
+            long totalEvents,
+            List<AuditCountResponse> byAction,
+            List<AuditCountResponse> byEntityType
+    ) {
+    }
+
+    public record AuditCountResponse(
+            String key,
+            long count
     ) {
     }
 }

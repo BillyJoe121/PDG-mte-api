@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,6 +17,7 @@ public class KeyResultController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
     StrategyDtos.KeyResultResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
@@ -23,16 +25,9 @@ public class KeyResultController {
         return strategyService.updateKeyResult(id, request);
     }
 
-    @PatchMapping("/{id}/current-value")
-    StrategyDtos.KeyResultResponse updateCurrentValue(
-            @PathVariable Long id,
-            @Valid @RequestBody StrategyDtos.KeyResultCurrentValueRequest request
-    ) {
-        return strategyService.updateCurrentValue(id, request);
-    }
-
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
     void delete(@PathVariable Long id) {
         strategyService.deleteKeyResult(id);
     }

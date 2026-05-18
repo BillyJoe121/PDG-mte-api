@@ -8,4 +8,6 @@ public interface AcademicPeriodRepository extends JpaRepository<AcademicPeriod, 
     boolean existsByNameIgnoreCase(String name);
 
     Optional<AcademicPeriod> findByNameIgnoreCase(String name);
+
+    Optional<AcademicPeriod> findFirstByStatusOrderByStartDateDesc(PeriodStatus status);
 }
