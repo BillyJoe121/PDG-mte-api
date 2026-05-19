@@ -2,14 +2,14 @@
 
 REST API del Modulo de Trazabilidad Estrategica (MTE) de la Escuela TDI.
 
-El backend gestiona catalogos, jerarquia estrategica, proyectos, vinculaciones proyecto-KR, dashboard, reportes, modo presentacion, auditoria y autenticacion contra la plataforma externa cuando esta disponible.
+El backend gestiona catalogos, jerarquia estrategica, profesores, roles, cargos, proyectos, vinculaciones proyecto-KR, dashboard, reportes, modo presentacion, auditoria e integracion de autenticacion. El esquema inicial esta alineado al MER institucional y la base persistente objetivo es Supabase/PostgreSQL.
 
 ## Requisitos
 
 - Java 17 o superior.
 - Maven Wrapper incluido en el repo: `mvnw.cmd` en Windows, `./mvnw` en Linux/macOS.
-- PostgreSQL 14+ para ambientes persistentes. Supabase funciona porque expone PostgreSQL.
-- Docker opcional para levantar PostgreSQL local.
+- Un proyecto Supabase para la base persistente unica.
+- Docker opcional si quieres probar PostgreSQL local antes de Supabase.
 
 ## Comandos Rapidos
 
@@ -20,7 +20,6 @@ Windows PowerShell:
 .\mvnw.cmd test
 .\mvnw.cmd verify
 .\mvnw.cmd clean package
-.\mvnw.cmd clean package -DskipTests
 ```
 
 Linux/macOS:
@@ -30,7 +29,6 @@ Linux/macOS:
 ./mvnw test
 ./mvnw verify
 ./mvnw clean package
-./mvnw clean package -DskipTests
 ```
 
 La API queda por defecto en:
@@ -47,15 +45,93 @@ Health:     http://localhost:8081/api/v1/health
 H2 console: http://localhost:8081/h2-console
 ```
 
-## Ejecucion Local con H2
+## Modelo de Datos
 
-El perfil por defecto es `dev`. No necesitas levantar una base externa. Spring Boot crea una base H2 en memoria cada vez que inicia.
+La migracion inicial [V1__initial_schema.sql](src/main/resources/db/migration/V1__initial_schema.sql) crea las 16 entidades fisicas del MER:
+
+```text
+unit_of_measure
+goal_period
+role
+objective
+school
+department
+position
+professor
+teacher_position
+period
+world
+strategic_bet
+goal
+key_result
+project
+project_teacher
+```
+
+Tambien se conservan tablas operativas del backend:
+
+```text
+audit_log
+project_progress_entry
+project_key_result_link
+project_tutor
+```
+
+Nota importante: como todavia no hay base productiva aplicada, `V1` representa el esquema canonical para Supabase. No conectes una base compartida hasta que estes listo para que Flyway aplique este esquema.
+
+## Supabase como Base Persistente
+
+Supabase debe tratarse como PostgreSQL administrado. El backend no depende de APIs especiales de Supabase para datos; solo usa JDBC, Flyway y JPA.
+
+1. Crea un proyecto Supabase vacio.
+2. Entra a `Project Settings > Database`.
+3. Copia la cadena PostgreSQL directa. Para Flyway usa conexion directa, no transaction pooler.
+4. Incluye SSL:
+
+```text
+jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
+```
+
+Variables recomendadas para la primera conexion:
 
 ```powershell
+$env:SPRING_PROFILES_ACTIVE='supabase'
+$env:SUPABASE_DB_URL='jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require'
+$env:SUPABASE_DB_USERNAME='postgres'
+$env:SUPABASE_DB_PASSWORD='<password>'
+$env:DB_DRIVER='org.postgresql.Driver'
+$env:JPA_DDL_AUTO='validate'
+$env:FLYWAY_ENABLED='true'
+$env:FLYWAY_BASELINE_ON_MIGRATE='false'
+$env:MTE_SEED_ENABLED='true'
+$env:MTE_AUTH_MODE='mock'
+$env:MTE_TRAYECTORIA_PROJECTS_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
 
-Configuracion efectiva en `dev`:
+Para produccion real, cambia:
+
+```powershell
+$env:MTE_SEED_ENABLED='false'
+$env:MTE_AUTH_MODE='external'
+```
+
+Hay una plantilla sin secretos en [supabase.env.example](supabase.env.example). Copiala a un archivo local no versionado si lo necesitas. Spring Boot no carga `.env` automaticamente; puedes exportar variables desde PowerShell, el IDE o la plataforma de despliegue.
+
+Flujo recomendado con archivo local:
+
+```powershell
+Copy-Item .\supabase.env.example .\.env.supabase
+notepad .\.env.supabase
+.\scripts\supabase-validate.ps1
+.\scripts\supabase-run.ps1
+```
+
+`.env.supabase` esta ignorado por Git. La primera ejecucion contra una base Supabase vacia aplicara Flyway y creara el esquema del MER. Si el arranque termina correctamente, Hibernate tambien habra validado el modelo con `JPA_DDL_AUTO=validate`.
+
+## Ejecucion Local
+
+El perfil por defecto sigue siendo `dev` para pruebas rapidas. En `dev`, Spring Boot usa H2 en memoria y crea el esquema con Hibernate:
 
 ```text
 SPRING_PROFILES_ACTIVE=dev
@@ -69,17 +145,29 @@ MTE_SEED_ENABLED=true
 MTE_AUTH_MODE=mock
 ```
 
-En H2 console usa:
+H2 es solo un entorno efimero para desarrollo y tests. La base persistente del proyecto debe ser Supabase/PostgreSQL.
 
-```text
-JDBC URL: jdbc:h2:mem:mte
-User:     sa
-Password:
+## Perfil Supabase
+
+El perfil `supabase` vive en [application-supabase.yml](src/main/resources/application-supabase.yml). Este perfil:
+
+- Usa PostgreSQL por JDBC.
+- Desactiva H2 console.
+- Activa Flyway.
+- Usa `JPA_DDL_AUTO=validate`.
+- Habilita seeds por defecto para el primer arranque controlado.
+- Usa `MTE_AUTH_MODE=mock` por defecto para facilitar la primera validacion de base.
+
+Cuando la base ya este creada y el despliegue sea real, usa:
+
+```powershell
+$env:MTE_SEED_ENABLED='false'
+$env:MTE_AUTH_MODE='external'
 ```
 
-## Ejecucion con PostgreSQL Local
+## PostgreSQL Local Opcional
 
-Puedes levantar PostgreSQL local con Docker:
+Puedes levantar PostgreSQL local antes de tocar Supabase:
 
 ```powershell
 docker run --name mte-postgres `
@@ -90,7 +178,7 @@ docker run --name mte-postgres `
   -d postgres:16
 ```
 
-Luego ejecuta el backend en modo `prod` para probar migraciones Flyway y validacion JPA:
+Ejecuta con Flyway y validacion JPA:
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE='prod'
@@ -100,61 +188,18 @@ $env:DB_PASSWORD='mte'
 $env:DB_DRIVER='org.postgresql.Driver'
 $env:JPA_DDL_AUTO='validate'
 $env:FLYWAY_ENABLED='true'
-$env:MTE_SEED_ENABLED='false'
+$env:MTE_SEED_ENABLED='true'
 $env:MTE_AUTH_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
 
-Para borrar la base local y empezar de cero:
+Para borrar esa base local:
 
 ```powershell
 docker rm -f mte-postgres
 ```
 
-## Supabase / PostgreSQL Remoto
-
-Supabase debe tratarse como una base PostgreSQL administrada. La aplicacion no debe depender de nada especifico de Supabase, solo de variables de entorno.
-
-1. Crea un proyecto en Supabase.
-2. Entra a `Project Settings > Database`.
-3. Copia la cadena de conexion PostgreSQL directa. Para migraciones Flyway es preferible usar conexion directa, no transaction pooler.
-4. Asegurate de incluir SSL:
-
-```text
-jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
-```
-
-Variables recomendadas para Supabase:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE='prod'
-$env:DB_URL='jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require'
-$env:DB_USERNAME='postgres'
-$env:DB_PASSWORD='<password>'
-$env:DB_DRIVER='org.postgresql.Driver'
-$env:JPA_DDL_AUTO='validate'
-$env:FLYWAY_ENABLED='true'
-$env:FLYWAY_BASELINE_ON_MIGRATE='false'
-$env:MTE_SEED_ENABLED='false'
-$env:MTE_AUTH_MODE='external'
-$env:TRAYECTORIA_BASE_URL='https://<url-trayectoria>/api/v1'
-```
-
-Para demo sin autenticacion externa:
-
-```powershell
-$env:MTE_AUTH_MODE='mock'
-```
-
-Con esas variables, inicia la app:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-Flyway aplicara automaticamente las migraciones pendientes al arrancar.
-
-## Migraciones de Base de Datos
+## Migraciones
 
 Las migraciones viven en:
 
@@ -170,38 +215,140 @@ V2__complete_msp_story_fields.sql
 V3__rename_future_period_status.sql
 ```
 
+`V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de aplicar Supabase.
+
 Reglas:
 
-- Nunca editar una migracion que ya fue aplicada en Supabase, produccion o una base compartida.
-- Para cada cambio nuevo de esquema crea un archivo nuevo: `V4__descripcion_del_cambio.sql`, `V5__...sql`, etc.
+- No editar migraciones ya aplicadas en Supabase o una base compartida.
+- Para cambios nuevos despues de la primera aplicacion, crear `V4__descripcion.sql`, `V5__...sql`, etc.
 - Mantener SQL compatible con PostgreSQL.
-- Probar primero en PostgreSQL local o en una base Supabase de staging.
-- Usar `JPA_DDL_AUTO=validate` en ambientes persistentes. Hibernate valida, Flyway migra.
-- Usar `FLYWAY_BASELINE_ON_MIGRATE=true` solo una vez si se conecta una base existente que ya tiene tablas pero no tiene `flyway_schema_history`.
+- Usar `JPA_DDL_AUTO=validate` en ambientes persistentes.
+- Usar `FLYWAY_BASELINE_ON_MIGRATE=true` solo si conectas una base existente con tablas pero sin `flyway_schema_history`.
 
-Flujo recomendado para cambiar esquema:
-
-```text
-1. Crear entidad/campo en Java.
-2. Crear nueva migracion Vn__descripcion.sql.
-3. Probar con PostgreSQL local en perfil prod.
-4. Ejecutar .\mvnw.cmd test.
-5. Desplegar a Supabase/staging.
-6. Desplegar a produccion.
-```
-
-Cuando la Universidad quiera desplegar en su propia base, solo debe crear una base PostgreSQL y usar las mismas variables:
+Flujo recomendado:
 
 ```text
-DB_URL=jdbc:postgresql://<host>:<port>/<database>
-DB_USERNAME=<usuario>
-DB_PASSWORD=<password>
-DB_DRIVER=org.postgresql.Driver
-FLYWAY_ENABLED=true
-JPA_DDL_AUTO=validate
+1. Cambiar entidades/servicios/DTOs.
+2. Crear migracion Flyway nueva.
+3. Ejecutar .\mvnw.cmd test.
+4. Probar con PostgreSQL local o Supabase staging.
+5. Desplegar contra Supabase productivo.
 ```
 
-Si su infraestructura exige SSL, agregar `?sslmode=require` o el modo SSL que indique el DBA.
+## Endpoints Principales
+
+Catalogos:
+
+```text
+GET/POST/PUT/DELETE /api/v1/schools
+GET/POST/PUT/DELETE /api/v1/departments
+GET/POST/PUT/DELETE /api/v1/measurement-units
+GET/POST/PUT/DELETE /api/v1/academic-periods
+```
+
+Personas y roles:
+
+```text
+GET/POST/PUT/DELETE /api/v1/roles
+GET/POST/PUT/DELETE /api/v1/positions
+GET/POST/PUT/DELETE /api/v1/professors
+GET/POST/DELETE     /api/v1/professors/{id}/positions
+```
+
+Estrategia:
+
+```text
+GET/POST/PUT/DELETE /api/v1/worlds
+GET/POST            /api/v1/strategic-bets
+GET/POST            /api/v1/goals
+POST/DELETE         /api/v1/goals/{id}/periods/{periodId}
+GET/POST/PATCH      /api/v1/objectives
+GET/POST            /api/v1/objectives/{id}/key-results
+```
+
+Proyectos:
+
+```text
+GET/POST/PUT        /api/v1/projects
+PATCH               /api/v1/projects/{id}/status
+POST                /api/v1/projects/{id}/progress
+GET                 /api/v1/projects/{id}/history
+GET/POST/DELETE     /api/v1/projects/{id}/teachers
+POST                /api/v1/project-key-result-links
+DELETE              /api/v1/project-key-result-links/{id}
+POST                /api/v1/projects/sync/trayectoria
+```
+
+Dashboard, reportes, presentacion y auditoria:
+
+```text
+GET /api/v1/dashboard
+GET /api/v1/reports/general
+GET /api/v1/presentation
+GET /api/v1/audit-logs
+```
+
+Swagger muestra el contrato completo en:
+
+```text
+http://localhost:8081/swagger-ui.html
+```
+
+## Autenticacion
+
+Modo local/demo:
+
+```text
+MTE_AUTH_MODE=mock
+```
+
+En modo mock, el backend autentica como:
+
+```text
+Usuario: demo.admin
+Roles:   ADMIN, DIRECTOR_ESCUELA
+```
+
+Modo externo:
+
+```text
+MTE_AUTH_MODE=external
+TRAYECTORIA_BASE_URL=https://<url-auth>/api/v1
+TRAYECTORIA_ME_PATH=/auth/me
+```
+
+Cada request protegido debe incluir:
+
+```http
+Authorization: Bearer <token>
+```
+
+Supabase Auth se integrara como proveedor de tokens/autenticacion. La tabla `professor` es dominio interno: guarda nombre, correo unico y departamento, no credenciales.
+
+## Integracion de Proyectos Externos
+
+Modo mock:
+
+```text
+MTE_TRAYECTORIA_PROJECTS_MODE=mock
+```
+
+Modo externo:
+
+```text
+MTE_TRAYECTORIA_PROJECTS_MODE=external
+TRAYECTORIA_BASE_URL=https://<url-trayectoria>/api/v1
+TRAYECTORIA_PROJECTS_PATH=/proyectos
+TRAYECTORIA_SOURCE_NAME=TRAYECTORIA_DOCENTE
+```
+
+Endpoint:
+
+```http
+POST /api/v1/projects/sync/trayectoria
+```
+
+El MER exige `project.key_result_id`. Si un proyecto externo no trae relacion directa a KR, el servicio intenta asociarlo al primer KR disponible como respaldo. Si no hay ningun KR, el item se reporta como fallido.
 
 ## Tests
 
@@ -217,22 +364,16 @@ Una clase especifica:
 .\mvnw.cmd '-Dtest=ProjectServiceTest' test
 ```
 
-Varias clases:
-
-```powershell
-.\mvnw.cmd '-Dtest=ProjectServiceTest,StrategyServiceObjectiveTest' test
-```
-
-Un metodo especifico:
-
-```powershell
-.\mvnw.cmd '-Dtest=ProjectServiceTest#createsLocalProjectWhenPayloadIsValid' test
-```
-
 Compilar tests sin ejecutarlos:
 
 ```powershell
 .\mvnw.cmd '-DskipTests' test-compile
+```
+
+Ultima verificacion conocida:
+
+```text
+Tests run: 160, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Cobertura
@@ -264,7 +405,7 @@ Line coverage:   91%
 Branch coverage: 85%
 ```
 
-## Build y Ejecucion del JAR
+## Build y Despliegue
 
 Build con tests:
 
@@ -284,130 +425,19 @@ Ejecutar JAR:
 java -jar .\target\pdg-mte-api-0.0.1-SNAPSHOT.jar
 ```
 
-Con perfil productivo:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE='prod'
-java -jar .\target\pdg-mte-api-0.0.1-SNAPSHOT.jar
-```
-
-## Autenticacion
-
-Modo demo/local:
+Variables minimas para despliegue productivo:
 
 ```text
-MTE_AUTH_MODE=mock
-```
-
-En modo mock, el backend autentica como:
-
-```text
-Usuario: demo.admin
-Roles:   ADMIN, DIRECTOR_ESCUELA
-```
-
-Modo integrado:
-
-```text
-MTE_AUTH_MODE=external
-TRAYECTORIA_BASE_URL=https://<url-trayectoria>/api/v1
-TRAYECTORIA_ME_PATH=/auth/me
-```
-
-En modo externo cada request protegido debe incluir:
-
-```http
-Authorization: Bearer <token>
-```
-
-## Integracion de Proyectos Externos
-
-Modo mock:
-
-```text
-MTE_TRAYECTORIA_PROJECTS_MODE=mock
-```
-
-Modo externo:
-
-```text
-MTE_TRAYECTORIA_PROJECTS_MODE=external
-TRAYECTORIA_BASE_URL=https://<url-trayectoria>/api/v1
-TRAYECTORIA_PROJECTS_PATH=/proyectos
-TRAYECTORIA_SOURCE_NAME=TRAYECTORIA_DOCENTE
-```
-
-Endpoint:
-
-```http
-POST /api/v1/projects/sync/trayectoria
-```
-
-## CORS
-
-Configura los dominios del frontend:
-
-```text
-MTE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:4200
-```
-
-Ejemplo produccion:
-
-```text
-MTE_CORS_ALLOWED_ORIGINS=https://mte.icesi.edu.co,https://mte-front.vercel.app
-```
-
-## Variables de Entorno Principales
-
-```text
-PORT=8081
-SPRING_PROFILES_ACTIVE=dev|prod
-DB_URL=jdbc:...
-DB_USERNAME=...
-DB_PASSWORD=...
-DB_DRIVER=org.h2.Driver|org.postgresql.Driver
-JPA_DDL_AUTO=create-drop|validate
-FLYWAY_ENABLED=false|true
-FLYWAY_BASELINE_ON_MIGRATE=false|true
-MTE_SEED_ENABLED=true|false
-MTE_AUTH_MODE=mock|external
-TRAYECTORIA_BASE_URL=http://localhost:8080/api/v1
-TRAYECTORIA_ME_PATH=/auth/me
-MTE_TRAYECTORIA_PROJECTS_MODE=mock|external
-TRAYECTORIA_PROJECTS_PATH=/proyectos
-TRAYECTORIA_SOURCE_NAME=TRAYECTORIA_DOCENTE
-MTE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:4200
-```
-
-No guardar credenciales reales en Git. El archivo `.env` esta ignorado por `.gitignore`, pero Spring Boot no lo carga automaticamente si no lo configura el IDE, el sistema operativo o la plataforma de despliegue.
-
-## Despliegue
-
-Build:
-
-```bash
-./mvnw clean package -DskipTests
-```
-
-Start:
-
-```bash
-java -jar target/pdg-mte-api-0.0.1-SNAPSHOT.jar
-```
-
-Variables minimas para un despliegue productivo:
-
-```text
-SPRING_PROFILES_ACTIVE=prod
-DB_URL=jdbc:postgresql://<host>:<port>/<database>?sslmode=require
-DB_USERNAME=<usuario>
-DB_PASSWORD=<password>
+SPRING_PROFILES_ACTIVE=supabase
+SUPABASE_DB_URL=jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
+SUPABASE_DB_USERNAME=postgres
+SUPABASE_DB_PASSWORD=<password>
 DB_DRIVER=org.postgresql.Driver
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
 MTE_SEED_ENABLED=false
 MTE_AUTH_MODE=external
-TRAYECTORIA_BASE_URL=<url-backend-trayectoria>
 MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
 ```
 
+No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.example` no contiene secretos y sirve como plantilla.

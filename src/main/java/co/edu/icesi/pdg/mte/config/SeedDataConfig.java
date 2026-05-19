@@ -1,6 +1,9 @@
 package co.edu.icesi.pdg.mte.config;
 
 import co.edu.icesi.pdg.mte.catalog.*;
+import co.edu.icesi.pdg.mte.people.*;
+import co.edu.icesi.pdg.mte.strategy.World;
+import co.edu.icesi.pdg.mte.strategy.WorldRepository;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -16,12 +19,22 @@ public class SeedDataConfig {
     ApplicationRunner seedData(
             MeasurementUnitRepository unitRepository,
             AcademicPeriodRepository periodRepository,
-            DepartmentRepository departmentRepository
+            SchoolRepository schoolRepository,
+            DepartmentRepository departmentRepository,
+            WorldRepository worldRepository,
+            RoleRepository roleRepository,
+            PositionRepository positionRepository,
+            ProfessorRepository professorRepository
     ) {
         return args -> {
             seedUnits(unitRepository);
             seedPeriods(periodRepository);
-            seedDepartments(departmentRepository);
+            School school = seedSchool(schoolRepository);
+            seedDepartments(departmentRepository, school);
+            seedWorlds(worldRepository);
+            seedRoles(roleRepository);
+            seedPositions(positionRepository);
+            seedProfessors(professorRepository, departmentRepository);
         };
     }
 
@@ -65,13 +78,22 @@ public class SeedDataConfig {
         repository.save(period);
     }
 
-    private void seedDepartments(DepartmentRepository repository) {
-        createDepartment(repository, "Departamento de TIC", "Departamento base para demo local.", 1L);
-        createDepartment(repository, "Departamento de Diseno", "Departamento base para demo local.", 2L);
-        createDepartment(repository, "Departamento de Ciencias Basicas", "Departamento base para demo local.", 3L);
+    private School seedSchool(SchoolRepository repository) {
+        return repository.findByNameIgnoreCase("Escuela TDI").orElseGet(() -> {
+            School school = new School();
+            school.setName("Escuela TDI");
+            school.setDescription("Escuela base para demo local.");
+            return repository.save(school);
+        });
     }
 
-    private void createDepartment(DepartmentRepository repository, String name, String description, Long externalId) {
+    private void seedDepartments(DepartmentRepository repository, School school) {
+        createDepartment(repository, "Departamento de TIC", "Departamento base para demo local.", 1L, school);
+        createDepartment(repository, "Departamento de Diseno", "Departamento base para demo local.", 2L, school);
+        createDepartment(repository, "Departamento de Ciencias Basicas", "Departamento base para demo local.", 3L, school);
+    }
+
+    private void createDepartment(DepartmentRepository repository, String name, String description, Long externalId, School school) {
         if (repository.findByNameIgnoreCase(name).isPresent()) {
             return;
         }
@@ -79,6 +101,60 @@ public class SeedDataConfig {
         department.setName(name);
         department.setDescription(description);
         department.setExternalDepartmentId(externalId);
+        department.setSchool(school);
         repository.save(department);
+    }
+
+    private void seedWorlds(WorldRepository repository) {
+        if (repository.existsByNameIgnoreCase("Mundo Institucional")) {
+            return;
+        }
+        World world = new World();
+        world.setName("Mundo Institucional");
+        world.setDescription("Agrupacion estrategica base para demo local.");
+        repository.save(world);
+    }
+
+    private void seedRoles(RoleRepository repository) {
+        createRole(repository, "Lider", "Responsable principal de un proyecto.");
+        createRole(repository, "Colaborador", "Participante del proyecto.");
+    }
+
+    private void createRole(RoleRepository repository, String name, String description) {
+        if (repository.existsByNameIgnoreCase(name)) {
+            return;
+        }
+        Role role = new Role();
+        role.setName(name);
+        role.setDescription(description);
+        repository.save(role);
+    }
+
+    private void seedPositions(PositionRepository repository) {
+        createPosition(repository, "Profesor", "Cargo docente base.");
+        createPosition(repository, "Director de Departamento", "Cargo directivo de departamento.");
+    }
+
+    private void createPosition(PositionRepository repository, String name, String description) {
+        if (repository.existsByNameIgnoreCase(name)) {
+            return;
+        }
+        Position position = new Position();
+        position.setName(name);
+        position.setDescription(description);
+        repository.save(position);
+    }
+
+    private void seedProfessors(ProfessorRepository repository, DepartmentRepository departmentRepository) {
+        if (repository.existsByEmailIgnoreCase("demo.profesor@icesi.edu.co")) {
+            return;
+        }
+        departmentRepository.findByNameIgnoreCase("Departamento de TIC").ifPresent(department -> {
+            Professor professor = new Professor();
+            professor.setName("Profesor Demo");
+            professor.setEmail("demo.profesor@icesi.edu.co");
+            professor.setDepartment(department);
+            repository.save(professor);
+        });
     }
 }

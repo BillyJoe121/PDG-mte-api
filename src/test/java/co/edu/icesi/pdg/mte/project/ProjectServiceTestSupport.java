@@ -11,6 +11,8 @@ import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
+import co.edu.icesi.pdg.mte.people.ProfessorRepository;
+import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
@@ -25,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 abstract class ProjectServiceTestSupport {
     @Mock
@@ -41,6 +44,12 @@ abstract class ProjectServiceTestSupport {
     protected KeyResultRepository keyResultRepository;
     @Mock
     protected ProjectKeyResultLinkRepository linkRepository;
+    @Mock
+    protected ProjectTeacherRepository projectTeacherRepository;
+    @Mock
+    protected ProfessorRepository professorRepository;
+    @Mock
+    protected RoleRepository roleRepository;
     @Mock
     protected AuditService auditService;
 
@@ -63,6 +72,9 @@ abstract class ProjectServiceTestSupport {
                 keyResultProgressService,
                 keyResultRepository,
                 linkRepository,
+                projectTeacherRepository,
+                professorRepository,
+                roleRepository,
                 auditService,
                 new AccessControlService(),
                 periodService,
@@ -79,6 +91,8 @@ abstract class ProjectServiceTestSupport {
                 TestFixtures.strategicBet(1L)
         );
         keyResult = objective.getKeyResults().get(0);
+        org.mockito.Mockito.lenient().when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
+        org.mockito.Mockito.lenient().when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 ExternalUserContext.mock(),
                 null,
@@ -97,6 +111,10 @@ abstract class ProjectServiceTestSupport {
                 "2026-2",
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 6, 1),
+                1L,
+                BigDecimal.valueOf(25),
+                "ACTIVO",
+                null,
                 List.of(" Tutora Uno ", ""),
                 List.of()
         );
@@ -112,6 +130,10 @@ abstract class ProjectServiceTestSupport {
                 "2026-1",
                 "2026-2",
                 null,
+                null,
+                keyResultId,
+                BigDecimal.valueOf(25),
+                "ACTIVO",
                 null,
                 List.of(),
                 List.of(new ProjectDtos.ProjectKeyResultDraftRequest(
@@ -151,6 +173,9 @@ abstract class ProjectServiceTestSupport {
         project.setStartPeriod("2026-1");
         project.setEndPeriod("2026-2");
         project.setGlobalProgress(BigDecimal.ZERO);
+        project.setKeyResult(keyResult);
+        project.setContributionWeight(BigDecimal.valueOf(25));
+        project.setLinkStatus("ACTIVO");
         project.setTutors(List.of("Tutora Uno"));
         return project;
     }

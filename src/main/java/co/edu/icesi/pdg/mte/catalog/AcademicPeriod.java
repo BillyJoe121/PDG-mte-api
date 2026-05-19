@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "academic_period", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
+@Table(name = "period", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
 public class AcademicPeriod {
 
     @Id
@@ -22,7 +22,6 @@ public class AcademicPeriod {
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private PeriodStatus status;
 
     public Long getId() {

@@ -10,6 +10,10 @@ import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
+import co.edu.icesi.pdg.mte.people.Professor;
+import co.edu.icesi.pdg.mte.people.ProfessorRepository;
+import co.edu.icesi.pdg.mte.people.Role;
+import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
@@ -38,6 +42,9 @@ public class ProjectService {
     private final KeyResultProgressService keyResultProgressService;
     private final KeyResultRepository keyResultRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
+    private final ProjectTeacherRepository projectTeacherRepository;
+    private final ProfessorRepository professorRepository;
+    private final RoleRepository roleRepository;
     private final AuditService auditService;
     private final AccessControlService accessControlService;
     private final ProjectPeriodService periodService;
@@ -52,6 +59,9 @@ public class ProjectService {
             KeyResultProgressService keyResultProgressService,
             KeyResultRepository keyResultRepository,
             ProjectKeyResultLinkRepository linkRepository,
+            ProjectTeacherRepository projectTeacherRepository,
+            ProfessorRepository professorRepository,
+            RoleRepository roleRepository,
             AuditService auditService,
             AccessControlService accessControlService,
             ProjectPeriodService periodService,
@@ -65,6 +75,9 @@ public class ProjectService {
         this.keyResultProgressService = keyResultProgressService;
         this.keyResultRepository = keyResultRepository;
         this.linkRepository = linkRepository;
+        this.projectTeacherRepository = projectTeacherRepository;
+        this.professorRepository = professorRepository;
+        this.roleRepository = roleRepository;
         this.auditService = auditService;
         this.accessControlService = accessControlService;
         this.periodService = periodService;
@@ -76,6 +89,7 @@ public class ProjectService {
         Project project = new Project();
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), null, request.tutors());
+        applyDirectKeyResult(project, request.keyResultId(), request.contributionWeight(), request.linkStatus(), request.jiraKey(), request.keyResultLinks());
         project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
         project.setOrigin(ProjectOrigin.LOCAL);
         project.setSyncStatus(ProjectSyncStatus.LOCAL_ONLY);
@@ -147,6 +161,12 @@ public class ProjectService {
         ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), request.actualEndDate(), request.tutors());
+        if (request.keyResultId() != null) {
+            project.setKeyResult(findKeyResult(request.keyResultId()));
+        }
+        project.setContributionWeight(request.contributionWeight());
+        project.setLinkStatus(request.linkStatus());
+        project.setJiraKey(request.jiraKey());
         ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(projectRepository.save(project));
         auditService.record(AuditAction.UPDATE, "PROJECT", response.id(), "Proyecto actualizado: " + response.name(), before, response);
         return response;
@@ -216,6 +236,14 @@ public class ProjectService {
                         .findByExternalSourceAndExternalProjectId(integrationProperties.getSourceName(), payload.externalProjectId())
                         .orElseGet(Project::new);
                 fieldMapper.applyExternalPayload(project, payload);
+                if (project.getKeyResult() == null) {
+                    keyResultRepository.findAll().stream().findFirst().ifPresent(project::setKeyResult);
+                }
+                if (project.getKeyResult() == null) {
+                    failed++;
+                    warnings.add("Proyecto externo " + payload.externalProjectId() + " no fue importado porque el MER exige key_result_id.");
+                    continue;
+                }
                 Project saved = projectRepository.save(project);
                 if (saved.getId() != null) {
                     keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
@@ -255,9 +283,71 @@ public class ProjectService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<ProjectDtos.ProjectTeacherResponse> listTeachers(Long projectId) {
+        findProject(projectId);
+        return projectTeacherRepository.findAll().stream()
+                .filter(projectTeacher -> projectTeacher.getProject().getId().equals(projectId))
+                .map(Mapper::toResponse)
+                .toList();
+    }
+
+    public ProjectDtos.ProjectTeacherResponse assignTeacher(Long projectId, ProjectDtos.ProjectTeacherRequest request) {
+        Project project = findProject(projectId);
+        Professor professor = professorRepository.findById(request.teacherId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Profesor no encontrado."));
+        Role role = roleRepository.findById(request.roleId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Rol no encontrado."));
+        ProjectTeacher projectTeacher = projectTeacherRepository
+                .findById(new ProjectTeacherId(project.getId(), professor.getId(), role.getId()))
+                .orElseGet(ProjectTeacher::new);
+        projectTeacher.setProject(project);
+        projectTeacher.setTeacher(professor);
+        projectTeacher.setRole(role);
+        projectTeacher.setJoinedAt(request.joinedAt());
+        projectTeacher.setLeftAt(request.leftAt());
+        ProjectDtos.ProjectTeacherResponse response = Mapper.toResponse(projectTeacherRepository.save(projectTeacher));
+        auditService.record(AuditAction.UPDATE, "PROJECT_TEACHER", projectId + ":" + professor.getId() + ":" + role.getId(), "Profesor asignado a proyecto.", null, response);
+        return response;
+    }
+
+    public void removeTeacher(Long projectId, Long teacherId, Long roleId) {
+        ProjectTeacher projectTeacher = projectTeacherRepository.findById(new ProjectTeacherId(projectId, teacherId, roleId))
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Profesor de proyecto no encontrado."));
+        projectTeacherRepository.delete(projectTeacher);
+    }
+
+    private void applyDirectKeyResult(
+            Project project,
+            Long keyResultId,
+            BigDecimal contributionWeight,
+            String linkStatus,
+            String jiraKey,
+            List<ProjectDtos.ProjectKeyResultDraftRequest> draftLinks
+    ) {
+        ProjectDtos.ProjectKeyResultDraftRequest primaryLink = draftLinks == null || draftLinks.isEmpty() ? null : draftLinks.get(0);
+        Long resolvedKeyResultId = keyResultId != null ? keyResultId : primaryLink == null ? null : primaryLink.keyResultId();
+        if (resolvedKeyResultId == null) {
+            keyResultRepository.findAll().stream().findFirst().ifPresent(project::setKeyResult);
+        } else {
+            project.setKeyResult(findKeyResult(resolvedKeyResultId));
+        }
+        if (project.getKeyResult() == null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El MER exige asociar el proyecto a un Key Result.");
+        }
+        project.setContributionWeight(contributionWeight != null ? contributionWeight : primaryLink == null ? null : primaryLink.contributionWeight());
+        project.setLinkStatus(linkStatus == null || linkStatus.isBlank() ? "ACTIVO" : linkStatus.trim());
+        project.setJiraKey(jiraKey);
+    }
+
     private Project findProject(Long id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proyecto no encontrado."));
+    }
+
+    private KeyResult findKeyResult(Long id) {
+        return keyResultRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
     }
 
     private Long currentExternalUserId() {

@@ -27,9 +27,29 @@ public final class ProjectDtos {
             @Pattern(regexp = "^\\d{4}-(Q[1-4]|[1-2])$") String endPeriod,
             LocalDate startDate,
             LocalDate endDate,
+            Long keyResultId,
+            @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
+            String linkStatus,
+            String jiraKey,
             List<@NotBlank String> tutors,
             List<@Valid ProjectKeyResultDraftRequest> keyResultLinks
     ) {
+        public ProjectRequest(
+                String name,
+                String description,
+                ProjectType type,
+                Long departmentId,
+                ProjectStatus status,
+                String startPeriod,
+                String endPeriod,
+                LocalDate startDate,
+                LocalDate endDate,
+                List<String> tutors,
+                List<ProjectKeyResultDraftRequest> keyResultLinks
+        ) {
+            this(name, description, type, departmentId, status, startPeriod, endPeriod, startDate, endDate,
+                    null, null, null, null, tutors, keyResultLinks);
+        }
     }
 
     public record ProjectUpdateRequest(
@@ -42,8 +62,27 @@ public final class ProjectDtos {
             LocalDate startDate,
             LocalDate endDate,
             LocalDate actualEndDate,
+            Long keyResultId,
+            @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
+            String linkStatus,
+            String jiraKey,
             List<@NotBlank String> tutors
     ) {
+        public ProjectUpdateRequest(
+                String name,
+                String description,
+                ProjectType type,
+                Long departmentId,
+                String startPeriod,
+                String endPeriod,
+                LocalDate startDate,
+                LocalDate endDate,
+                LocalDate actualEndDate,
+                List<String> tutors
+        ) {
+            this(name, description, type, departmentId, startPeriod, endPeriod, startDate, endDate, actualEndDate,
+                    null, null, null, null, tutors);
+        }
     }
 
     public record ProjectStatusRequest(
@@ -74,6 +113,11 @@ public final class ProjectDtos {
             LocalDate endDate,
             LocalDate actualEndDate,
             BigDecimal globalProgress,
+            Long keyResultId,
+            String keyResultName,
+            BigDecimal contributionWeight,
+            String linkStatus,
+            String jiraKey,
             List<String> tutors,
             List<ProjectLinkedKeyResultResponse> linkedKeyResults,
             ProjectOrigin origin,
@@ -82,6 +126,34 @@ public final class ProjectDtos {
             Instant createdAt,
             Instant updatedAt
     ) {
+        public ProjectResponse(
+                Long id,
+                Long externalProjectId,
+                String externalSource,
+                String name,
+                String description,
+                ProjectType type,
+                Long departmentId,
+                String departmentName,
+                ProjectStatus status,
+                String startPeriod,
+                String endPeriod,
+                LocalDate startDate,
+                LocalDate endDate,
+                LocalDate actualEndDate,
+                BigDecimal globalProgress,
+                List<String> tutors,
+                List<ProjectLinkedKeyResultResponse> linkedKeyResults,
+                ProjectOrigin origin,
+                ProjectSyncStatus syncStatus,
+                Instant lastSyncedAt,
+                Instant createdAt,
+                Instant updatedAt
+        ) {
+            this(id, externalProjectId, externalSource, name, description, type, departmentId, departmentName, status,
+                    startPeriod, endPeriod, startDate, endDate, actualEndDate, globalProgress, null, null, null, null,
+                    null, tutors, linkedKeyResults, origin, syncStatus, lastSyncedAt, createdAt, updatedAt);
+        }
     }
 
     public record ProjectProgressResponse(
@@ -183,6 +255,26 @@ public final class ProjectDtos {
             BigDecimal appliedContribution,
             boolean projectCompleted,
             String period
+    ) {
+    }
+
+    public record ProjectTeacherRequest(
+            @NotNull Long teacherId,
+            @NotNull Long roleId,
+            @NotNull LocalDate joinedAt,
+            LocalDate leftAt
+    ) {
+    }
+
+    public record ProjectTeacherResponse(
+            Long projectId,
+            String projectName,
+            Long teacherId,
+            String teacherName,
+            Long roleId,
+            String roleName,
+            LocalDate joinedAt,
+            LocalDate leftAt
     ) {
     }
 }

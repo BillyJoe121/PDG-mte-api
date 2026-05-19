@@ -3,6 +3,7 @@ target/
 .vscode/
 *.iml
 .env
+.env.supabase
 .DS_Store
 server.log
 server.err.log

@@ -6,4 +6,6 @@ public interface InstitutionalGoalRepository extends JpaRepository<Institutional
     boolean existsByMeasurementUnitId(Long measurementUnitId);
 
     boolean existsByPeriodsId(Long periodId);
+
+    boolean existsByWorldId(Long worldId);
 }

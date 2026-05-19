@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.strategy;
 
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.Department;
+import co.edu.icesi.pdg.mte.people.Professor;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -24,13 +25,25 @@ public class Objective {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ObjectiveStatus status = ObjectiveStatus.ACTIVO;
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    @Column(nullable = false, precision = 5, scale = 2)
+    private BigDecimal estimatedWeight = BigDecimal.ZERO;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private Professor createdBy;
+
     private Long createdByExternalUserId;
+
+    @Column(nullable = false)
+    private Integer quarter = 1;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal completionPercentage;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Department department;
@@ -48,6 +61,9 @@ public class Objective {
     private List<KeyResult> keyResults = new ArrayList<>();
 
     public BigDecimal completionPercentage() {
+        if (completionPercentage != null) {
+            return completionPercentage;
+        }
         List<BigDecimal> progressValues = keyResults.stream()
                 .map(KeyResult::getProgressPercentage)
                 .filter(value -> value != null)
@@ -104,12 +120,44 @@ public class Objective {
         this.createdAt = createdAt;
     }
 
+    public BigDecimal getEstimatedWeight() {
+        return estimatedWeight;
+    }
+
+    public void setEstimatedWeight(BigDecimal estimatedWeight) {
+        this.estimatedWeight = estimatedWeight;
+    }
+
+    public Professor getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Professor createdBy) {
+        this.createdBy = createdBy;
+    }
+
     public Long getCreatedByExternalUserId() {
         return createdByExternalUserId;
     }
 
     public void setCreatedByExternalUserId(Long createdByExternalUserId) {
         this.createdByExternalUserId = createdByExternalUserId;
+    }
+
+    public Integer getQuarter() {
+        return quarter;
+    }
+
+    public void setQuarter(Integer quarter) {
+        this.quarter = quarter;
+    }
+
+    public BigDecimal getCompletionPercentage() {
+        return completionPercentage;
+    }
+
+    public void setCompletionPercentage(BigDecimal completionPercentage) {
+        this.completionPercentage = completionPercentage;
     }
 
     public Department getDepartment() {

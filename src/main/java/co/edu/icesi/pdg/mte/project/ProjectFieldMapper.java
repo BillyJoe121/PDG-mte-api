@@ -50,7 +50,7 @@ class ProjectFieldMapper {
         project.setDepartment(findDepartment(departmentId));
         project.setDepartmentName(project.getDepartment().getName());
         project.setStartPeriod(startPeriod.trim());
-        project.setEndPeriod(endPeriod == null ? null : endPeriod.trim());
+        project.setEndPeriod(endPeriod == null || endPeriod.isBlank() ? startPeriod.trim() : endPeriod.trim());
         project.setStartDate(startDate);
         project.setEndDate(endDate);
         project.setActualEndDate(actualEndDate);
@@ -68,7 +68,7 @@ class ProjectFieldMapper {
         project.setDepartmentName(department == null ? payload.departmentName() : department.getName());
         project.setStatus(mapStatus(payload.status()));
         project.setStartPeriod(defaultText(payload.startPeriod(), "2026-1"));
-        project.setEndPeriod(payload.endPeriod());
+        project.setEndPeriod(defaultText(payload.endPeriod(), project.getStartPeriod()));
         project.setStartDate(payload.startDate());
         project.setEndDate(payload.endDate());
         project.setTutors(cleanTutors(payload.tutors()));

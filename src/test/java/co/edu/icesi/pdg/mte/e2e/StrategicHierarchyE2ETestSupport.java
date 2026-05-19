@@ -55,6 +55,10 @@ abstract class StrategicHierarchyE2ETestSupport {
     }
 
     protected Long createProject(String name, Long departmentId) throws Exception {
+        Long keyResultId = keyResultRepository.findAll().stream()
+                .findFirst()
+                .orElseThrow()
+                .getId();
         return doPost("/api/v1/projects", """
                 {
                   "name": "%s",
@@ -66,9 +70,12 @@ abstract class StrategicHierarchyE2ETestSupport {
                   "endPeriod": "2026-Q2",
                   "startDate": "2026-01-15",
                   "endDate": "2026-06-30",
+                  "keyResultId": %d,
+                  "contributionWeight": 35,
+                  "linkStatus": "ACTIVO",
                   "tutors": ["Tutora A"]
                 }
-                """.formatted(name, departmentId), 201).get("id").asLong();
+                """.formatted(name, departmentId, keyResultId), 201).get("id").asLong();
     }
 
     protected String objectivePayload(String name, Long departmentId, Long periodId, Long goalId, Long strategicBetId, Long unitId) {

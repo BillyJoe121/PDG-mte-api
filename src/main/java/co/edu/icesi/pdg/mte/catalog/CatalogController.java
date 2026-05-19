@@ -105,4 +105,52 @@ public class CatalogController {
     List<CatalogDtos.DepartmentResponse> listDepartments() {
         return catalogService.listDepartments();
     }
+
+    @GetMapping("/schools")
+    List<CatalogDtos.SchoolResponse> listSchools() {
+        return catalogService.listSchools();
+    }
+
+    @PostMapping("/schools")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    CatalogDtos.SchoolResponse createSchool(@Valid @RequestBody CatalogDtos.SchoolRequest request) {
+        return catalogService.createSchool(request);
+    }
+
+    @PutMapping("/schools/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    CatalogDtos.SchoolResponse updateSchool(@PathVariable Long id, @Valid @RequestBody CatalogDtos.SchoolRequest request) {
+        return catalogService.updateSchool(id, request);
+    }
+
+    @DeleteMapping("/schools/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    void deleteSchool(@PathVariable Long id) {
+        catalogService.deleteSchool(id);
+    }
+
+    @PostMapping("/departments")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    CatalogDtos.DepartmentResponse createDepartment(@Valid @RequestBody CatalogDtos.DepartmentRequest request) {
+        return catalogService.createDepartment(request);
+    }
+
+    @PutMapping("/departments/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    CatalogDtos.DepartmentResponse updateDepartment(
+            @PathVariable Long id,
+            @Valid @RequestBody CatalogDtos.DepartmentRequest request
+    ) {
+        return catalogService.updateDepartment(id, request);
+    }
+
+    @DeleteMapping("/departments/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    void deleteDepartment(@PathVariable Long id) {
+        catalogService.deleteDepartment(id);
+    }
 }

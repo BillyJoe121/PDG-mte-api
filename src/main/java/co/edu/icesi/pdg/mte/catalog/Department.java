@@ -16,6 +16,9 @@ public class Department {
     @Column(columnDefinition = "text")
     private String description;
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private School school;
+
     private Long externalDepartmentId;
 
     public Long getId() {
@@ -40,6 +43,14 @@ public class Department {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public School getSchool() {
+        return school;
+    }
+
+    public void setSchool(School school) {
+        this.school = school;
     }
 
     public Long getExternalDepartmentId() {

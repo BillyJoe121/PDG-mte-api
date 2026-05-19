@@ -17,9 +17,13 @@ public final class StrategyDtos {
     public record StrategicBetRequest(
             @NotBlank String name,
             @NotBlank String description,
+            Long worldId,
             LocalDate startDate,
             LocalDate endDate
     ) {
+        public StrategicBetRequest(String name, String description, LocalDate startDate, LocalDate endDate) {
+            this(name, description, null, startDate, endDate);
+        }
     }
 
     public record StrategicBetResponse(
@@ -30,8 +34,22 @@ public final class StrategyDtos {
             LocalDate endDate,
             StrategicStatus status,
             Instant createdAt,
+            Long worldId,
+            String worldName,
             ExecutionSummaryResponse executionSummary
     ) {
+        public StrategicBetResponse(
+                Long id,
+                String name,
+                String description,
+                LocalDate startDate,
+                LocalDate endDate,
+                StrategicStatus status,
+                Instant createdAt,
+                ExecutionSummaryResponse executionSummary
+        ) {
+            this(id, name, description, startDate, endDate, status, createdAt, null, null, executionSummary);
+        }
     }
 
     public record GoalRequest(
@@ -40,9 +58,21 @@ public final class StrategyDtos {
             String referenceIndicator,
             @NotNull @DecimalMin("0.00") BigDecimal expectedValue,
             @NotNull Long measurementUnitId,
+            Long worldId,
             LocalDate startDate,
             LocalDate endDate
     ) {
+        public GoalRequest(
+                String name,
+                String description,
+                String referenceIndicator,
+                BigDecimal expectedValue,
+                Long measurementUnitId,
+                LocalDate startDate,
+                LocalDate endDate
+        ) {
+            this(name, description, referenceIndicator, expectedValue, measurementUnitId, null, startDate, endDate);
+        }
     }
 
     public record GoalResponse(
@@ -53,6 +83,8 @@ public final class StrategyDtos {
             BigDecimal expectedValue,
             Long measurementUnitId,
             String measurementUnitName,
+            Long worldId,
+            String worldName,
             LocalDate startDate,
             LocalDate endDate,
             StrategicStatus status,
@@ -68,8 +100,19 @@ public final class StrategyDtos {
             @NotBlank String metric,
             @NotNull BigDecimal baseValue,
             @NotNull BigDecimal targetValue,
-            @NotNull Long measurementUnitId
+            @NotNull Long measurementUnitId,
+            Long academicPeriodId
     ) {
+        public KeyResultRequest(
+                String name,
+                String description,
+                String metric,
+                BigDecimal baseValue,
+                BigDecimal targetValue,
+                Long measurementUnitId
+        ) {
+            this(name, description, metric, baseValue, targetValue, measurementUnitId, null);
+        }
     }
 
     public record KeyResultResponse(
@@ -83,6 +126,8 @@ public final class StrategyDtos {
             BigDecimal progressPercentage,
             Long measurementUnitId,
             String measurementUnitName,
+            Long academicPeriodId,
+            String academicPeriodName,
             Instant createdAt
     ) {
     }
@@ -94,8 +139,22 @@ public final class StrategyDtos {
             @NotNull Long academicPeriodId,
             @NotNull Long goalId,
             @NotNull Long strategicBetId,
+            @DecimalMin("0.00") BigDecimal estimatedWeight,
+            @Min(1) @Max(4) Integer quarter,
+            Long createdByProfessorId,
             @NotEmpty List<@Valid KeyResultRequest> keyResults
     ) {
+        public ObjectiveRequest(
+                String name,
+                String description,
+                Long departmentId,
+                Long academicPeriodId,
+                Long goalId,
+                Long strategicBetId,
+                List<KeyResultRequest> keyResults
+        ) {
+            this(name, description, departmentId, academicPeriodId, goalId, strategicBetId, null, null, null, keyResults);
+        }
     }
 
     public record ObjectiveResponse(
@@ -104,6 +163,10 @@ public final class StrategyDtos {
             String description,
             ObjectiveStatus status,
             Instant createdAt,
+            BigDecimal estimatedWeight,
+            Long createdByProfessorId,
+            String createdByProfessorName,
+            Integer quarter,
             Long departmentId,
             String departmentName,
             Long academicPeriodId,
@@ -186,6 +249,19 @@ public final class StrategyDtos {
             java.time.Instant timestamp,
             BigDecimal coveragePercentage,
             String source
+    ) {
+    }
+
+    public record WorldRequest(
+            @NotBlank String name,
+            String description
+    ) {
+    }
+
+    public record WorldResponse(
+            Long id,
+            String name,
+            String description
     ) {
     }
 }

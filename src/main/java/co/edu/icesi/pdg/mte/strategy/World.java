@@ -1,10 +1,10 @@
-package co.edu.icesi.pdg.mte.catalog;
+package co.edu.icesi.pdg.mte.strategy;
 
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "unit_of_measure", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
-public class MeasurementUnit {
+@Table(name = "world", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
+public class World {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -13,15 +13,8 @@ public class MeasurementUnit {
     @Column(nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MeasurementUnitType type;
-
     @Column(columnDefinition = "text")
     private String description;
-
-    @Column(nullable = false)
-    private boolean active = true;
 
     public Long getId() {
         return id;
@@ -39,27 +32,11 @@ public class MeasurementUnit {
         this.name = name;
     }
 
-    public MeasurementUnitType getType() {
-        return type;
-    }
-
-    public void setType(MeasurementUnitType type) {
-        this.type = type;
-    }
-
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
     }
 }

@@ -12,6 +12,7 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementUnitRepository;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
+import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
 import co.edu.icesi.pdg.mte.project.ProjectProgressEntryRepository;
@@ -27,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 abstract class StrategyServiceTestSupport {
     @Mock
@@ -37,6 +39,10 @@ abstract class StrategyServiceTestSupport {
     protected ObjectiveRepository objectiveRepository;
     @Mock
     protected KeyResultRepository keyResultRepository;
+    @Mock
+    protected WorldRepository worldRepository;
+    @Mock
+    protected ProfessorRepository professorRepository;
     @Mock
     protected MeasurementUnitRepository unitRepository;
     @Mock
@@ -78,6 +84,8 @@ abstract class StrategyServiceTestSupport {
                 goalRepository,
                 objectiveRepository,
                 keyResultRepository,
+                worldRepository,
+                professorRepository,
                 unitRepository,
                 periodRepository,
                 departmentRepository,
@@ -93,6 +101,8 @@ abstract class StrategyServiceTestSupport {
         bet = TestFixtures.strategicBet(1L);
         goal = TestFixtures.goal(1L, unit);
         objective = TestFixtures.objective(1L, unit, period, department, goal, bet);
+        org.mockito.Mockito.lenient().when(worldRepository.findAll()).thenReturn(List.of(TestFixtures.world(1L)));
+        org.mockito.Mockito.lenient().when(worldRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.world(1L)));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 ExternalUserContext.mock(),
                 null,

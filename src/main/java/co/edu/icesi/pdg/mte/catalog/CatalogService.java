@@ -23,6 +23,7 @@ public class CatalogService {
 
     private final MeasurementUnitRepository unitRepository;
     private final AcademicPeriodRepository periodRepository;
+    private final SchoolRepository schoolRepository;
     private final DepartmentRepository departmentRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final KeyResultRepository keyResultRepository;
@@ -33,6 +34,7 @@ public class CatalogService {
     public CatalogService(
             MeasurementUnitRepository unitRepository,
             AcademicPeriodRepository periodRepository,
+            SchoolRepository schoolRepository,
             DepartmentRepository departmentRepository,
             InstitutionalGoalRepository goalRepository,
             KeyResultRepository keyResultRepository,
@@ -42,6 +44,7 @@ public class CatalogService {
     ) {
         this.unitRepository = unitRepository;
         this.periodRepository = periodRepository;
+        this.schoolRepository = schoolRepository;
         this.departmentRepository = departmentRepository;
         this.goalRepository = goalRepository;
         this.keyResultRepository = keyResultRepository;
@@ -168,8 +171,93 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
+    public List<CatalogDtos.SchoolResponse> listSchools() {
+        return schoolRepository.findAll().stream()
+                .sorted(Comparator.comparing(School::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(Mapper::toResponse)
+                .toList();
+    }
+
+    public CatalogDtos.SchoolResponse createSchool(CatalogDtos.SchoolRequest request) {
+        String name = request.name().trim();
+        if (schoolRepository.existsByNameIgnoreCase(name)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe una escuela con ese nombre.");
+        }
+        School school = new School();
+        school.setName(name);
+        school.setDescription(request.description());
+        CatalogDtos.SchoolResponse response = Mapper.toResponse(schoolRepository.save(school));
+        auditService.record(AuditAction.CREATE, "SCHOOL", response.id(), "Escuela creada: " + response.name(), null, response);
+        return response;
+    }
+
+    public CatalogDtos.SchoolResponse updateSchool(Long id, CatalogDtos.SchoolRequest request) {
+        School school = findSchool(id);
+        CatalogDtos.SchoolResponse before = Mapper.toResponse(school);
+        Optional<School> existing = schoolRepository.findByNameIgnoreCase(request.name().trim());
+        if (existing.isPresent() && !existing.get().getId().equals(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe una escuela con ese nombre.");
+        }
+        school.setName(request.name().trim());
+        school.setDescription(request.description());
+        CatalogDtos.SchoolResponse response = Mapper.toResponse(schoolRepository.save(school));
+        auditService.record(AuditAction.UPDATE, "SCHOOL", response.id(), "Escuela actualizada: " + response.name(), before, response);
+        return response;
+    }
+
+    public void deleteSchool(Long id) {
+        School school = findSchool(id);
+        if (departmentRepository.existsBySchoolId(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar una escuela con departamentos asociados.");
+        }
+        schoolRepository.delete(school);
+    }
+
+    @Transactional(readOnly = true)
     public List<CatalogDtos.DepartmentResponse> listDepartments() {
-        return departmentRepository.findAll().stream().map(Mapper::toResponse).toList();
+        return departmentRepository.findAll().stream()
+                .sorted(Comparator.comparing(Department::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(Mapper::toResponse)
+                .toList();
+    }
+
+    public CatalogDtos.DepartmentResponse createDepartment(CatalogDtos.DepartmentRequest request) {
+        String name = request.name().trim();
+        if (departmentRepository.existsByNameIgnoreCase(name)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un departamento con ese nombre.");
+        }
+        Department department = new Department();
+        department.setName(name);
+        department.setDescription(request.description());
+        department.setSchool(findSchool(request.schoolId()));
+        department.setExternalDepartmentId(request.externalDepartmentId());
+        CatalogDtos.DepartmentResponse response = Mapper.toResponse(departmentRepository.save(department));
+        auditService.record(AuditAction.CREATE, "DEPARTMENT", response.id(), "Departamento creado: " + response.name(), null, response);
+        return response;
+    }
+
+    public CatalogDtos.DepartmentResponse updateDepartment(Long id, CatalogDtos.DepartmentRequest request) {
+        Department department = findDepartment(id);
+        CatalogDtos.DepartmentResponse before = Mapper.toResponse(department);
+        Optional<Department> existing = departmentRepository.findByNameIgnoreCase(request.name().trim());
+        if (existing.isPresent() && !existing.get().getId().equals(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un departamento con ese nombre.");
+        }
+        department.setName(request.name().trim());
+        department.setDescription(request.description());
+        department.setSchool(findSchool(request.schoolId()));
+        department.setExternalDepartmentId(request.externalDepartmentId());
+        CatalogDtos.DepartmentResponse response = Mapper.toResponse(departmentRepository.save(department));
+        auditService.record(AuditAction.UPDATE, "DEPARTMENT", response.id(), "Departamento actualizado: " + response.name(), before, response);
+        return response;
+    }
+
+    public void deleteDepartment(Long id) {
+        Department department = findDepartment(id);
+        if (objectiveRepository.existsByDepartmentId(id) || projectRepository.existsByDepartmentId(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un departamento en uso.");
+        }
+        departmentRepository.delete(department);
     }
 
     private MeasurementUnit findUnit(Long id) {
@@ -180,6 +268,16 @@ public class CatalogService {
     private AcademicPeriod findPeriod(Long id) {
         return periodRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Periodo academico no encontrado."));
+    }
+
+    private School findSchool(Long id) {
+        return schoolRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Escuela no encontrada."));
+    }
+
+    private Department findDepartment(Long id) {
+        return departmentRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Departamento no encontrado."));
     }
 
     private void assertUnitNameIsAvailable(String name, Long currentId) {

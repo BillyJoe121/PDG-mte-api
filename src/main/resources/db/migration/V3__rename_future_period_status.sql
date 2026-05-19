@@ -1,3 +1,1 @@
-UPDATE academic_period
-SET status = 'PLANIFICACION'
-WHERE status = 'FUTURO';
+-- Supabase starts from V1 with the current period statuses.

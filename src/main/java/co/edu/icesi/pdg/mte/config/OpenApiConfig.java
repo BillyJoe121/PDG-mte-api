@@ -18,7 +18,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("PDG MTE API")
                         .version("1.0")
-                        .description("API REST del Módulo de Trazabilidad Estratégica (MTE)"))
+                        .description("API REST del Modulo de Trazabilidad Estrategica (MTE), alineada al MER institucional y preparada para Supabase/PostgreSQL."))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName, new SecurityScheme()

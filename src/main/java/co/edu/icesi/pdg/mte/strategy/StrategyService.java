@@ -7,6 +7,8 @@ import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.*;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
+import co.edu.icesi.pdg.mte.people.Professor;
+import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,6 +28,8 @@ public class StrategyService {
     private final InstitutionalGoalRepository goalRepository;
     private final ObjectiveRepository objectiveRepository;
     private final KeyResultRepository keyResultRepository;
+    private final WorldRepository worldRepository;
+    private final ProfessorRepository professorRepository;
     private final MeasurementUnitRepository unitRepository;
     private final AcademicPeriodRepository periodRepository;
     private final DepartmentRepository departmentRepository;
@@ -40,6 +44,8 @@ public class StrategyService {
             InstitutionalGoalRepository goalRepository,
             ObjectiveRepository objectiveRepository,
             KeyResultRepository keyResultRepository,
+            WorldRepository worldRepository,
+            ProfessorRepository professorRepository,
             MeasurementUnitRepository unitRepository,
             AcademicPeriodRepository periodRepository,
             DepartmentRepository departmentRepository,
@@ -53,6 +59,8 @@ public class StrategyService {
         this.goalRepository = goalRepository;
         this.objectiveRepository = objectiveRepository;
         this.keyResultRepository = keyResultRepository;
+        this.worldRepository = worldRepository;
+        this.professorRepository = professorRepository;
         this.unitRepository = unitRepository;
         this.periodRepository = periodRepository;
         this.departmentRepository = departmentRepository;
@@ -61,6 +69,46 @@ public class StrategyService {
         this.executionSummaryService = executionSummaryService;
         this.hierarchyTreeService = hierarchyTreeService;
         this.coverageTrendService = coverageTrendService;
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.WorldResponse> listWorlds() {
+        return worldRepository.findAll().stream().map(Mapper::toResponse).toList();
+    }
+
+    public StrategyDtos.WorldResponse createWorld(StrategyDtos.WorldRequest request) {
+        String name = request.name().trim();
+        if (worldRepository.existsByNameIgnoreCase(name)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un mundo con ese nombre.");
+        }
+        World world = new World();
+        world.setName(name);
+        world.setDescription(request.description());
+        StrategyDtos.WorldResponse response = Mapper.toResponse(worldRepository.save(world));
+        auditService.record(AuditAction.CREATE, "WORLD", response.id(), "Mundo creado: " + response.name(), null, response);
+        return response;
+    }
+
+    public StrategyDtos.WorldResponse updateWorld(Long id, StrategyDtos.WorldRequest request) {
+        World world = findWorld(id);
+        StrategyDtos.WorldResponse before = Mapper.toResponse(world);
+        var existing = worldRepository.findByNameIgnoreCase(request.name().trim());
+        if (existing.isPresent() && !existing.get().getId().equals(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un mundo con ese nombre.");
+        }
+        world.setName(request.name().trim());
+        world.setDescription(request.description());
+        StrategyDtos.WorldResponse response = Mapper.toResponse(worldRepository.save(world));
+        auditService.record(AuditAction.UPDATE, "WORLD", response.id(), "Mundo actualizado: " + response.name(), before, response);
+        return response;
+    }
+
+    public void deleteWorld(Long id) {
+        World world = findWorld(id);
+        if (strategicBetRepository.existsByWorldId(id) || goalRepository.existsByWorldId(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un mundo en uso.");
+        }
+        worldRepository.delete(world);
     }
 
     @Transactional(readOnly = true)
@@ -79,8 +127,9 @@ public class StrategyService {
         StrategicBet bet = new StrategicBet();
         bet.setName(request.name().trim());
         bet.setDescription(request.description().trim());
-        bet.setStartDate(request.startDate());
-        bet.setEndDate(request.endDate());
+        bet.setStartDate(request.startDate() == null ? java.time.LocalDate.now() : request.startDate());
+        bet.setEndDate(request.endDate() == null ? bet.getStartDate().plusYears(1) : request.endDate());
+        bet.setWorld(resolveWorld(request.worldId()));
         StrategyDtos.StrategicBetResponse response = Mapper.toResponse(strategicBetRepository.save(bet), executionSummaryService.empty());
         auditService.record(AuditAction.CREATE, "STRATEGIC_BET", response.id(), "Apuesta estrategica creada: " + response.name(), null, response);
         return response;
@@ -106,8 +155,9 @@ public class StrategyService {
         goal.setDescription(request.description().trim());
         goal.setReferenceIndicator(request.referenceIndicator());
         goal.setExpectedValue(request.expectedValue());
-        goal.setStartDate(request.startDate());
-        goal.setEndDate(request.endDate());
+        goal.setStartDate(request.startDate() == null ? java.time.LocalDate.now() : request.startDate());
+        goal.setEndDate(request.endDate() == null ? goal.getStartDate().plusYears(1) : request.endDate());
+        goal.setWorld(request.worldId() == null ? null : findWorld(request.worldId()));
         goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
         StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
         auditService.record(AuditAction.CREATE, "GOAL", response.id(), "Meta institucional creada: " + response.name(), null, response);
@@ -178,6 +228,11 @@ public class StrategyService {
         objective.setAcademicPeriod(findPeriod(request.academicPeriodId()));
         objective.setGoal(findGoal(request.goalId()));
         objective.setStrategicBet(findStrategicBet(request.strategicBetId()));
+        objective.setEstimatedWeight(request.estimatedWeight() == null ? BigDecimal.ZERO : request.estimatedWeight());
+        objective.setQuarter(request.quarter() == null ? 1 : request.quarter());
+        if (request.createdByProfessorId() != null) {
+            objective.setCreatedBy(findProfessor(request.createdByProfessorId()));
+        }
         objective.setCreatedByExternalUserId(currentExternalUserId());
 
         for (StrategyDtos.KeyResultRequest keyResultRequest : request.keyResults()) {
@@ -240,6 +295,7 @@ public class StrategyService {
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
         keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
+        keyResult.setAcademicPeriod(request.academicPeriodId() == null ? null : findPeriod(request.academicPeriodId()));
         keyResult.recalculateProgress();
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
         auditService.record(AuditAction.UPDATE, "KEY_RESULT", response.id(), "Key Result actualizado: " + response.name(), before, response);
@@ -288,6 +344,7 @@ public class StrategyService {
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
         keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
+        keyResult.setAcademicPeriod(request.academicPeriodId() == null ? null : findPeriod(request.academicPeriodId()));
         keyResult.recalculateProgress();
         return keyResult;
     }
@@ -306,6 +363,24 @@ public class StrategyService {
     private AcademicPeriod findPeriod(Long id) {
         return periodRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Periodo academico no encontrado."));
+    }
+
+    private World findWorld(Long id) {
+        return worldRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Mundo no encontrado."));
+    }
+
+    private World resolveWorld(Long id) {
+        if (id != null) {
+            return findWorld(id);
+        }
+        return worldRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "Debe existir un mundo para crear apuestas estrategicas."));
+    }
+
+    private Professor findProfessor(Long id) {
+        return professorRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Profesor no encontrado."));
     }
 
     private Department findDepartment(Long id) {

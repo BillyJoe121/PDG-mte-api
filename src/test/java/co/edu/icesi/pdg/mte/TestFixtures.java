@@ -35,7 +35,24 @@ public final class TestFixtures {
         department.setName("Departamento de TIC");
         department.setDescription("Departamento de prueba");
         department.setExternalDepartmentId(10L);
+        department.setSchool(school(1L));
         return department;
+    }
+
+    public static School school(Long id) {
+        School school = new School();
+        school.setId(id);
+        school.setName("Escuela TDI");
+        school.setDescription("Escuela de prueba");
+        return school;
+    }
+
+    public static World world(Long id) {
+        World world = new World();
+        world.setId(id);
+        world.setName("Mundo");
+        world.setDescription("Mundo de prueba");
+        return world;
     }
 
     public static StrategicBet strategicBet(Long id) {
@@ -45,6 +62,7 @@ public final class TestFixtures {
         bet.setDescription("Descripcion de apuesta");
         bet.setStartDate(LocalDate.of(2026, 1, 1));
         bet.setEndDate(LocalDate.of(2026, 12, 31));
+        bet.setWorld(world(1L));
         return bet;
     }
 
@@ -54,6 +72,9 @@ public final class TestFixtures {
         goal.setName("Meta");
         goal.setDescription("Descripcion de meta");
         goal.setExpectedValue(BigDecimal.valueOf(80));
+        goal.setStartDate(LocalDate.of(2026, 1, 1));
+        goal.setEndDate(LocalDate.of(2026, 12, 31));
+        goal.setWorld(world(1L));
         goal.setMeasurementUnit(unit);
         return goal;
     }

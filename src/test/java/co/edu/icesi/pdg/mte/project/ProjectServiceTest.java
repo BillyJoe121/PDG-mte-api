@@ -155,15 +155,17 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var created = service.create(new ProjectDtos.ProjectRequest(
-                "Proyecto borrador", "Descripcion", ProjectType.GRADO, 1L, null, "2026-1", null, null, null, null, null));
+                "Proyecto borrador", "Descripcion", ProjectType.GRADO, 1L, null, "2026-1", null, null, null,
+                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, null));
         var updated = service.update(1L, new ProjectDtos.ProjectUpdateRequest(
-                "Proyecto actualizado", "Descripcion", ProjectType.EXTENSION, 1L, "2026-1", null, null, null, null, new ArrayList<>()));
+                "Proyecto actualizado", "Descripcion", ProjectType.EXTENSION, 1L, "2026-1", null, null, null, null,
+                1L, BigDecimal.valueOf(25), "ACTIVO", null, new ArrayList<>()));
         var active = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.ACTIVO));
         project.setActualEndDate(LocalDate.of(2026, 12, 1));
         var finalized = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.FINALIZADO));
 
         assertThat(created.status()).isEqualTo(ProjectStatus.BORRADOR);
-        assertThat(updated.endPeriod()).isNull();
+        assertThat(updated.endPeriod()).isEqualTo("2026-1");
         assertThat(active.status()).isEqualTo(ProjectStatus.ACTIVO);
         assertThat(finalized.actualEndDate()).isEqualTo(LocalDate.of(2026, 12, 1));
     }

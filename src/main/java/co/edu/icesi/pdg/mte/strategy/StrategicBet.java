@@ -19,16 +19,19 @@ public class StrategicBet {
     @Column(nullable = false, columnDefinition = "text")
     private String description;
 
+    @Column(nullable = false)
     private LocalDate startDate;
 
+    @Column(nullable = false)
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private StrategicStatus status = StrategicStatus.ACTIVA;
 
-    @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private World world;
 
     public Long getId() {
         return id;
@@ -84,5 +87,13 @@ public class StrategicBet {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public World getWorld() {
+        return world;
+    }
+
+    public void setWorld(World world) {
+        this.world = world;
     }
 }

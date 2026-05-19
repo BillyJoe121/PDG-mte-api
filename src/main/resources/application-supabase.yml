@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${SUPABASE_DB_URL:${DB_URL}}
+    username: ${SUPABASE_DB_USERNAME:${DB_USERNAME:postgres}}
+    password: ${SUPABASE_DB_PASSWORD:${DB_PASSWORD}}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+
+mte:
+  auth:
+    mode: ${MTE_AUTH_MODE:mock}
+  seed:
+    enabled: ${MTE_SEED_ENABLED:true}
+  integration:
+    trayectoria:
+      mode: ${MTE_TRAYECTORIA_PROJECTS_MODE:mock}

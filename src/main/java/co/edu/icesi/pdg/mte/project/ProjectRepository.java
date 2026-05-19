@@ -9,4 +9,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpec
     Optional<Project> findByExternalSourceAndExternalProjectId(String externalSource, Long externalProjectId);
 
     boolean existsByStartPeriodOrEndPeriod(String startPeriod, String endPeriod);
+
+    boolean existsByDepartmentId(Long departmentId);
 }

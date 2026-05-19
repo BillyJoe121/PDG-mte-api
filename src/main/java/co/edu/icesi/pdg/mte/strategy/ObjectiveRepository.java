@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface ObjectiveRepository extends JpaRepository<Objective, Long>, JpaSpecificationExecutor<Objective> {
     boolean existsByAcademicPeriodId(Long academicPeriodId);
+
+    boolean existsByDepartmentId(Long departmentId);
 }

@@ -1,17 +1,25 @@
 package co.edu.icesi.pdg.mte.api;
 
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
+import co.edu.icesi.pdg.mte.api.dto.PeopleDtos;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
+import co.edu.icesi.pdg.mte.catalog.School;
+import co.edu.icesi.pdg.mte.people.Position;
+import co.edu.icesi.pdg.mte.people.Professor;
+import co.edu.icesi.pdg.mte.people.Role;
+import co.edu.icesi.pdg.mte.people.TeacherPosition;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
+import co.edu.icesi.pdg.mte.project.ProjectTeacher;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
+import co.edu.icesi.pdg.mte.strategy.World;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,8 +55,50 @@ public final class Mapper {
                 department.getId(),
                 department.getName(),
                 department.getDescription(),
+                department.getSchool().getId(),
+                department.getSchool().getName(),
                 department.getExternalDepartmentId()
         );
+    }
+
+    public static CatalogDtos.SchoolResponse toResponse(School school) {
+        return new CatalogDtos.SchoolResponse(
+                school.getId(),
+                school.getName(),
+                school.getDescription()
+        );
+    }
+
+    public static PeopleDtos.RoleResponse toResponse(Role role) {
+        return new PeopleDtos.RoleResponse(role.getId(), role.getName(), role.getDescription());
+    }
+
+    public static PeopleDtos.PositionResponse toResponse(Position position) {
+        return new PeopleDtos.PositionResponse(position.getId(), position.getName(), position.getDescription());
+    }
+
+    public static PeopleDtos.ProfessorResponse toResponse(Professor professor) {
+        return new PeopleDtos.ProfessorResponse(
+                professor.getId(),
+                professor.getName(),
+                professor.getEmail(),
+                professor.getDepartment().getId(),
+                professor.getDepartment().getName()
+        );
+    }
+
+    public static PeopleDtos.TeacherPositionResponse toResponse(TeacherPosition teacherPosition) {
+        return new PeopleDtos.TeacherPositionResponse(
+                teacherPosition.getPosition().getId(),
+                teacherPosition.getPosition().getName(),
+                teacherPosition.getTeacher().getId(),
+                teacherPosition.getTeacher().getName(),
+                teacherPosition.getIsActive()
+        );
+    }
+
+    public static StrategyDtos.WorldResponse toResponse(World world) {
+        return new StrategyDtos.WorldResponse(world.getId(), world.getName(), world.getDescription());
     }
 
     public static StrategyDtos.StrategicBetResponse toResponse(
@@ -63,6 +113,8 @@ public final class Mapper {
                 bet.getEndDate(),
                 bet.getStatus(),
                 bet.getCreatedAt(),
+                bet.getWorld().getId(),
+                bet.getWorld().getName(),
                 executionSummary
         );
     }
@@ -88,6 +140,8 @@ public final class Mapper {
                 goal.getExpectedValue(),
                 goal.getMeasurementUnit().getId(),
                 goal.getMeasurementUnit().getName(),
+                goal.getWorld() == null ? null : goal.getWorld().getId(),
+                goal.getWorld() == null ? null : goal.getWorld().getName(),
                 goal.getStartDate(),
                 goal.getEndDate(),
                 goal.getStatus(),
@@ -109,6 +163,8 @@ public final class Mapper {
                 keyResult.getProgressPercentage(),
                 keyResult.getMeasurementUnit().getId(),
                 keyResult.getMeasurementUnit().getName(),
+                keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getId(),
+                keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
                 keyResult.getCreatedAt()
         );
     }
@@ -120,6 +176,10 @@ public final class Mapper {
                 objective.getDescription(),
                 objective.getStatus(),
                 objective.getCreatedAt(),
+                objective.getEstimatedWeight(),
+                objective.getCreatedBy() == null ? null : objective.getCreatedBy().getId(),
+                objective.getCreatedBy() == null ? null : objective.getCreatedBy().getName(),
+                objective.getQuarter(),
                 objective.getDepartment().getId(),
                 objective.getDepartment().getName(),
                 objective.getAcademicPeriod().getId(),
@@ -152,6 +212,11 @@ public final class Mapper {
                 project.getEndDate(),
                 project.getActualEndDate(),
                 project.getGlobalProgress(),
+                project.getKeyResult() == null ? null : project.getKeyResult().getId(),
+                project.getKeyResult() == null ? null : project.getKeyResult().getName(),
+                project.getContributionWeight(),
+                project.getLinkStatus(),
+                project.getJiraKey(),
                 project.getTutors().stream().toList(),
                 List.of(),
                 project.getOrigin(),
@@ -159,6 +224,19 @@ public final class Mapper {
                 project.getLastSyncedAt(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
+        );
+    }
+
+    public static ProjectDtos.ProjectTeacherResponse toResponse(ProjectTeacher projectTeacher) {
+        return new ProjectDtos.ProjectTeacherResponse(
+                projectTeacher.getProject().getId(),
+                projectTeacher.getProject().getName(),
+                projectTeacher.getTeacher().getId(),
+                projectTeacher.getTeacher().getName(),
+                projectTeacher.getRole().getId(),
+                projectTeacher.getRole().getName(),
+                projectTeacher.getJoinedAt(),
+                projectTeacher.getLeftAt()
         );
     }
 

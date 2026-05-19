@@ -92,6 +92,28 @@ public class ProjectController {
         return linkService.impactChain(id);
     }
 
+    @GetMapping("/{id}/teachers")
+    public List<ProjectDtos.ProjectTeacherResponse> listTeachers(@PathVariable Long id) {
+        return projectService.listTeachers(id);
+    }
+
+    @PostMapping("/{id}/teachers")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    public ProjectDtos.ProjectTeacherResponse assignTeacher(
+            @PathVariable Long id,
+            @Valid @RequestBody ProjectDtos.ProjectTeacherRequest request
+    ) {
+        return projectService.assignTeacher(id, request);
+    }
+
+    @DeleteMapping("/{id}/teachers/{teacherId}/roles/{roleId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    public void removeTeacher(@PathVariable Long id, @PathVariable Long teacherId, @PathVariable Long roleId) {
+        projectService.removeTeacher(id, teacherId, roleId);
+    }
+
     @PostMapping("/sync/trayectoria")
     @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA')")
     public ProjectDtos.ProjectSyncResponse syncTrayectoria(

@@ -63,6 +63,29 @@ public final class CatalogDtos {
             Long id,
             String name,
             String description,
+            Long schoolId,
+            String schoolName,
+            Long externalDepartmentId
+    ) {
+    }
+
+    public record SchoolRequest(
+            @NotBlank String name,
+            String description
+    ) {
+    }
+
+    public record SchoolResponse(
+            Long id,
+            String name,
+            String description
+    ) {
+    }
+
+    public record DepartmentRequest(
+            @NotBlank String name,
+            String description,
+            @NotNull Long schoolId,
             Long externalDepartmentId
     ) {
     }

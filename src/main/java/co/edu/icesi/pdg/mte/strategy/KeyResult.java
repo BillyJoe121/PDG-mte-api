@@ -1,5 +1,6 @@
 package co.edu.icesi.pdg.mte.strategy;
 
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
@@ -19,7 +20,7 @@ public class KeyResult {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false)
     private String description;
 
     @Column(nullable = false)
@@ -37,14 +38,18 @@ public class KeyResult {
     @Column(precision = 12, scale = 2)
     private BigDecimal currentValue;
 
-    @Column(precision = 8, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal progressPercentage = BigDecimal.ZERO;
 
-    @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_of_measure_id")
     private MeasurementUnit measurementUnit;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "academic_period_id")
+    private AcademicPeriod academicPeriod;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Objective objective;
@@ -150,6 +155,14 @@ public class KeyResult {
 
     public void setMeasurementUnit(MeasurementUnit measurementUnit) {
         this.measurementUnit = measurementUnit;
+    }
+
+    public AcademicPeriod getAcademicPeriod() {
+        return academicPeriod;
+    }
+
+    public void setAcademicPeriod(AcademicPeriod academicPeriod) {
+        this.academicPeriod = academicPeriod;
     }
 
     public Objective getObjective() {

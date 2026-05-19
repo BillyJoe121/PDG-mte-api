@@ -154,12 +154,12 @@ class RoleAccessE2ETest {
                   "endDate": "2026-12-31"
                 }
                 """.formatted(SEQUENCE.incrementAndGet()), "decano-token", 201);
-        JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId), "decano-token", 201);
+        Scenario scenario = createScenario("decano-token");
 
-        patchJson("/api/v1/projects/" + project.get("id").asLong() + "/status", """
+        patchJson("/api/v1/projects/" + scenario.projectId() + "/status", """
                 {"status": "FINALIZADO"}
                 """, "decano-token", 200);
-        patchJson("/api/v1/projects/" + project.get("id").asLong() + "/status", """
+        patchJson("/api/v1/projects/" + scenario.projectId() + "/status", """
                 {"status": "ACTIVO"}
                 """, "decano-token", 403);
         getJson("/api/v1/reports/general", "decano-token", 200);

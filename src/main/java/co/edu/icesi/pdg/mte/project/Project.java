@@ -1,6 +1,7 @@
 package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.catalog.Department;
+import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Table(
-        name = "mte_project",
+        name = "project",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_project_external_source_id",
                 columnNames = {"external_source", "external_project_id"}
@@ -35,7 +36,6 @@ public class Project {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ProjectType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -44,12 +44,12 @@ public class Project {
     private String departmentName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ProjectStatus status = ProjectStatus.BORRADOR;
 
     @Column(nullable = false)
     private String startPeriod;
 
+    @Column(nullable = false)
     private String endPeriod;
 
     private LocalDate startDate;
@@ -58,11 +58,21 @@ public class Project {
 
     private LocalDate actualEndDate;
 
+    private String jiraKey;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private KeyResult keyResult;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal contributionWeight;
+
+    private String linkStatus;
+
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal globalProgress = BigDecimal.ZERO;
 
     @ElementCollection
-    @CollectionTable(name = "mte_project_tutor", joinColumns = @JoinColumn(name = "project_id"))
+    @CollectionTable(name = "project_tutor", joinColumns = @JoinColumn(name = "project_id"))
     @Column(name = "tutor_name", nullable = false)
     private List<String> tutors = new ArrayList<>();
 
@@ -201,6 +211,38 @@ public class Project {
 
     public void setActualEndDate(LocalDate actualEndDate) {
         this.actualEndDate = actualEndDate;
+    }
+
+    public String getJiraKey() {
+        return jiraKey;
+    }
+
+    public void setJiraKey(String jiraKey) {
+        this.jiraKey = jiraKey;
+    }
+
+    public KeyResult getKeyResult() {
+        return keyResult;
+    }
+
+    public void setKeyResult(KeyResult keyResult) {
+        this.keyResult = keyResult;
+    }
+
+    public BigDecimal getContributionWeight() {
+        return contributionWeight;
+    }
+
+    public void setContributionWeight(BigDecimal contributionWeight) {
+        this.contributionWeight = contributionWeight;
+    }
+
+    public String getLinkStatus() {
+        return linkStatus;
+    }
+
+    public void setLinkStatus(String linkStatus) {
+        this.linkStatus = linkStatus;
     }
 
     public BigDecimal getGlobalProgress() {
