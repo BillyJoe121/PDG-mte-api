@@ -60,7 +60,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         objective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(100));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         var response = service.getStrategicBet(1L, "   ");
 
@@ -88,7 +88,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
 
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
                 link(keyResult, completed, 40),
                 link(keyResult, activeSameId, 20),
                 link(keyResult, activeWithStartFallback, 20),
@@ -110,7 +110,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         project.setEndPeriod("2026-Q4");
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
                 link(objective.getKeyResults().get(0), project, 20)
         ));
 
@@ -131,7 +131,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
 
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(objectiveRepository.findAll()).thenReturn(List.of(completedObjective, duplicateObjective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         var response = service.getStrategicBet(1L, null);
 

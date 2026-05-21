@@ -113,9 +113,14 @@ public class StrategyService {
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.StrategicBetResponse> listStrategicBets(String period) {
-        return strategicBetRepository.findAll()
+        List<StrategicBet> bets = strategicBetRepository.findAll();
+        var summaries = executionSummaryService.forBets(
+                bets.stream().map(StrategicBet::getId).toList(),
+                period
+        );
+        return bets
                 .stream()
-                .map(bet -> Mapper.toResponse(bet, executionSummaryService.forBet(bet.getId(), period)))
+                .map(bet -> Mapper.toResponse(bet, summaries.getOrDefault(bet.getId(), executionSummaryService.empty())))
                 .toList();
     }
 
@@ -143,8 +148,13 @@ public class StrategyService {
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.GoalResponse> listGoals(String period) {
-        return goalRepository.findAll().stream()
-                .map(goal -> Mapper.toResponse(goal, executionSummaryService.forGoal(goal.getId(), period)))
+        List<InstitutionalGoal> goals = goalRepository.findAll();
+        var summaries = executionSummaryService.forGoals(
+                goals.stream().map(InstitutionalGoal::getId).toList(),
+                period
+        );
+        return goals.stream()
+                .map(goal -> Mapper.toResponse(goal, summaries.getOrDefault(goal.getId(), executionSummaryService.empty())))
                 .toList();
     }
 

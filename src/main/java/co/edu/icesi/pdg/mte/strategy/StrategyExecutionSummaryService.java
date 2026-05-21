@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -35,19 +36,37 @@ class StrategyExecutionSummaryService {
     }
 
     StrategyDtos.ExecutionSummaryResponse forBet(Long betId, String periodFilter) {
-        List<Objective> objectives = objectiveRepository.findAll()
-                .stream()
-                .filter(objective -> objective.getStrategicBet().getId().equals(betId))
-                .toList();
-        return build(objectives, periodFilter);
+        return forBets(List.of(betId), periodFilter).getOrDefault(betId, empty());
     }
 
     StrategyDtos.ExecutionSummaryResponse forGoal(Long goalId, String periodFilter) {
-        List<Objective> objectives = objectiveRepository.findAll()
+        return forGoals(List.of(goalId), periodFilter).getOrDefault(goalId, empty());
+    }
+
+    Map<Long, StrategyDtos.ExecutionSummaryResponse> forBets(Collection<Long> betIds, String periodFilter) {
+        Map<Long, List<Objective>> objectivesByBet = objectiveRepository.findAll()
                 .stream()
-                .filter(objective -> objective.getGoal().getId().equals(goalId))
-                .toList();
-        return build(objectives, periodFilter);
+                .filter(objective -> objective.getStrategicBet() != null)
+                .filter(objective -> betIds.contains(objective.getStrategicBet().getId()))
+                .collect(java.util.stream.Collectors.groupingBy(
+                        objective -> objective.getStrategicBet().getId(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
+        return buildAll(betIds, objectivesByBet, periodFilter);
+    }
+
+    Map<Long, StrategyDtos.ExecutionSummaryResponse> forGoals(Collection<Long> goalIds, String periodFilter) {
+        Map<Long, List<Objective>> objectivesByGoal = objectiveRepository.findAll()
+                .stream()
+                .filter(objective -> objective.getGoal() != null)
+                .filter(objective -> goalIds.contains(objective.getGoal().getId()))
+                .collect(java.util.stream.Collectors.groupingBy(
+                        objective -> objective.getGoal().getId(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
+        return buildAll(goalIds, objectivesByGoal, periodFilter);
     }
 
     StrategyDtos.ExecutionSummaryResponse empty() {
@@ -63,14 +82,33 @@ class StrategyExecutionSummaryService {
         );
     }
 
-    private StrategyDtos.ExecutionSummaryResponse build(List<Objective> objectives, String periodFilter) {
+    private Map<Long, StrategyDtos.ExecutionSummaryResponse> buildAll(
+            Collection<Long> ownerIds,
+            Map<Long, List<Objective>> objectivesByOwner,
+            String periodFilter
+    ) {
+        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(
+                objectivesByOwner.values().stream().flatMap(Collection::stream).toList()
+        );
+        Map<Long, StrategyDtos.ExecutionSummaryResponse> summaries = new LinkedHashMap<>();
+        for (Long ownerId : ownerIds) {
+            summaries.put(ownerId, build(objectivesByOwner.getOrDefault(ownerId, List.of()), periodFilter, linksByKeyResult));
+        }
+        return summaries;
+    }
+
+    private StrategyDtos.ExecutionSummaryResponse build(
+            List<Objective> objectives,
+            String periodFilter,
+            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
+    ) {
         Map<String, ExecutionAccumulator> byPeriod = new LinkedHashMap<>();
         ExecutionAccumulator total = new ExecutionAccumulator();
 
         for (Objective objective : objectives) {
             Set<String> objectivePeriods = new LinkedHashSet<>();
             for (KeyResult keyResult : objective.getKeyResults()) {
-                List<ProjectKeyResultLink> links = linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId());
+                List<ProjectKeyResultLink> links = linksByKeyResult.getOrDefault(keyResult.getId(), List.of());
                 if (links.isEmpty()) {
                     addUnlinkedKeyResult(periodFilter, byPeriod, objectivePeriods, objective, keyResult);
                     continue;
@@ -89,6 +127,25 @@ class StrategyExecutionSummaryService {
                 .map(ExecutionAccumulator::toPeriodResponse)
                 .toList();
         return total.toResponse(periodResponses);
+    }
+
+    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<Objective> objectives) {
+        List<Long> keyResultIds = objectives.stream()
+                .flatMap(objective -> objective.getKeyResults().stream())
+                .map(KeyResult::getId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (keyResultIds.isEmpty()) {
+            return Map.of();
+        }
+        return linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(keyResultIds)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        link -> link.getKeyResult().getId(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
     }
 
     private void addUnlinkedKeyResult(

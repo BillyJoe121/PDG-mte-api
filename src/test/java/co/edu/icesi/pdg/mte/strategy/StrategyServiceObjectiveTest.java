@@ -77,7 +77,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         assertThat(service.getObjective(1L).id()).isEqualTo(1L);
         assertThat(service.getStrategicBet(1L, null).executionSummary().inProgressObjectives()).isEqualTo(1);
@@ -175,7 +175,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of(goal));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(link));
 
         var tree = service.getStrategicHierarchyTree(null);
 
@@ -198,7 +198,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
         when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of(goal));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(link));
 
         var tree = service.getStrategicHierarchyTree(null);
 
