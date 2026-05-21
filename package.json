@@ -1,0 +1,28 @@
+{
+  "name": "pdg-mte-api",
+  "version": "1.0.0",
+  "description": "REST API del Modulo de Trazabilidad Estrategica (MTE) de la Escuela TDI.",
+  "scripts": {
+    "postman:generate": "portman -u http://localhost:8081/v3/api-docs -b http://localhost:8081 -c postman/portman-config.json -s postman/postman-config.json -o postman/mte.generated.postman_collection.json --collectionName \"PDG MTE API - Generated\"",
+    "postman:normalize": "node postman/normalize-collection.cjs",
+    "postman:test": "newman run postman/mte.normalized.postman_collection.json --env-var baseUrl=http://localhost:8081 --reporters cli,json --reporter-json-export postman/newman-report.json",
+    "postman:all": "npm run postman:generate && npm run postman:normalize && npm run postman:test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BillyJoe121/PDG-mte-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/BillyJoe121/PDG-mte-api/issues"
+  },
+  "homepage": "https://github.com/BillyJoe121/PDG-mte-api#readme",
+  "devDependencies": {
+    "@apideck/portman": "^1.34.0",
+    "newman": "^6.2.2",
+    "tslib": "^2.8.1"
+  }
+}

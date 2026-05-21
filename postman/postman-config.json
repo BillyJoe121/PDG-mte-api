@@ -1,0 +1,9 @@
+{
+  "requestParametersResolution": "Example",
+  "exampleParametersResolution": "Example",
+  "parametersResolution": "Example",
+  "folderStrategy": "Tags",
+  "includeAuthInfoInExample": true,
+  "enableOptionalParameters": true,
+  "keepImplicitHeaders": true
+}

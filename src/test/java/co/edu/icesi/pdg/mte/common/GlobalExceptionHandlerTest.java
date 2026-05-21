@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.common;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -42,5 +43,15 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
         assertThat(response.getBody().message()).isEqualTo("Acceso denegado.");
+    }
+
+    @Test
+    void handlesUnreadableRequestBodyAsBadRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/api/v1/projects/1/status");
+
+        var response = handler.handleMessageNotReadable(new HttpMessageNotReadableException("enum invalido"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().message()).isEqualTo("La solicitud tiene un cuerpo invalido.");
     }
 }

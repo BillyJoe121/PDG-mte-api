@@ -441,3 +441,46 @@ MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
 ```
 
 No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.example` no contiene secretos y sirve como plantilla.
+
+## Despliegue en Render
+
+El repositorio incluye `Dockerfile`, `.dockerignore`, `render.yaml` y el perfil `staging`.
+
+Flujo recomendado:
+
+1. Sube estos archivos al repositorio remoto.
+2. En Render crea un Blueprint desde el repositorio o un Web Service con runtime Docker.
+3. Si usas Blueprint, Render leera `render.yaml` desde la raiz.
+4. Cuando Render pida variables con `sync: false`, define:
+
+```text
+SUPABASE_DB_PASSWORD=<password de Supabase>
+MTE_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:4200
+```
+
+Para staging, el servicio usa:
+
+```text
+SPRING_PROFILES_ACTIVE=staging
+SUPABASE_DB_URL=jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require
+SUPABASE_DB_USERNAME=postgres.otqqavjfriyqxntpwcgm
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+MTE_SEED_ENABLED=false
+MTE_AUTH_MODE=mock
+MTE_TRAYECTORIA_PROJECTS_MODE=mock
+```
+
+El health check de Render apunta a:
+
+```text
+/api/v1/health
+```
+
+Cuando el frontend y la autenticacion externa esten listos, cambia `MTE_AUTH_MODE=external` y configura `TRAYECTORIA_BASE_URL` / `TRAYECTORIA_ME_PATH` segun corresponda.
+
+Si el frontend ya esta desplegado, reemplaza o agrega su origen publico en `MTE_CORS_ALLOWED_ORIGINS`, por ejemplo:
+
+```text
+MTE_CORS_ALLOWED_ORIGINS=http://localhost:5173,https://mte-frontend.onrender.com
+```

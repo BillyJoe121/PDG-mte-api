@@ -1,0 +1,3 @@
+ALTER TABLE objective
+    ALTER COLUMN quarter TYPE INTEGER;
+

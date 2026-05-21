@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "$schema": "https://raw.githubusercontent.com/apideck-libraries/portman/main/src/utils/portman-config-schema.json",
+  "tests": {
+    "contractTests": [
+      {
+        "openApiOperation": "*::/*",
+        "statusSuccess": {
+          "enabled": true
+        }
+      },
+      {
+        "openApiOperation": "*::/*",
+        "contentType": {
+          "enabled": true
+        }
+      },
+      {
+        "openApiOperation": "*::/*",
+        "jsonBody": {
+          "enabled": true
+        }
+      },
+      {
+        "openApiOperation": "*::/*",
+        "schemaValidation": {
+          "enabled": true,
+          "additionalProperties": true
+        }
+      },
+      {
+        "openApiOperation": "*::/*",
+        "headersPresent": {
+          "enabled": true
+        }
+      }
+    ],
+    "contentTests": [],
+    "extendTests": [
+      {
+        "openApiOperation": "*::/*",
+        "tests": [
+          "pm.test('No debe responder con 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+        ]
+      }
+    ],
+    "variationTests": [
+      {
+        "openApiOperation": "*::/*/{id}*",
+        "openApiResponse": "4*::*",
+        "variations": [
+          {
+            "name": "sad-path - id inexistente",
+            "overwrites": [
+              {
+                "openApiOperation": "*::/*/{id}*",
+                "overwriteRequestPathVariables": [
+                  {
+                    "key": "id",
+                    "value": "999999",
+                    "overwrite": true
+                  }
+                ]
+              }
+            ],
+            "tests": {
+              "extendTests": [
+                {
+                  "openApiOperation": "*::/*/{id}*",
+                  "tests": [
+                    "pm.test('Sad path responde 4xx para id inexistente', function () { pm.expect(pm.response.code).to.be.within(400, 499); });",
+                    "pm.test('Sad path no debe responder 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+                  ],
+                  "overwrite": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "openApiOperation": "POST::/*",
+        "openApiResponse": "4*::*",
+        "variations": [
+          {
+            "name": "sad-path - body requerido invalido",
+            "fuzzing": [
+              {
+                "requestBody": [
+                  {
+                    "requiredFields": {
+                      "enabled": true
+                    },
+                    "minimumNumberFields": {
+                      "enabled": true
+                    },
+                    "maximumNumberFields": {
+                      "enabled": true
+                    },
+                    "minLengthFields": {
+                      "enabled": true
+                    },
+                    "maxLengthFields": {
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
+            ],
+            "tests": {
+              "extendTests": [
+                {
+                  "openApiOperation": "POST::/*",
+                  "tests": [
+                    "pm.test('Sad path responde 4xx para payload invalido', function () { pm.expect(pm.response.code).to.be.within(400, 499); });",
+                    "pm.test('Sad path no debe responder 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+                  ],
+                  "overwrite": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "openApiOperation": "PUT::/*",
+        "openApiResponse": "4*::*",
+        "variations": [
+          {
+            "name": "sad-path - update invalido",
+            "fuzzing": [
+              {
+                "requestBody": [
+                  {
+                    "requiredFields": {
+                      "enabled": true
+                    },
+                    "minimumNumberFields": {
+                      "enabled": true
+                    },
+                    "maximumNumberFields": {
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
+            ],
+            "tests": {
+              "extendTests": [
+                {
+                  "openApiOperation": "PUT::/*",
+                  "tests": [
+                    "pm.test('Sad path responde 4xx para update invalido', function () { pm.expect(pm.response.code).to.be.within(400, 499); });",
+                    "pm.test('Sad path no debe responder 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+                  ],
+                  "overwrite": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "assignVariables": [],
+  "overwrites": [
+    {
+      "openApiOperation": "*::/*",
+      "overwriteRequestBaseUrl": {
+        "value": "{{baseUrl}}",
+        "overwrite": true
+      }
+    },
+    {
+      "openApiOperation": "*::/*/{id}*",
+      "overwriteRequestPathVariables": [
+        {
+          "key": "id",
+          "value": "1",
+          "overwrite": true
+        }
+      ]
+    },
+    {
+      "openApiOperation": "*::/*/{periodId}*",
+      "overwriteRequestPathVariables": [
+        {
+          "key": "periodId",
+          "value": "1",
+          "overwrite": true
+        }
+      ]
+    },
+    {
+      "openApiOperation": "*::/*/{positionId}*",
+      "overwriteRequestPathVariables": [
+        {
+          "key": "positionId",
+          "value": "1",
+          "overwrite": true
+        }
+      ]
+    },
+    {
+      "openApiOperation": "*::/*/{teacherId}*",
+      "overwriteRequestPathVariables": [
+        {
+          "key": "teacherId",
+          "value": "1",
+          "overwrite": true
+        }
+      ]
+    },
+    {
+      "openApiOperation": "*::/*/{roleId}*",
+      "overwriteRequestPathVariables": [
+        {
+          "key": "roleId",
+          "value": "1",
+          "overwrite": true
+        }
+      ]
+    }
+  ],
+  "globals": {
+    "collectionVariables": {
+      "baseUrl": "http://localhost:8081"
+    },
+    "collectionPreRequestScripts": [],
+    "collectionTestScripts": [
+      "pm.test('La API no debe devolver errores 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+    ],
+    "keyValueReplacements": {},
+    "valueReplacements": {},
+    "rawReplacements": []
+  }
+}

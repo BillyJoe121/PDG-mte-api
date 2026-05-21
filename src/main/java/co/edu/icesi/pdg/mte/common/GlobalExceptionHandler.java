@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -46,6 +47,14 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
         String detail = exception.getName() + ": tipo de dato invalido.";
         return build(HttpStatus.BAD_REQUEST, "La solicitud tiene parametros invalidos.", List.of(detail), request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> handleMessageNotReadable(HttpMessageNotReadableException exception, HttpServletRequest request) {
+        String detail = exception.getMostSpecificCause() == null
+                ? "Cuerpo de solicitud invalido."
+                : exception.getMostSpecificCause().getMessage();
+        return build(HttpStatus.BAD_REQUEST, "La solicitud tiene un cuerpo invalido.", List.of(detail), request);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
