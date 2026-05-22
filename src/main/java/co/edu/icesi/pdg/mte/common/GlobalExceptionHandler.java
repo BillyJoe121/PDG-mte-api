@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
@@ -60,6 +61,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ApiError> handleNoResource(NoResourceFoundException exception, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, "Recurso no encontrado.", List.of(exception.getMessage()), request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "Metodo HTTP no soportado.", List.of(exception.getMessage()), request);
     }
 
     @ExceptionHandler(AuthorizationDeniedException.class)

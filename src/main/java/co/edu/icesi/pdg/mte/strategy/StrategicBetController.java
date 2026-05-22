@@ -34,4 +34,13 @@ public class StrategicBetController {
     StrategyDtos.StrategicBetResponse get(@PathVariable Long id, @RequestParam(required = false) String period) {
         return strategyService.getStrategicBet(id, period);
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA')")
+    StrategyDtos.StrategicBetResponse update(
+            @PathVariable Long id,
+            @Valid @RequestBody StrategyDtos.StrategicBetRequest request
+    ) {
+        return strategyService.updateStrategicBet(id, request);
+    }
 }

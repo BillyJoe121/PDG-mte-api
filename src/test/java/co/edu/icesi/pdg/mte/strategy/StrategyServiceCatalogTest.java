@@ -75,6 +75,26 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void updatesStrategicBetWhenValid() {
+        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
+        when(strategicBetRepository.findByNameIgnoreCase("Apuesta editada")).thenReturn(Optional.empty());
+        when(strategicBetRepository.save(any(StrategicBet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        var response = service.updateStrategicBet(1L, new StrategyDtos.StrategicBetRequest(
+                "Apuesta editada",
+                "Descripcion editada",
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 12, 1)
+        ));
+
+        assertThat(response.name()).isEqualTo("Apuesta editada");
+        assertThat(response.description()).isEqualTo("Descripcion editada");
+        assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 2, 1));
+        verify(auditService).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE), eq("STRATEGIC_BET"), eq(1L), contains("actualizada"), any(), any());
+    }
+
+    @Test
     void createsGoalAndAttachesAndDetachesPeriods() {
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
         when(goalRepository.save(any(InstitutionalGoal.class))).thenAnswer(invocation -> {
@@ -100,6 +120,29 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         assertThat(created.measurementUnitId()).isEqualTo(1L);
         assertThat(attached.periods()).hasSize(1);
         assertThat(detached.periods()).isEmpty();
+    }
+
+    @Test
+    void updatesGoalWhenValid() {
+        when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
+        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
+        when(goalRepository.save(any(InstitutionalGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        var response = service.updateGoal(1L, new StrategyDtos.GoalRequest(
+                "Meta editada",
+                "Descripcion editada",
+                "Indicador editado",
+                BigDecimal.valueOf(90),
+                1L,
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 12, 1)
+        ));
+
+        assertThat(response.name()).isEqualTo("Meta editada");
+        assertThat(response.referenceIndicator()).isEqualTo("Indicador editado");
+        assertThat(response.expectedValue()).isEqualByComparingTo("90");
+        verify(auditService).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE), eq("GOAL"), eq(1L), contains("actualizada"), any(), any());
     }
 
     @Test

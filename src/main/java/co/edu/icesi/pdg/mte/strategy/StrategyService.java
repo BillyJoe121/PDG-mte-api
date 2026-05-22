@@ -146,6 +146,29 @@ public class StrategyService {
         return Mapper.toResponse(bet, executionSummaryService.forBet(id, period));
     }
 
+    public StrategyDtos.StrategicBetResponse updateStrategicBet(Long id, StrategyDtos.StrategicBetRequest request) {
+        StrategicBet bet = findStrategicBet(id);
+        StrategyDtos.StrategicBetResponse before = Mapper.toResponse(bet, executionSummaryService.forBet(id, null));
+        java.time.LocalDate startDate = request.startDate() == null ? bet.getStartDate() : request.startDate();
+        java.time.LocalDate endDate = request.endDate() == null ? bet.getEndDate() : request.endDate();
+        validateDateRange(startDate, endDate);
+        var existing = strategicBetRepository.findByNameIgnoreCase(request.name().trim());
+        if (existing.isPresent() && !existing.get().getId().equals(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe una apuesta estrategica con ese nombre.");
+        }
+        bet.setName(request.name().trim());
+        bet.setDescription(request.description().trim());
+        bet.setStartDate(startDate);
+        bet.setEndDate(endDate);
+        bet.setWorld(request.worldId() == null ? bet.getWorld() : findWorld(request.worldId()));
+        StrategyDtos.StrategicBetResponse response = Mapper.toResponse(
+                strategicBetRepository.save(bet),
+                executionSummaryService.forBet(id, null)
+        );
+        auditService.record(AuditAction.UPDATE, "STRATEGIC_BET", response.id(), "Apuesta estrategica actualizada: " + response.name(), before, response);
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public List<StrategyDtos.GoalResponse> listGoals(String period) {
         List<InstitutionalGoal> goals = goalRepository.findAll();
@@ -167,7 +190,7 @@ public class StrategyService {
         goal.setExpectedValue(request.expectedValue());
         goal.setStartDate(request.startDate() == null ? java.time.LocalDate.now() : request.startDate());
         goal.setEndDate(request.endDate() == null ? goal.getStartDate().plusYears(1) : request.endDate());
-        goal.setWorld(request.worldId() == null ? null : findWorld(request.worldId()));
+        goal.setWorld(request.worldId() == null ? goal.getWorld() : findWorld(request.worldId()));
         goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
         StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
         auditService.record(AuditAction.CREATE, "GOAL", response.id(), "Meta institucional creada: " + response.name(), null, response);
@@ -177,6 +200,28 @@ public class StrategyService {
     @Transactional(readOnly = true)
     public StrategyDtos.GoalResponse getGoal(Long id, String period) {
         return Mapper.toResponse(findGoal(id), executionSummaryService.forGoal(id, period));
+    }
+
+    public StrategyDtos.GoalResponse updateGoal(Long id, StrategyDtos.GoalRequest request) {
+        InstitutionalGoal goal = findGoal(id);
+        StrategyDtos.GoalResponse before = Mapper.toResponse(goal, executionSummaryService.forGoal(id, null));
+        java.time.LocalDate startDate = request.startDate() == null ? goal.getStartDate() : request.startDate();
+        java.time.LocalDate endDate = request.endDate() == null ? goal.getEndDate() : request.endDate();
+        validateDateRange(startDate, endDate);
+        goal.setName(request.name().trim());
+        goal.setDescription(request.description().trim());
+        goal.setReferenceIndicator(request.referenceIndicator());
+        goal.setExpectedValue(request.expectedValue());
+        goal.setStartDate(startDate);
+        goal.setEndDate(endDate);
+        goal.setWorld(request.worldId() == null ? null : findWorld(request.worldId()));
+        goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
+        StrategyDtos.GoalResponse response = Mapper.toResponse(
+                goalRepository.save(goal),
+                executionSummaryService.forGoal(id, null)
+        );
+        auditService.record(AuditAction.UPDATE, "GOAL", response.id(), "Meta institucional actualizada: " + response.name(), before, response);
+        return response;
     }
 
     public StrategyDtos.GoalResponse attachGoalPeriod(Long goalId, Long periodId) {

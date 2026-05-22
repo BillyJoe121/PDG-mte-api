@@ -35,6 +35,15 @@ public class GoalController {
         return strategyService.getGoal(id, period);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA')")
+    StrategyDtos.GoalResponse update(
+            @PathVariable Long id,
+            @Valid @RequestBody StrategyDtos.GoalRequest request
+    ) {
+        return strategyService.updateGoal(id, request);
+    }
+
     @PostMapping("/{id}/periods/{periodId}")
     @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA')")
     StrategyDtos.GoalResponse attachPeriod(@PathVariable Long id, @PathVariable Long periodId) {
