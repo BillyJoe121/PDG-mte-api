@@ -173,6 +173,30 @@ class RoleAccessE2ETest {
     }
 
     @Test
+    void directorCanUpdateStrategicBet() throws Exception {
+        Long betId = postJson("/api/v1/strategic-bets", """
+                {
+                  "name": "Apuesta director editable %d",
+                  "description": "Decision directiva",
+                  "startDate": "2026-01-01",
+                  "endDate": "2026-12-31"
+                }
+                """.formatted(SEQUENCE.incrementAndGet()), "director-token", 201).get("id").asLong();
+
+        JsonNode updated = putJson("/api/v1/strategic-bets/" + betId, """
+                {
+                  "name": "Apuesta director editada %d",
+                  "description": "Decision directiva actualizada",
+                  "startDate": "2026-01-01",
+                  "endDate": "2026-12-31"
+                }
+                """.formatted(SEQUENCE.incrementAndGet()), "director-token", 200);
+
+        assertThat(updated.get("id").asLong()).isEqualTo(betId);
+        assertThat(updated.get("description").asText()).isEqualTo("Decision directiva actualizada");
+    }
+
+    @Test
     void adminCanManageCatalogsAndAuditLogs() throws Exception {
         JsonNode unit = postJson("/api/v1/measurement-units", """
                 {"name": "Unidad admin %d", "type": "NUMERICA", "description": "Administrada"}
@@ -301,6 +325,18 @@ class RoleAccessE2ETest {
 
     private JsonNode patchJson(String url, String payload, String token, int status) throws Exception {
         String body = mockMvc.perform(patch(url)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().is(status))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
+    }
+
+    private JsonNode putJson(String url, String payload, String token, int status) throws Exception {
+        String body = mockMvc.perform(put(url)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
