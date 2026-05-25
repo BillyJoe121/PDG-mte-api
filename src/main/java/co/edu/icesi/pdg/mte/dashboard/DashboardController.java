@@ -43,4 +43,9 @@ public class DashboardController {
     public List<DashboardDtos.StrategicBetExecutionResponse> strategicBets(@RequestParam(required = false) String period) {
         return dashboardService.strategicBets(period);
     }
+
+    @GetMapping("/goals/summary")
+    public List<DashboardDtos.GoalExecutionResponse> goals(@RequestParam(required = false) String period) {
+        return dashboardService.goals(period);
+    }
 }

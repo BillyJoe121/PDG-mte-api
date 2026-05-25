@@ -15,9 +15,12 @@ public final class DashboardDtos {
             long archivedProjects,
             long objectivesInFollowUp,
             long lowCompletionObjectives,
+            long completedObjectives,
+            long objectivesAbove50,
+            long objectivesBetween0And50,
+            long objectivesAtZero,
             long completedKeyResults,
             long inProgressKeyResults,
-            BigDecimal averageObjectiveCoverage,
             BigDecimal averageKeyResultCoverage
     ) {
     }
@@ -40,9 +43,12 @@ public final class DashboardDtos {
             long activeProjects,
             long completedProjects,
             long objectives,
+            long completedObjectives,
+            long objectivesAbove50,
+            long objectivesBetween0And50,
+            long objectivesAtZero,
             long completedKeyResults,
-            long inProgressKeyResults,
-            BigDecimal averageObjectiveCoverage
+            long inProgressKeyResults
     ) {
     }
 
@@ -50,10 +56,27 @@ public final class DashboardDtos {
             Long strategicBetId,
             String strategicBetName,
             long objectives,
+            long completedObjectives,
+            long objectivesAbove50,
+            long objectivesBetween0And50,
+            long objectivesAtZero,
             long keyResults,
             long completedProjects,
-            long inProgressProjects,
-            BigDecimal averageObjectiveCoverage
+            long inProgressProjects
+    ) {
+    }
+
+    public record GoalExecutionResponse(
+            Long goalId,
+            String goalName,
+            long objectives,
+            long completedObjectives,
+            long objectivesAbove50,
+            long objectivesBetween0And50,
+            long objectivesAtZero,
+            long keyResults,
+            long completedProjects,
+            long inProgressProjects
     ) {
     }
 }

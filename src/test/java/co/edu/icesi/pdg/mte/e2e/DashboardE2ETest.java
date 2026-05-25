@@ -53,6 +53,7 @@ class DashboardE2ETest {
         JsonNode krChart = doGet("/api/v1/dashboard/key-results/by-progress?period=2026-1", 200);
         JsonNode departments = doGet("/api/v1/dashboard/departments/summary?period=2026-1", 200);
         JsonNode bets = doGet("/api/v1/dashboard/strategic-bets/summary?period=2026-1", 200);
+        JsonNode goals = doGet("/api/v1/dashboard/goals/summary?period=2026-1", 200);
         JsonNode contributionChain = doGet("/api/v1/projects/" + projectId + "/contribution-chain", 200);
         JsonNode generalReport = doGet("/api/v1/reports/general?period=2026-1", 200);
         JsonNode departmentsReport = doGet("/api/v1/reports/departments?period=2026-1", 200);
@@ -73,6 +74,14 @@ class DashboardE2ETest {
                 .contains(departmentId);
         assertThat(bets.findValues("strategicBetId").stream().map(JsonNode::asLong))
                 .contains(betId);
+        assertThat(bets.findValues("averageObjectiveCoverage")).isEmpty();
+        assertThat(bets.findValues("completedObjectives").stream().map(JsonNode::asLong))
+                .anyMatch(value -> value >= 1);
+        assertThat(goals.findValues("goalId").stream().map(JsonNode::asLong))
+                .contains(goalId);
+        assertThat(goals.findValues("averageObjectiveCoverage")).isEmpty();
+        assertThat(goals.findValues("completedObjectives").stream().map(JsonNode::asLong))
+                .anyMatch(value -> value >= 1);
         assertThat(contributionChain.get("impacts").get(0).get("appliedContribution").decimalValue())
                 .isEqualByComparingTo("100.00");
         assertThat(generalReport.get("totalProjects").asLong()).isGreaterThanOrEqualTo(1);
@@ -90,6 +99,7 @@ class DashboardE2ETest {
         doGet("/api/v1/dashboard/key-results/by-progress?period=abc", 400);
         doGet("/api/v1/dashboard/departments/summary?period=2026-Q5", 400);
         doGet("/api/v1/dashboard/strategic-bets/summary?period=26-1", 400);
+        doGet("/api/v1/dashboard/goals/summary?period=26-1", 400);
     }
 
     @Test

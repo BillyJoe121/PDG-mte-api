@@ -12,6 +12,8 @@ import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
+import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
+import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
@@ -45,6 +47,7 @@ public class DashboardService {
     private final ObjectiveRepository objectiveRepository;
     private final DepartmentRepository departmentRepository;
     private final StrategicBetRepository strategicBetRepository;
+    private final InstitutionalGoalRepository goalRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final AcademicPeriodRepository periodRepository;
 
@@ -53,6 +56,7 @@ public class DashboardService {
             ObjectiveRepository objectiveRepository,
             DepartmentRepository departmentRepository,
             StrategicBetRepository strategicBetRepository,
+            InstitutionalGoalRepository goalRepository,
             ProjectKeyResultLinkRepository linkRepository,
             AcademicPeriodRepository periodRepository
     ) {
@@ -60,6 +64,7 @@ public class DashboardService {
         this.objectiveRepository = objectiveRepository;
         this.departmentRepository = departmentRepository;
         this.strategicBetRepository = strategicBetRepository;
+        this.goalRepository = goalRepository;
         this.linkRepository = linkRepository;
         this.periodRepository = periodRepository;
     }
@@ -69,6 +74,7 @@ public class DashboardService {
         List<Project> projects = filteredProjects(normalizedPeriod);
         List<Objective> objectives = filteredObjectives(normalizedPeriod);
         List<KeyResult> keyResults = keyResultsFrom(objectives);
+        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
 
         return new DashboardDtos.DashboardSummaryResponse(
                 normalizedPeriod,
@@ -79,9 +85,12 @@ public class DashboardService {
                 countProjects(projects, ProjectStatus.ARCHIVADO),
                 objectives.stream().filter(objective -> objective.getStatus() == ObjectiveStatus.ACTIVO).count(),
                 objectives.stream().filter(objective -> objective.completionPercentage().compareTo(AT_RISK) < 0).count(),
+                objectiveBuckets.completed(),
+                objectiveBuckets.above50(),
+                objectiveBuckets.between0And50(),
+                objectiveBuckets.atZero(),
                 keyResults.stream().filter(this::isCompleted).count(),
                 keyResults.stream().filter(keyResult -> !isCompleted(keyResult)).count(),
-                averageObjectiveCoverage(objectives),
                 averageKeyResultCoverage(keyResults)
         );
     }
@@ -134,6 +143,17 @@ public class DashboardService {
                 .toList();
     }
 
+    public List<DashboardDtos.GoalExecutionResponse> goals(String period) {
+        String normalizedPeriod = resolvePeriod(period);
+        List<Objective> objectives = filteredObjectives(normalizedPeriod);
+
+        return goalRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(InstitutionalGoal::getName))
+                .map(goal -> goalSummary(goal, objectives, normalizedPeriod))
+                .toList();
+    }
+
     private DashboardDtos.DepartmentExecutionResponse departmentSummary(
             Department department,
             List<Project> projects,
@@ -147,6 +167,7 @@ public class DashboardService {
                 .filter(objective -> department.getId().equals(objective.getDepartment().getId()))
                 .toList();
         List<KeyResult> keyResults = keyResultsFrom(departmentObjectives);
+        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(departmentObjectives);
 
         return new DashboardDtos.DepartmentExecutionResponse(
                 department.getId(),
@@ -154,9 +175,12 @@ public class DashboardService {
                 countProjects(departmentProjects, ProjectStatus.ACTIVO),
                 countProjects(departmentProjects, ProjectStatus.FINALIZADO),
                 departmentObjectives.size(),
+                objectiveBuckets.completed(),
+                objectiveBuckets.above50(),
+                objectiveBuckets.between0And50(),
+                objectiveBuckets.atZero(),
                 keyResults.stream().filter(this::isCompleted).count(),
-                keyResults.stream().filter(keyResult -> !isCompleted(keyResult)).count(),
-                averageObjectiveCoverage(departmentObjectives)
+                keyResults.stream().filter(keyResult -> !isCompleted(keyResult)).count()
         );
     }
 
@@ -168,7 +192,49 @@ public class DashboardService {
         List<Objective> betObjectives = objectives.stream()
                 .filter(objective -> bet.getId().equals(objective.getStrategicBet().getId()))
                 .toList();
-        List<KeyResult> keyResults = keyResultsFrom(betObjectives);
+        ExecutionBreakdown breakdown = executionBreakdown(betObjectives, period);
+
+        return new DashboardDtos.StrategicBetExecutionResponse(
+                bet.getId(),
+                bet.getName(),
+                betObjectives.size(),
+                breakdown.objectives().completed(),
+                breakdown.objectives().above50(),
+                breakdown.objectives().between0And50(),
+                breakdown.objectives().atZero(),
+                breakdown.keyResults(),
+                breakdown.completedProjects(),
+                breakdown.inProgressProjects()
+        );
+    }
+
+    private DashboardDtos.GoalExecutionResponse goalSummary(
+            InstitutionalGoal goal,
+            List<Objective> objectives,
+            String period
+    ) {
+        List<Objective> goalObjectives = objectives.stream()
+                .filter(objective -> goal.getId().equals(objective.getGoal().getId()))
+                .toList();
+        ExecutionBreakdown breakdown = executionBreakdown(goalObjectives, period);
+
+        return new DashboardDtos.GoalExecutionResponse(
+                goal.getId(),
+                goal.getName(),
+                goalObjectives.size(),
+                breakdown.objectives().completed(),
+                breakdown.objectives().above50(),
+                breakdown.objectives().between0And50(),
+                breakdown.objectives().atZero(),
+                breakdown.keyResults(),
+                breakdown.completedProjects(),
+                breakdown.inProgressProjects()
+        );
+    }
+
+    private ExecutionBreakdown executionBreakdown(List<Objective> objectives, String period) {
+        List<KeyResult> keyResults = keyResultsFrom(objectives);
+        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
         Set<Long> completedProjects = new LinkedHashSet<>();
         Set<Long> inProgressProjects = new LinkedHashSet<>();
 
@@ -187,14 +253,11 @@ public class DashboardService {
             }
         }
 
-        return new DashboardDtos.StrategicBetExecutionResponse(
-                bet.getId(),
-                bet.getName(),
-                betObjectives.size(),
+        return new ExecutionBreakdown(
+                objectiveBuckets,
                 keyResults.size(),
                 completedProjects.size(),
-                inProgressProjects.size(),
-                averageObjectiveCoverage(betObjectives)
+                inProgressProjects.size()
         );
     }
 
@@ -309,14 +372,26 @@ public class DashboardService {
         return keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
     }
 
-    private BigDecimal averageObjectiveCoverage(List<Objective> objectives) {
-        if (objectives.isEmpty()) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    private ObjectiveProgressBuckets objectiveProgressBuckets(List<Objective> objectives) {
+        long completed = 0;
+        long above50 = 0;
+        long between0And50 = 0;
+        long atZero = 0;
+
+        for (Objective objective : objectives) {
+            BigDecimal progress = objective.completionPercentage();
+            if (progress.compareTo(COMPLETED) >= 0) {
+                completed++;
+            } else if (progress.compareTo(BigDecimal.valueOf(50)) > 0) {
+                above50++;
+            } else if (progress.compareTo(BigDecimal.ZERO) > 0) {
+                between0And50++;
+            } else {
+                atZero++;
+            }
         }
-        BigDecimal total = objectives.stream()
-                .map(Objective::completionPercentage)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.divide(BigDecimal.valueOf(objectives.size()), 2, RoundingMode.HALF_UP);
+
+        return new ObjectiveProgressBuckets(completed, above50, between0And50, atZero);
     }
 
     private BigDecimal averageKeyResultCoverage(List<KeyResult> keyResults) {
@@ -330,5 +405,16 @@ public class DashboardService {
     }
 
     private record PeriodRange(int startIndex, int endIndex) {
+    }
+
+    private record ObjectiveProgressBuckets(long completed, long above50, long between0And50, long atZero) {
+    }
+
+    private record ExecutionBreakdown(
+            ObjectiveProgressBuckets objectives,
+            long keyResults,
+            long completedProjects,
+            long inProgressProjects
+    ) {
     }
 }

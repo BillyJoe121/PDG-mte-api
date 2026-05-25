@@ -14,6 +14,7 @@ import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
+import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
@@ -46,6 +47,8 @@ class DashboardServiceTest {
     @Mock
     private StrategicBetRepository strategicBetRepository;
     @Mock
+    private InstitutionalGoalRepository goalRepository;
+    @Mock
     private ProjectKeyResultLinkRepository linkRepository;
     @Mock
     private AcademicPeriodRepository periodRepository;
@@ -53,6 +56,7 @@ class DashboardServiceTest {
     private DashboardService service;
     private Department department;
     private StrategicBet bet;
+    private InstitutionalGoal goal;
     private Objective objective;
     private KeyResult lowKr;
     private KeyResult atRiskKr;
@@ -61,12 +65,12 @@ class DashboardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DashboardService(projectRepository, objectiveRepository, departmentRepository, strategicBetRepository, linkRepository, periodRepository);
+        service = new DashboardService(projectRepository, objectiveRepository, departmentRepository, strategicBetRepository, goalRepository, linkRepository, periodRepository);
         MeasurementUnit unit = TestFixtures.unit(1L);
         AcademicPeriod period = TestFixtures.period(1L);
         department = TestFixtures.department(1L);
         bet = TestFixtures.strategicBet(1L);
-        InstitutionalGoal goal = TestFixtures.goal(1L, unit);
+        goal = TestFixtures.goal(1L, unit);
         objective = TestFixtures.objective(1L, unit, period, department, goal, bet);
         objective.getKeyResults().clear();
         lowKr = keyResult(1L, unit, BigDecimal.valueOf(20));
@@ -98,6 +102,7 @@ class DashboardServiceTest {
         when(objectiveRepository.findAll()).thenReturn(List.of(objective, closedLowObjective));
         when(departmentRepository.findAll()).thenReturn(List.of(department));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
+        when(goalRepository.findAll()).thenReturn(List.of(goal));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link(lowKr, active)));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(2L)).thenReturn(List.of(link(atRiskKr, completed), link(atRiskKr, active)));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(3L)).thenReturn(List.of(link(onTrackKr, null)));
@@ -112,6 +117,7 @@ class DashboardServiceTest {
         var byProgress = service.keyResultsByProgress("2026-1");
         var departments = service.departments("2026-1");
         var bets = service.strategicBets("2026-1");
+        var goals = service.goals("2026-1");
         var activePeriodSummary = service.summary(null);
 
         assertThat(summary.activeProjects()).isEqualTo(2);
@@ -123,7 +129,10 @@ class DashboardServiceTest {
         assertThat(summary.inProgressKeyResults()).isEqualTo(4);
         assertThat(summary.objectivesInFollowUp()).isEqualTo(1);
         assertThat(summary.lowCompletionObjectives()).isEqualTo(1);
-        assertThat(summary.averageObjectiveCoverage()).isEqualByComparingTo("30.00");
+        assertThat(summary.completedObjectives()).isZero();
+        assertThat(summary.objectivesAbove50()).isEqualTo(1);
+        assertThat(summary.objectivesBetween0And50()).isZero();
+        assertThat(summary.objectivesAtZero()).isEqualTo(1);
         assertThat(summary.averageKeyResultCoverage()).isEqualByComparingTo("48.00");
         assertThat(activePeriodSummary.period()).isEqualTo("2026-1");
         assertThat(byStatus).extracting("status").containsExactly("BORRADOR", "ACTIVO", "FINALIZADO", "SUSPENDIDO", "ARCHIVADO");
@@ -133,11 +142,18 @@ class DashboardServiceTest {
         assertThat(byProgress).extracting("count").containsExactly(1L, 1L, 1L, 2L);
         assertThat(departments.get(0).activeProjects()).isEqualTo(2);
         assertThat(departments.get(0).completedProjects()).isEqualTo(1);
-        assertThat(departments.get(0).averageObjectiveCoverage()).isEqualByComparingTo("30.00");
+        assertThat(departments.get(0).objectivesAbove50()).isEqualTo(1);
+        assertThat(departments.get(0).objectivesAtZero()).isEqualTo(1);
         assertThat(bets.get(0).objectives()).isEqualTo(2);
+        assertThat(bets.get(0).objectivesAbove50()).isEqualTo(1);
+        assertThat(bets.get(0).objectivesAtZero()).isEqualTo(1);
         assertThat(bets.get(0).keyResults()).isEqualTo(5);
         assertThat(bets.get(0).completedProjects()).isEqualTo(1);
         assertThat(bets.get(0).inProgressProjects()).isEqualTo(1);
+        assertThat(goals.get(0).objectives()).isEqualTo(2);
+        assertThat(goals.get(0).objectivesAbove50()).isEqualTo(1);
+        assertThat(goals.get(0).objectivesAtZero()).isEqualTo(1);
+        assertThat(goals.get(0).keyResults()).isEqualTo(5);
     }
 
     @Test
@@ -146,13 +162,15 @@ class DashboardServiceTest {
         when(objectiveRepository.findAll()).thenReturn(List.of());
         when(departmentRepository.findAll()).thenReturn(List.of());
         when(strategicBetRepository.findAll()).thenReturn(List.of());
+        when(goalRepository.findAll()).thenReturn(List.of());
 
-        assertThat(service.summary(null).averageObjectiveCoverage()).isEqualByComparingTo("0.00");
+        assertThat(service.summary(null).objectivesAtZero()).isZero();
         assertThat(service.summary("   ").averageKeyResultCoverage()).isEqualByComparingTo("0.00");
         assertThat(service.projectsByStatus(null)).extracting("count").containsExactly(0L, 0L, 0L, 0L, 0L);
         assertThat(service.keyResultsByProgress(null)).extracting("count").containsExactly(0L, 0L, 0L, 0L);
         assertThat(service.departments(null)).isEmpty();
         assertThat(service.strategicBets(null)).isEmpty();
+        assertThat(service.goals(null)).isEmpty();
     }
 
     @Test
@@ -167,6 +185,8 @@ class DashboardServiceTest {
         assertThatThrownBy(() -> service.departments("2026-Q5"))
                 .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> service.strategicBets("26-1"))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.goals("26-1"))
                 .isInstanceOf(BusinessException.class);
     }
 

@@ -14,5 +14,7 @@ public interface ProjectKeyResultLinkRepository extends JpaRepository<ProjectKey
 
     List<ProjectKeyResultLink> findByProjectIdAndActiveTrueOrderByIdAsc(Long projectId);
 
+    boolean existsByProjectIdAndActiveTrue(Long projectId);
+
     boolean existsByProjectIdAndKeyResultIdAndActiveTrue(Long projectId, Long keyResultId);
 }
