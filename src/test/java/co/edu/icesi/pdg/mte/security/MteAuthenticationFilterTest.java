@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class MteAuthenticationFilterTest {
+    private final AccessControlService accessControlService = new AccessControlService();
 
     @AfterEach
     void tearDown() {
@@ -24,7 +25,8 @@ class MteAuthenticationFilterTest {
     void shouldNotFilterPublicRoutesAndOptionsRequests() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
                 new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class)
+                mock(ExternalAuthClient.class),
+                accessControlService
         );
 
         assertThat(filter.shouldNotFilter(request("GET", "/api/v1/health"))).isTrue();
@@ -39,7 +41,8 @@ class MteAuthenticationFilterTest {
     void mockModeAuthenticatesWithDemoContext() throws Exception {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
                 new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class)
+                mock(ExternalAuthClient.class),
+                accessControlService
         );
         FilterChain chain = mock(FilterChain.class);
 
@@ -47,6 +50,45 @@ class MteAuthenticationFilterTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
         verify(chain).doFilter(any(), any());
+    }
+
+    @Test
+    void mockModeMapsFrontendMockTokenRolesToSpringAuthorities() throws Exception {
+        MteAuthenticationFilter filter = new MteAuthenticationFilter(
+                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                mock(ExternalAuthClient.class),
+                accessControlService
+        );
+        MockHttpServletRequest request = request("PATCH", "/api/v1/objectives/1");
+        request.addHeader("Authorization", "Bearer mock-token-jefe");
+
+        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting(Object::toString)
+                .containsExactly("ROLE_JEFE_DPTO");
+    }
+
+    @Test
+    void mockModeMapsNamedDemoUsersToRealRolesAndContext() throws Exception {
+        MteAuthenticationFilter filter = new MteAuthenticationFilter(
+                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                mock(ExternalAuthClient.class),
+                accessControlService
+        );
+        MockHttpServletRequest request = request("PUT", "/api/v1/strategic-bets/1");
+        request.addHeader("Authorization", "Bearer mock-token-ha");
+
+        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(authentication.getAuthorities())
+                .extracting(Object::toString)
+                .containsExactly("ROLE_DIRECTOR_ESCUELA");
+        ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
+        assertThat(context.username()).isEqualTo("ha");
+        assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
+        assertThat(context.departmentName()).isEqualTo("Direcci\u00f3n TDI");
     }
 
     @Test
@@ -64,7 +106,8 @@ class MteAuthenticationFilterTest {
         ));
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
                 new AuthProperties("external", "http://localhost", "/auth/me"),
-                client
+                client,
+                accessControlService
         );
         MockHttpServletRequest request = request("GET", "/api/v1/objectives");
         request.addHeader("Authorization", "Bearer token");
@@ -79,7 +122,8 @@ class MteAuthenticationFilterTest {
     void externalModeRejectsMissingBearerToken() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
                 new AuthProperties("external", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class)
+                mock(ExternalAuthClient.class),
+                accessControlService
         );
 
         assertThatThrownBy(() -> filter.doFilterInternal(
@@ -93,7 +137,8 @@ class MteAuthenticationFilterTest {
     void externalModeRejectsMalformedAuthorizationHeader() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
                 new AuthProperties("external", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class)
+                mock(ExternalAuthClient.class),
+                accessControlService
         );
         MockHttpServletRequest request = request("GET", "/api/v1/objectives");
         request.addHeader("Authorization", "Token nope");

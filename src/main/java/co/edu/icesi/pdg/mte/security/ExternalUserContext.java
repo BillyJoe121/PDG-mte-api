@@ -21,7 +21,7 @@ public record ExternalUserContext(
                 List.of("MTE_ADMIN", "MTE_WRITE", "MTE_READ"),
                 1L,
                 "Usuario Demo",
-                "Departamento de TIC"
+                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
         );
     }
 }

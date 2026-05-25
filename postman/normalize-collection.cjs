@@ -44,7 +44,7 @@ const bodies = [
   [/\/api\/v1\/measurement-units$/, { name: "Unidad Postman {{$timestamp}}", type: "NUMERICA", description: "Creada por Portman/Newman" }],
   [/\/api\/v1\/measurement-units\/:id$/, { name: "Porcentaje", type: "PORCENTAJE", description: "Avance o cumplimiento expresado de 0 a 100." }],
   [/\/api\/v1\/departments$/, { name: "Departamento Postman {{$timestamp}}", schoolId: 1, description: "Creado por Portman/Newman", externalDepartmentId: 9001 }],
-  [/\/api\/v1\/departments\/:id$/, { name: "Departamento de TIC", schoolId: 1, description: "Departamento base actualizado por Postman/Newman", externalDepartmentId: 1 }],
+  [/\/api\/v1\/departments\/:id$/, { name: "Departamento de Computación y Sistemas inteligentes.", schoolId: 1, description: "Departamento base actualizado por Postman/Newman", externalDepartmentId: 1 }],
   [/\/api\/v1\/academic-periods$/, { name: "2027-{{$timestamp}}", startDate: "2027-01-15", endDate: "2027-06-30", status: "PLANIFICACION" }],
   [/\/api\/v1\/academic-periods\/:id$/, { name: "2026-1", startDate: "2026-01-15", endDate: "2026-06-30", status: "ACTIVO" }],
   [/\/api\/v1\/measurement-units\/:id\/active$/, { active: true }],
@@ -92,6 +92,7 @@ const bodies = [
   [/\/api\/v1\/projects\/:id\/status$/, { status: "ACTIVO" }],
   [/\/api\/v1\/key-results\/:id$/, { name: "Aumentar adopcion LMS", description: "Actualizado por Portman/Newman", metric: "Porcentaje de cursos activos", baseValue: 40, targetValue: 85, currentValue: 65, measurementUnitId: 1, academicPeriodId: 1 }],
   [/\/api\/v1\/strategic-bets$/, { name: "Apuesta Postman {{$timestamp}}", description: "Creada por Portman/Newman", worldId: 1, startDate: "2026-01-01", endDate: "2026-12-31" }],
+  [/\/api\/v1\/strategic-bets\/:id$/, { name: "Apuesta Postman Actualizada", description: "Actualizada por Portman/Newman", worldId: 1, startDate: "2026-02-01", endDate: "2026-11-30" }],
   [/\/api\/v1\/project-key-result-links$/, { projectId: 1, keyResultId: 3, contributionWeight: 5, contributionType: "SOPORTE" }],
   [/\/api\/v1\/objectives$/, {
     name: "Objetivo Postman {{$timestamp}}",
@@ -106,7 +107,8 @@ const bodies = [
   }],
   [/\/api\/v1\/objectives\/:id\/key-results$/, { name: "KR adicional Postman {{$timestamp}}", description: "Creado por Portman/Newman", metric: "Porcentaje", baseValue: 0, targetValue: 100, currentValue: 20, measurementUnitId: 1, academicPeriodId: 1 }],
   [/\/api\/v1\/objectives\/:id$/, { name: "Optimizar servicios digitales academicos", description: "Actualizado por Portman/Newman" }],
-  [/\/api\/v1\/goals$/, { name: "Meta Postman {{$timestamp}}", description: "Creada por Portman/Newman", referenceIndicator: "Indicador Postman", expectedValue: 75, measurementUnitId: 1, worldId: 1, startDate: "2026-01-01", endDate: "2026-12-31" }]
+  [/\/api\/v1\/goals$/, { name: "Meta Postman {{$timestamp}}", description: "Creada por Portman/Newman", referenceIndicator: "Indicador Postman", expectedValue: 75, measurementUnitId: 1, worldId: 1, startDate: "2026-01-01", endDate: "2026-12-31" }],
+  [/\/api\/v1\/goals\/:id$/, { name: "Meta Postman Actualizada", description: "Actualizada por Portman/Newman", referenceIndicator: "Indicador actualizado", expectedValue: 90, measurementUnitId: 1, worldId: 1, startDate: "2026-02-01", endDate: "2026-11-30" }]
 ];
 
 function requestPath(item) {
@@ -196,6 +198,24 @@ function walk(items) {
   });
 }
 
+function hasRequest(method, rawUrl) {
+  let found = false;
+  function visit(items) {
+    (items || []).forEach(item => {
+      if (item.item) {
+        visit(item.item);
+        return;
+      }
+      const request = item.request || {};
+      if (request.method === method && request.url === rawUrl) {
+        found = true;
+      }
+    });
+  }
+  visit(collection.item);
+  return found;
+}
+
 function makeRequest(name, method, rawUrl, body, tests) {
   const request = {
     method,
@@ -224,6 +244,31 @@ function makeRequest(name, method, rawUrl, body, tests) {
 }
 
 walk(collection.item);
+
+const frontendContractRequests = [
+  makeRequest(
+    "PUT apuesta estrategica",
+    "PUT",
+    "{{baseUrl}}/api/v1/strategic-bets/1",
+    { name: "Apuesta Postman Actualizada", description: "Actualizada por Portman/Newman", worldId: 1, startDate: "2026-02-01", endDate: "2026-11-30" },
+    successTests("PUT /api/v1/strategic-bets/:id")
+  ),
+  makeRequest(
+    "PUT meta institucional",
+    "PUT",
+    "{{baseUrl}}/api/v1/goals/1",
+    { name: "Meta Postman Actualizada", description: "Actualizada por Portman/Newman", referenceIndicator: "Indicador actualizado", expectedValue: 90, measurementUnitId: 1, worldId: 1, startDate: "2026-02-01", endDate: "2026-11-30" },
+    successTests("PUT /api/v1/goals/:id")
+  )
+];
+
+const frontendContractItems = frontendContractRequests.filter(item => !hasRequest(item.request.method, item.request.url));
+if (frontendContractItems.length > 0) {
+  collection.item.push({
+    name: "Contratos requeridos por frontend",
+    item: frontendContractItems
+  });
+}
 
 collection.item.push({
   name: "Sad paths generados",

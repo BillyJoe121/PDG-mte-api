@@ -53,6 +53,12 @@ class AccessControlServiceTest {
     }
 
     @Test
+    void normalizesFrontendRoleAliases() {
+        assertThat(service.normalizeToList(List.of("administrador", "director", "jefe", "tutor")))
+                .containsExactly("ADMIN", "DIRECTOR_ESCUELA", "JEFE_DPTO", "PROFESOR");
+    }
+
+    @Test
     void nullAndUnknownRolesReceiveNoCapabilities() {
         var anonymous = service.capabilities(null);
         var unknown = service.capabilities(List.of("ROLE_INVITADO"));

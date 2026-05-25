@@ -925,7 +925,7 @@
             "method": "PUT",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Departamento de TIC\",\n  \"schoolId\": 1,\n  \"description\": \"Departamento base actualizado por Postman/Newman\",\n  \"externalDepartmentId\": 1\n}",
+              "raw": "{\n  \"name\": \"Departamento de Computación y Sistemas inteligentes.\",\n  \"schoolId\": 1,\n  \"description\": \"Departamento base actualizado por Postman/Newman\",\n  \"externalDepartmentId\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -10986,6 +10986,79 @@
       "name": "Variation Tests",
       "item": [],
       "event": []
+    },
+    {
+      "name": "Contratos requeridos por frontend",
+      "item": [
+        {
+          "name": "PUT apuesta estrategica",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/strategic-bets/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Apuesta Postman Actualizada\",\n  \"description\": \"Actualizada por Portman/Newman\",\n  \"worldId\": 1,\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PUT /api/v1/strategic-bets/:id responde 2xx', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "pm.test('No debe responder con 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT meta institucional",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/goals/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Meta Postman Actualizada\",\n  \"description\": \"Actualizada por Portman/Newman\",\n  \"referenceIndicator\": \"Indicador actualizado\",\n  \"expectedValue\": 90,\n  \"measurementUnitId\": 1,\n  \"worldId\": 1,\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PUT /api/v1/goals/:id responde 2xx', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+                  "pm.test('No debe responder con 5xx', function () { pm.expect(pm.response.code).to.be.below(500); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "Sad paths generados",

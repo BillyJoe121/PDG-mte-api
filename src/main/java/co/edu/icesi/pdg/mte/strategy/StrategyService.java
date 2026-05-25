@@ -214,7 +214,7 @@ public class StrategyService {
         goal.setExpectedValue(request.expectedValue());
         goal.setStartDate(startDate);
         goal.setEndDate(endDate);
-        goal.setWorld(request.worldId() == null ? null : findWorld(request.worldId()));
+        goal.setWorld(request.worldId() == null ? goal.getWorld() : findWorld(request.worldId()));
         goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
         StrategyDtos.GoalResponse response = Mapper.toResponse(
                 goalRepository.save(goal),

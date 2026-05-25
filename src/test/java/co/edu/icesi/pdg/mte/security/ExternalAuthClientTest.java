@@ -37,7 +37,7 @@ class ExternalAuthClientTest {
                     "id_profesor": 55,
                     "nombre": "Ana",
                     "apellido": "Ruiz",
-                    "departamento": "Departamento de TIC"
+                    "departamento": "Departamento de Computación y Sistemas inteligentes."
                   }
                 }
                 """);
@@ -49,7 +49,7 @@ class ExternalAuthClientTest {
         assertThat(context.permissions()).containsExactly("MTE_READ");
         assertThat(context.externalProfessorId()).isEqualTo(55L);
         assertThat(context.professorName()).isEqualTo("Ana Ruiz");
-        assertThat(context.departmentName()).isEqualTo("Departamento de TIC");
+        assertThat(context.departmentName()).isEqualTo("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
     }
 
     @Test

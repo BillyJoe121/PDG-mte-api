@@ -47,7 +47,7 @@ class AuthContextControllerTest {
                 List.of("MTE_READ"),
                 44L,
                 "Jefe Dpto",
-                "Departamento de TIC"
+                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
         );
         var authentication = new UsernamePasswordAuthenticationToken(context, null, List.of());
 
@@ -58,7 +58,7 @@ class AuthContextControllerTest {
         assertThat(response.user().permissions()).containsExactly("MTE_READ");
         assertThat(response.user().externalProfessorId()).isEqualTo(44L);
         assertThat(response.user().professorName()).isEqualTo("Jefe Dpto");
-        assertThat(response.user().departmentName()).isEqualTo("Departamento de TIC");
+        assertThat(response.user().departmentName()).isEqualTo("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
         assertThat(response.capabilities().get("linkProjectsToKeyResults")).isTrue();
         assertThat(response.capabilities().get("viewAuditLogs")).isFalse();
     }

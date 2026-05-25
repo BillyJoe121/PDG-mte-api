@@ -155,7 +155,7 @@ El perfil `supabase` vive en [application-supabase.yml](src/main/resources/appli
 - Desactiva H2 console.
 - Activa Flyway.
 - Usa `JPA_DDL_AUTO=validate`.
-- Habilita seeds por defecto para el primer arranque controlado.
+- Habilita seeds por defecto para el primer arranque controlado. Cada arranque con `MTE_SEED_ENABLED=true` limpia las tablas pobladas por seed y las repuebla.
 - Usa `MTE_AUTH_MODE=mock` por defecto para facilitar la primera validacion de base.
 
 Cuando la base ya este creada y el despliegue sea real, usa:
@@ -192,6 +192,8 @@ $env:MTE_SEED_ENABLED='true'
 $env:MTE_AUTH_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
+
+Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, objetivos, metas, apuestas, catalogos base y personas antes de poblar de nuevo. Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
 
 Para borrar esa base local:
 
@@ -259,8 +261,8 @@ Estrategia:
 
 ```text
 GET/POST/PUT/DELETE /api/v1/worlds
-GET/POST            /api/v1/strategic-bets
-GET/POST            /api/v1/goals
+GET/POST/PUT        /api/v1/strategic-bets
+GET/POST/PUT        /api/v1/goals
 POST/DELETE         /api/v1/goals/{id}/periods/{periodId}
 GET/POST/PATCH      /api/v1/objectives
 GET/POST            /api/v1/objectives/{id}/key-results

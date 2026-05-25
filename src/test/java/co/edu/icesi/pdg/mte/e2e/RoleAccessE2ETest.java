@@ -320,7 +320,7 @@ class RoleAccessE2ETest {
                 List.of("MTE_READ"),
                 99L,
                 "Usuario " + role,
-                "Departamento de TIC"
+                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
         );
     }
 

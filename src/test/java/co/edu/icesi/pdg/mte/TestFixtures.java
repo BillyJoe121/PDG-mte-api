@@ -32,7 +32,7 @@ public final class TestFixtures {
     public static Department department(Long id) {
         Department department = new Department();
         department.setId(id);
-        department.setName("Departamento de TIC");
+        department.setName("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
         department.setDescription("Departamento de prueba");
         department.setExternalDepartmentId(10L);
         department.setSchool(school(1L));

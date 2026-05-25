@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Optional;
 
 abstract class ProjectServiceTestSupport {
+    protected static final String COMPUTING_DEPARTMENT = "Departamento de Computaci\u00f3n y Sistemas inteligentes.";
+
     @Mock
     protected ProjectRepository projectRepository;
     @Mock
@@ -154,7 +156,7 @@ abstract class ProjectServiceTestSupport {
                         List.of(),
                         99L,
                         "Usuario Test",
-                        "Departamento de TIC"
+                        COMPUTING_DEPARTMENT
                 ),
                 null,
                 List.of()

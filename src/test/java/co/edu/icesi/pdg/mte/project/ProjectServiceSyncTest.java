@@ -25,7 +25,7 @@ class ProjectServiceSyncTest extends ProjectServiceTestSupport {
                 "Descripcion externa",
                 "EN_CURSO",
                 "extension",
-                "Departamento de TIC",
+                COMPUTING_DEPARTMENT,
                 "2026-1",
                 "2026-2",
                 LocalDate.of(2026, 1, 1),
@@ -50,7 +50,7 @@ class ProjectServiceSyncTest extends ProjectServiceTestSupport {
 
         when(trayectoriaProjectClient.fetchProjects("Bearer token")).thenReturn(List.of(imported, withoutId));
         when(projectRepository.findByExternalSourceAndExternalProjectId("TRAYECTORIA_DOCENTE", 77L)).thenReturn(Optional.empty());
-        when(departmentRepository.findByNameIgnoreCase("Departamento de TIC")).thenReturn(Optional.of(department));
+        when(departmentRepository.findByNameIgnoreCase(COMPUTING_DEPARTMENT)).thenReturn(Optional.of(department));
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = service.syncFromTrayectoria("Bearer token");
@@ -68,9 +68,9 @@ class ProjectServiceSyncTest extends ProjectServiceTestSupport {
         List<ExternalProjectPayload> payloads = List.of(
                 externalPayload(101L, "grado", null, null, null, null, null, "Proyecto grado"),
                 externalPayload(102L, "extension social", "FINALIZADO", "", "", "", "", ""),
-                externalPayload(103L, "macro", "SUSPENDIDO", "Departamento de TIC", "2026-1", "2026-2", "{}", "Proyecto macro"),
-                externalPayload(104L, "otro", "ARCHIVADO", "Departamento de TIC", "2026-1", "2026-2", "{}", "Proyecto otro"),
-                externalPayload(105L, null, "desconocido", "Departamento de TIC", "2026-1", "2026-2", "{}", "Proyecto default")
+                externalPayload(103L, "macro", "SUSPENDIDO", COMPUTING_DEPARTMENT, "2026-1", "2026-2", "{}", "Proyecto macro"),
+                externalPayload(104L, "otro", "ARCHIVADO", COMPUTING_DEPARTMENT, "2026-1", "2026-2", "{}", "Proyecto otro"),
+                externalPayload(105L, null, "desconocido", COMPUTING_DEPARTMENT, "2026-1", "2026-2", "{}", "Proyecto default")
         );
 
         when(trayectoriaProjectClient.fetchProjects(null)).thenReturn(payloads);
@@ -78,7 +78,7 @@ class ProjectServiceSyncTest extends ProjectServiceTestSupport {
             when(projectRepository.findByExternalSourceAndExternalProjectId("TRAYECTORIA_DOCENTE", payload.externalProjectId()))
                     .thenReturn(Optional.empty());
         }
-        when(departmentRepository.findByNameIgnoreCase("Departamento de TIC")).thenReturn(Optional.of(department));
+        when(departmentRepository.findByNameIgnoreCase(COMPUTING_DEPARTMENT)).thenReturn(Optional.of(department));
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {
             Project project = invocation.getArgument(0);
             if (project.getExternalProjectId().equals(104L)) {

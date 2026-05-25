@@ -45,7 +45,7 @@ class TrayectoriaProjectClientTest {
                     "descripcion": "Descripcion remota",
                     "estado": "EN_CURSO",
                     "tipo": "investigacion",
-                    "departamento": "Departamento de TIC",
+                    "departamento": "Departamento de Computación y Sistemas inteligentes.",
                     "periodo_inicio": "2026-1",
                     "periodo_fin": "2026-2",
                     "fecha_inicio": "2026-01-01",

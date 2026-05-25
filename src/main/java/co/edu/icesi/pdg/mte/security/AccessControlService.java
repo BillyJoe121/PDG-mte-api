@@ -90,7 +90,18 @@ public class AccessControlService {
                 .filter(role -> role != null && !role.isBlank())
                 .map(role -> role.trim().toUpperCase(Locale.ROOT))
                 .map(role -> role.startsWith("ROLE_") ? role.substring("ROLE_".length()) : role)
+                .map(this::normalizeAlias)
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+    }
+
+    private String normalizeAlias(String role) {
+        return switch (role) {
+            case "ADMINISTRADOR" -> ADMIN;
+            case "DIRECTOR" -> DIRECTOR_ESCUELA;
+            case "JEFE" -> JEFE_DPTO;
+            case "TUTOR" -> PROFESOR;
+            default -> role;
+        };
     }
 
     private boolean hasAny(Set<String> roles, String... allowed) {

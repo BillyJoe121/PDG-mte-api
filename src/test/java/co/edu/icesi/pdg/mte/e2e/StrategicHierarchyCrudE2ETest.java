@@ -13,6 +13,80 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
     @Test
+    void seedDataContainsRealStrategicBetsAndProjects() throws Exception {
+        JsonNode bets = doGet("/api/v1/strategic-bets");
+        JsonNode goals = doGet("/api/v1/goals");
+        JsonNode departments = doGet("/api/v1/departments");
+        JsonNode projects = doGet("/api/v1/projects");
+
+        assertThat(bets.findValues("name").stream().map(JsonNode::asText))
+                .contains(
+                        "Atraer, acompanar y formar",
+                        "Ofrecer experiencias formativas memorables e innovadoras",
+                        "Atraer a los mejores profesores y colaboradores",
+                        "Desarrollar alianzas estrategicas",
+                        "Adaptar y extender nuestra comunidad",
+                        "Ofrecer experiencias extraordinarias para nuestra comunidad"
+                );
+        assertThat(goals).hasSizeGreaterThanOrEqualTo(6);
+        assertThat(departments.findValues("name").stream().map(JsonNode::asText))
+                .contains(
+                        "Departamento de Computaci\u00f3n y Sistemas inteligentes.",
+                        "Departamento de Dise\u00f1o e Innovaci\u00f3n",
+                        "Departamento de Ciencias F\u00edsicas y Exactas."
+                );
+        assertThat(projects.findValues("name").stream().map(JsonNode::asText))
+                .contains(
+                        "Plataforma de gestion de la oferta de formacion posgradual de la Universidad Icesi",
+                        "VISTA: VISualizador y Tutor Interactivo e Inteligente de Estructuras Discretas",
+                        "Diseno de un modelo de anonimizacion de datos clinicos para investigacion en entornos hospitalarios"
+                );
+    }
+
+    @Test
+    void updateStrategicBetAndGoalExposeFrontendEditingContract() throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units");
+        Long worldId = firstId("/api/v1/worlds");
+        Long strategicBetId = createStrategicBet("Apuesta editable " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta editable " + SEQUENCE.incrementAndGet(), unitId);
+
+        JsonNode updatedBet = doPut("/api/v1/strategic-bets/" + strategicBetId, """
+                {
+                  "name": "Apuesta actualizada %d",
+                  "description": "Cambios guardados desde el formulario del frontend.",
+                  "worldId": %d,
+                  "startDate": "2026-02-01",
+                  "endDate": "2026-11-30"
+                }
+                """.formatted(SEQUENCE.incrementAndGet(), worldId), 200);
+
+        JsonNode updatedGoal = doPut("/api/v1/goals/" + goalId, """
+                {
+                  "name": "Meta actualizada %d",
+                  "description": "Datos macro editados desde el frontend.",
+                  "referenceIndicator": "Indicador actualizado",
+                  "expectedValue": 90,
+                  "measurementUnitId": %d,
+                  "startDate": "2026-02-01",
+                  "endDate": "2026-11-30"
+                }
+                """.formatted(SEQUENCE.incrementAndGet(), unitId), 200);
+
+        assertThat(updatedBet.get("id").asLong()).isEqualTo(strategicBetId);
+        assertThat(updatedBet.get("description").asText()).contains("frontend");
+        assertThat(updatedBet.get("worldId").asLong()).isEqualTo(worldId);
+        assertThat(updatedBet.get("startDate").asText()).isEqualTo("2026-02-01");
+        assertThat(updatedBet.get("endDate").asText()).isEqualTo("2026-11-30");
+
+        assertThat(updatedGoal.get("id").asLong()).isEqualTo(goalId);
+        assertThat(updatedGoal.get("referenceIndicator").asText()).isEqualTo("Indicador actualizado");
+        assertThat(updatedGoal.get("expectedValue").decimalValue()).isEqualByComparingTo("90.00");
+        assertThat(updatedGoal.get("measurementUnitId").asLong()).isEqualTo(unitId);
+        assertThat(updatedGoal.get("startDate").asText()).isEqualTo("2026-02-01");
+        assertThat(updatedGoal.get("endDate").asText()).isEqualTo("2026-11-30");
+    }
+
+    @Test
     void happyPathBuildsStrategicHierarchyAndManagesKeyResults() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
