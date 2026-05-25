@@ -9,7 +9,10 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 class ProjectResponseAssembler {
@@ -52,7 +55,17 @@ class ProjectResponseAssembler {
     }
 
     ProjectDtos.ProjectKeyResultLinkResponse toLinkResponse(ProjectKeyResultLink link) {
-        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
+        return toLinkResponse(link, totalWeightForKeyResult(link.getKeyResult().getId()));
+    }
+
+    List<ProjectDtos.ProjectKeyResultLinkResponse> toLinkResponses(List<ProjectKeyResultLink> links) {
+        Map<Long, BigDecimal> totalWeightsByKeyResult = totalWeightsByKeyResult(links);
+        return links.stream()
+                .map(link -> toLinkResponse(link, totalWeightsByKeyResult.getOrDefault(link.getKeyResult().getId(), BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP))))
+                .toList();
+    }
+
+    private ProjectDtos.ProjectKeyResultLinkResponse toLinkResponse(ProjectKeyResultLink link, BigDecimal totalWeight) {
         return new ProjectDtos.ProjectKeyResultLinkResponse(
                 link.getId(),
                 link.getProject() == null ? null : link.getProject().getId(),
@@ -74,16 +87,49 @@ class ProjectResponseAssembler {
                 ? List.of()
                 : linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(project.getId())
                 .stream()
-                .map(link -> new ProjectDtos.ProjectLinkedKeyResultResponse(
-                        link.getId(),
-                        link.getKeyResult().getId(),
-                        link.getKeyResult().getName(),
-                        link.getKeyResult().getDescription(),
-                        link.getContributionWeight(),
-                        link.getContributionType(),
-                        link.isActive()
+                .map(this::toLinkedKeyResultResponse)
+                .toList();
+        return toProjectResponse(base, linkedKeyResults);
+    }
+
+    List<ProjectDtos.ProjectResponse> toProjectResponses(List<Project> projects) {
+        List<Long> projectIds = projects.stream()
+                .map(Project::getId)
+                .filter(id -> id != null)
+                .toList();
+        Map<Long, List<ProjectDtos.ProjectLinkedKeyResultResponse>> linksByProjectId = projectIds.isEmpty()
+                ? Map.of()
+                : linkRepository.findActiveByProjectIds(projectIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        link -> link.getProject().getId(),
+                        LinkedHashMap::new,
+                        Collectors.mapping(this::toLinkedKeyResultResponse, Collectors.toList())
+                ));
+        return projects.stream()
+                .map(project -> toProjectResponse(
+                        Mapper.toResponse(project),
+                        project.getId() == null ? List.of() : linksByProjectId.getOrDefault(project.getId(), List.of())
                 ))
                 .toList();
+    }
+
+    private ProjectDtos.ProjectLinkedKeyResultResponse toLinkedKeyResultResponse(ProjectKeyResultLink link) {
+        return new ProjectDtos.ProjectLinkedKeyResultResponse(
+                link.getId(),
+                link.getKeyResult().getId(),
+                link.getKeyResult().getName(),
+                link.getKeyResult().getDescription(),
+                link.getContributionWeight(),
+                link.getContributionType(),
+                link.isActive()
+        );
+    }
+
+    private ProjectDtos.ProjectResponse toProjectResponse(
+            ProjectDtos.ProjectResponse base,
+            List<ProjectDtos.ProjectLinkedKeyResultResponse> linkedKeyResults
+    ) {
         return new ProjectDtos.ProjectResponse(
                 base.id(),
                 base.externalProjectId(),
@@ -134,11 +180,36 @@ class ProjectResponseAssembler {
     }
 
     private BigDecimal totalWeightForKeyResult(Long keyResultId) {
-        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
+        return totalWeightsByKeyResult(List.of(linkWithKeyResultId(keyResultId)))
+                .getOrDefault(keyResultId, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private Map<Long, BigDecimal> totalWeightsByKeyResult(List<ProjectKeyResultLink> links) {
+        List<Long> keyResultIds = links.stream()
+                .map(ProjectKeyResultLink::getKeyResult)
+                .filter(keyResult -> keyResult != null && keyResult.getId() != null)
+                .map(KeyResult::getId)
+                .distinct()
+                .toList();
+        if (keyResultIds.isEmpty()) {
+            return Map.of();
+        }
+        return linkRepository.sumActiveContributionWeightsByKeyResultIds(keyResultIds)
                 .stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+                .collect(Collectors.toMap(
+                        ProjectKeyResultLinkRepository.KeyResultWeightTotal::getKeyResultId,
+                        total -> total.getTotalWeight().setScale(2, RoundingMode.HALF_UP),
+                        (first, second) -> first,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private ProjectKeyResultLink linkWithKeyResultId(Long keyResultId) {
+        KeyResult keyResult = new KeyResult();
+        keyResult.setId(keyResultId);
+        ProjectKeyResultLink link = new ProjectKeyResultLink();
+        link.setKeyResult(keyResult);
+        return link;
     }
 
     private String periodOf(Project project) {

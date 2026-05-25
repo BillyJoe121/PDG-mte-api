@@ -14,7 +14,9 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 class ObjectiveCoverageTrendService {
@@ -35,16 +37,22 @@ class ObjectiveCoverageTrendService {
     List<StrategyDtos.CoverageTrendPointResponse> coverageTrend(Long objectiveId) {
         Objective objective = objectiveRepository.findById(objectiveId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Objetivo no encontrado."));
-        List<ProjectKeyResultLink> links = objective.getKeyResults()
-                .stream()
-                .flatMap(keyResult -> linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId()).stream())
+        List<Long> keyResultIds = objective.getKeyResults().stream()
+                .map(KeyResult::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        List<ProjectKeyResultLink> links = keyResultIds.isEmpty()
+                ? List.of()
+                : linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(keyResultIds).stream()
                 .filter(link -> link.getProject() != null && link.getProject().getId() != null)
                 .toList();
-        List<ProjectProgressEntry> entries = progressRepository.findAll()
-                .stream()
-                .filter(entry -> links.stream().anyMatch(link -> link.getProject().getId().equals(entry.getProject().getId())))
-                .sorted(Comparator.comparing(ProjectProgressEntry::getCreatedAt))
-                .toList();
+        Set<Long> projectIds = links.stream()
+                .map(link -> link.getProject().getId())
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        List<ProjectProgressEntry> entries = projectIds.isEmpty()
+                ? List.of()
+                : progressRepository.findByProjectIdsOrderByCreatedAtAsc(projectIds);
 
         List<StrategyDtos.CoverageTrendPointResponse> trend = new ArrayList<>();
         trend.add(new StrategyDtos.CoverageTrendPointResponse(

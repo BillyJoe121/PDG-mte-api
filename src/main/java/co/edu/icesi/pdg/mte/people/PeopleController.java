@@ -1,6 +1,7 @@
 package co.edu.icesi.pdg.mte.people;
 
 import co.edu.icesi.pdg.mte.api.dto.PeopleDtos;
+import co.edu.icesi.pdg.mte.common.Pagination;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -68,7 +69,14 @@ public class PeopleController {
     }
 
     @GetMapping("/professors")
-    List<PeopleDtos.ProfessorResponse> listProfessors(@RequestParam(required = false) Long departmentId) {
+    Object listProfessors(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        if (Pagination.requested(page, size)) {
+            return peopleService.listProfessorsPage(departmentId, page, size);
+        }
         return peopleService.listProfessors(departmentId);
     }
 

@@ -182,7 +182,22 @@ public class ReportService {
 
     private List<Project> filteredProjects(String period, Long departmentId, Long objectiveId) {
         Set<Long> projectIdsForObjective = projectIdsForObjective(objectiveId);
-        return projectRepository.findAll()
+        if (projectIdsForObjective != null && projectIdsForObjective.isEmpty()) {
+            return List.of();
+        }
+        PeriodRange requestedPeriod = period == null ? null : parsePeriod(period);
+        List<Long> projectIds = projectIdsForObjective == null ? List.of(-1L) : List.copyOf(projectIdsForObjective);
+        List<Project> candidates = period == null && departmentId == null && projectIdsForObjective == null
+                ? projectRepository.findAll()
+                : projectRepository.findReportCandidates(
+                        requestedPeriod != null,
+                        requestedPeriod == null ? 0 : requestedPeriod.startIndex(),
+                        requestedPeriod == null ? 0 : requestedPeriod.endIndex(),
+                        departmentId,
+                        projectIdsForObjective != null,
+                        projectIds
+                );
+        return candidates
                 .stream()
                 .filter(project -> periodMatches(project, period))
                 .filter(project -> departmentId == null || project.getDepartment() != null && departmentId.equals(project.getDepartment().getId()))
@@ -191,7 +206,17 @@ public class ReportService {
     }
 
     private List<Objective> filteredObjectives(String period, Long departmentId, Long objectiveId) {
-        return objectiveRepository.findAll()
+        PeriodRange requestedPeriod = period == null ? null : parsePeriod(period);
+        List<Objective> candidates = period == null && departmentId == null && objectiveId == null
+                ? objectiveRepository.findAll()
+                : objectiveRepository.findReportCandidates(
+                        requestedPeriod != null,
+                        requestedPeriod == null ? 0 : requestedPeriod.startIndex(),
+                        requestedPeriod == null ? 0 : requestedPeriod.endIndex(),
+                        departmentId,
+                        objectiveId
+                );
+        return candidates
                 .stream()
                 .filter(objective -> periodMatches(objective, period))
                 .filter(objective -> departmentId == null || departmentId.equals(objective.getDepartment().getId()))
@@ -203,15 +228,7 @@ public class ReportService {
         if (objectiveId == null) {
             return null;
         }
-        Set<Long> projectIds = new LinkedHashSet<>();
-        objectiveRepository.findAll()
-                .stream()
-                .filter(objective -> objectiveId.equals(objective.getId()))
-                .flatMap(objective -> objective.getKeyResults().stream())
-                .flatMap(keyResult -> linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId()).stream())
-                .filter(link -> link.getProject() != null && link.getProject().getId() != null)
-                .forEach(link -> projectIds.add(link.getProject().getId()));
-        return projectIds;
+        return new LinkedHashSet<>(linkRepository.findActiveProjectIdsByObjectiveId(objectiveId));
     }
 
     private boolean periodMatches(Project project, String period) {

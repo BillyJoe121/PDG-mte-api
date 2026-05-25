@@ -33,8 +33,6 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     @Test
     void objectiveDetailIncludesObjectiveAndCoverageTrend() {
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
-        when(progressRepository.findAll()).thenReturn(List.of());
 
         var detail = service.getObjectiveDetail(1L);
 
@@ -48,7 +46,6 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         Objective emptyObjective = TestFixtures.objective(9L, unit, period, department, goal, bet);
         emptyObjective.setKeyResults(List.of());
         when(objectiveRepository.findById(9L)).thenReturn(Optional.of(emptyObjective));
-        when(progressRepository.findAll()).thenReturn(List.of());
 
         var trend = service.coverageTrend(9L);
 

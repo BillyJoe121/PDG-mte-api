@@ -5,15 +5,16 @@ import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.CacheNames;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,7 @@ public class CatalogService {
     private final ObjectiveRepository objectiveRepository;
     private final ProjectRepository projectRepository;
     private final AuditService auditService;
+    private final CatalogCacheService catalogCacheService;
 
     public CatalogService(
             MeasurementUnitRepository unitRepository,
@@ -40,7 +42,8 @@ public class CatalogService {
             KeyResultRepository keyResultRepository,
             ObjectiveRepository objectiveRepository,
             ProjectRepository projectRepository,
-            AuditService auditService
+            AuditService auditService,
+            CatalogCacheService catalogCacheService
     ) {
         this.unitRepository = unitRepository;
         this.periodRepository = periodRepository;
@@ -51,16 +54,24 @@ public class CatalogService {
         this.objectiveRepository = objectiveRepository;
         this.projectRepository = projectRepository;
         this.auditService = auditService;
+        this.catalogCacheService = catalogCacheService;
     }
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.MeasurementUnitResponse> listUnits() {
-        return unitRepository.findAll().stream()
-                .sorted(Comparator.comparing(MeasurementUnit::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(Mapper::toResponse)
-                .toList();
+        return catalogCacheService.listUnits();
     }
 
+    @Transactional(readOnly = true)
+    public CatalogDtos.CatalogBootstrapResponse bootstrap() {
+        return catalogCacheService.bootstrap();
+    }
+
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.MEASUREMENT_UNITS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.MeasurementUnitResponse createUnit(CatalogDtos.MeasurementUnitRequest request) {
         String name = request.name().trim();
         if (unitRepository.existsByNameIgnoreCase(name)) {
@@ -75,6 +86,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.MEASUREMENT_UNITS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.MeasurementUnitResponse updateUnit(Long id, CatalogDtos.MeasurementUnitRequest request) {
         MeasurementUnit unit = findUnit(id);
         CatalogDtos.MeasurementUnitResponse before = Mapper.toResponse(unit);
@@ -87,6 +103,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.MEASUREMENT_UNITS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.MeasurementUnitResponse updateUnitActive(Long id, CatalogDtos.MeasurementUnitActiveRequest request) {
         MeasurementUnit unit = findUnit(id);
         CatalogDtos.MeasurementUnitResponse before = Mapper.toResponse(unit);
@@ -96,6 +117,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.MEASUREMENT_UNITS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public void deleteUnit(Long id) {
         MeasurementUnit unit = findUnit(id);
         if (isUnitInUse(id)) {
@@ -106,12 +132,14 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.AcademicPeriodResponse> listPeriods() {
-        return periodRepository.findAll().stream()
-                .sorted(Comparator.comparing(AcademicPeriod::getStartDate).thenComparing(AcademicPeriod::getName))
-                .map(Mapper::toResponse)
-                .toList();
+        return catalogCacheService.listPeriods();
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.ACADEMIC_PERIODS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.AcademicPeriodResponse createPeriod(CatalogDtos.AcademicPeriodRequest request) {
         String name = request.name().trim();
         assertPeriodDatesAreValid(request);
@@ -129,6 +157,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.ACADEMIC_PERIODS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.AcademicPeriodResponse updatePeriod(Long id, CatalogDtos.AcademicPeriodRequest request) {
         AcademicPeriod period = findPeriod(id);
         CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
@@ -143,6 +176,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.ACADEMIC_PERIODS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.AcademicPeriodResponse updatePeriodStatus(Long id, CatalogDtos.AcademicPeriodStatusRequest request) {
         AcademicPeriod period = findPeriod(id);
         CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
@@ -152,6 +190,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.ACADEMIC_PERIODS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public CatalogDtos.AcademicPeriodResponse updatePeriodActive(Long id, CatalogDtos.AcademicPeriodActiveRequest request) {
         AcademicPeriod period = findPeriod(id);
         CatalogDtos.AcademicPeriodResponse before = Mapper.toResponse(period);
@@ -162,6 +205,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.ACADEMIC_PERIODS,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public void deletePeriod(Long id) {
         AcademicPeriod period = findPeriod(id);
         if (isPeriodInUse(period)) {
@@ -172,12 +220,13 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.SchoolResponse> listSchools() {
-        return schoolRepository.findAll().stream()
-                .sorted(Comparator.comparing(School::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(Mapper::toResponse)
-                .toList();
+        return catalogCacheService.listSchools();
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.SCHOOLS
+    }, allEntries = true)
     public CatalogDtos.SchoolResponse createSchool(CatalogDtos.SchoolRequest request) {
         String name = request.name().trim();
         if (schoolRepository.existsByNameIgnoreCase(name)) {
@@ -191,6 +240,11 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.SCHOOLS,
+            CacheNames.DEPARTMENTS
+    }, allEntries = true)
     public CatalogDtos.SchoolResponse updateSchool(Long id, CatalogDtos.SchoolRequest request) {
         School school = findSchool(id);
         CatalogDtos.SchoolResponse before = Mapper.toResponse(school);
@@ -205,6 +259,10 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.SCHOOLS
+    }, allEntries = true)
     public void deleteSchool(Long id) {
         School school = findSchool(id);
         if (departmentRepository.existsBySchoolId(id)) {
@@ -215,12 +273,13 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<CatalogDtos.DepartmentResponse> listDepartments() {
-        return departmentRepository.findAll().stream()
-                .sorted(Comparator.comparing(Department::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(Mapper::toResponse)
-                .toList();
+        return catalogCacheService.listDepartments();
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.DEPARTMENTS
+    }, allEntries = true)
     public CatalogDtos.DepartmentResponse createDepartment(CatalogDtos.DepartmentRequest request) {
         String name = request.name().trim();
         if (departmentRepository.existsByNameIgnoreCase(name)) {
@@ -236,6 +295,10 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.DEPARTMENTS
+    }, allEntries = true)
     public CatalogDtos.DepartmentResponse updateDepartment(Long id, CatalogDtos.DepartmentRequest request) {
         Department department = findDepartment(id);
         CatalogDtos.DepartmentResponse before = Mapper.toResponse(department);
@@ -252,6 +315,10 @@ public class CatalogService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.CATALOG_BOOTSTRAP,
+            CacheNames.DEPARTMENTS
+    }, allEntries = true)
     public void deleteDepartment(Long id) {
         Department department = findDepartment(id);
         if (objectiveRepository.existsByDepartmentId(id) || projectRepository.existsByDepartmentId(id)) {

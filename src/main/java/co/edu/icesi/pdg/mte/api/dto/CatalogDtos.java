@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public final class CatalogDtos {
     private CatalogDtos() {
@@ -87,6 +88,14 @@ public final class CatalogDtos {
             String description,
             @NotNull Long schoolId,
             Long externalDepartmentId
+    ) {
+    }
+
+    public record CatalogBootstrapResponse(
+            List<AcademicPeriodResponse> academicPeriods,
+            List<DepartmentResponse> departments,
+            List<MeasurementUnitResponse> measurementUnits,
+            List<SchoolResponse> schools
     ) {
     }
 }

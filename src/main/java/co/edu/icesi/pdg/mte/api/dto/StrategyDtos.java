@@ -210,6 +210,16 @@ public final class StrategyDtos {
     ) {
     }
 
+    public record ObjectiveScreenDataResponse(
+            List<ObjectiveCardResponse> objectiveCards,
+            List<StrategicBetResponse> strategicBets,
+            List<GoalResponse> goals,
+            List<CatalogDtos.AcademicPeriodResponse> academicPeriods,
+            List<CatalogDtos.MeasurementUnitResponse> measurementUnits,
+            List<CatalogDtos.DepartmentResponse> departments
+    ) {
+    }
+
     public record StrategicHierarchyNodeResponse(
             String nodeType,
             String id,

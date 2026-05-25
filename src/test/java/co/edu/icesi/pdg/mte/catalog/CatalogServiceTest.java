@@ -36,6 +36,9 @@ class CatalogServiceTest {
     private DepartmentRepository departmentRepository;
 
     @Mock
+    private SchoolRepository schoolRepository;
+
+    @Mock
     private InstitutionalGoalRepository goalRepository;
 
     @Mock
@@ -49,6 +52,9 @@ class CatalogServiceTest {
 
     @Mock
     private AuditService auditService;
+
+    @Mock
+    private CatalogCacheService catalogCacheService;
 
     @InjectMocks
     private CatalogService service;
@@ -422,14 +428,29 @@ class CatalogServiceTest {
         earlierPeriod.setName("2026-1");
         earlierPeriod.setStartDate(LocalDate.of(2026, 1, 1));
 
-        when(unitRepository.findAll()).thenReturn(List.of(zetaUnit, alphaUnit));
-        when(periodRepository.findAll()).thenReturn(List.of(laterPeriod, earlierPeriod));
-        when(departmentRepository.findAll()).thenReturn(List.of(TestFixtures.department(1L)));
+        when(catalogCacheService.listUnits()).thenReturn(List.of(
+                co.edu.icesi.pdg.mte.api.Mapper.toResponse(alphaUnit),
+                co.edu.icesi.pdg.mte.api.Mapper.toResponse(zetaUnit)
+        ));
+        when(catalogCacheService.listPeriods()).thenReturn(List.of(
+                co.edu.icesi.pdg.mte.api.Mapper.toResponse(earlierPeriod),
+                co.edu.icesi.pdg.mte.api.Mapper.toResponse(laterPeriod)
+        ));
+        when(catalogCacheService.listDepartments()).thenReturn(List.of(
+                co.edu.icesi.pdg.mte.api.Mapper.toResponse(TestFixtures.department(1L))
+        ));
+        when(catalogCacheService.bootstrap()).thenReturn(new CatalogDtos.CatalogBootstrapResponse(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(TestFixtures.school(1L)))
+        ));
 
         assertThat(service.listUnits()).extracting(CatalogDtos.MeasurementUnitResponse::name)
                 .containsExactly("Alpha", "Zeta");
         assertThat(service.listPeriods()).extracting(CatalogDtos.AcademicPeriodResponse::name)
                 .containsExactly("2026-1", "2026-2");
         assertThat(service.listDepartments()).hasSize(1);
+        assertThat(service.bootstrap().schools()).hasSize(1);
     }
 }

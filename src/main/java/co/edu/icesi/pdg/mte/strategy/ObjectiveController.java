@@ -38,6 +38,16 @@ public class ObjectiveController {
         return strategyService.listObjectiveCards(strategicBetId, goalId, departmentId, periodId);
     }
 
+    @GetMapping("/screen-data")
+    StrategyDtos.ObjectiveScreenDataResponse screenData(
+            @RequestParam(required = false) Long strategicBetId,
+            @RequestParam(required = false) Long goalId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long periodId
+    ) {
+        return strategyService.objectivesScreenData(strategicBetId, goalId, departmentId, periodId);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")

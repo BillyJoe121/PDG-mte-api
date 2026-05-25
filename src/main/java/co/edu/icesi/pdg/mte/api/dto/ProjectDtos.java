@@ -156,6 +156,14 @@ public final class ProjectDtos {
         }
     }
 
+    public record ProjectScreenDataResponse(
+            List<ProjectResponse> projects,
+            List<CatalogDtos.DepartmentResponse> departments,
+            List<CatalogDtos.AcademicPeriodResponse> academicPeriods,
+            List<StrategyDtos.ObjectiveCardResponse> objectiveCards
+    ) {
+    }
+
     public record ProjectProgressResponse(
             Long id,
             Long projectId,
@@ -164,6 +172,28 @@ public final class ProjectDtos {
             String milestones,
             Long createdByExternalUserId,
             Instant createdAt
+    ) {
+    }
+
+    public record ProjectProgressMutationResponse(
+            Long id,
+            Long projectId,
+            BigDecimal progressPercent,
+            String comment,
+            String milestones,
+            Long createdByExternalUserId,
+            Instant createdAt,
+            ProjectMutationAffectedResponse affected
+    ) {
+    }
+
+    public record ProjectMutationAffectedResponse(
+            Long projectId,
+            List<Long> keyResultIds,
+            List<Long> objectiveIds,
+            List<Long> goalIds,
+            List<Long> strategicBetIds,
+            List<String> periods
     ) {
     }
 

@@ -19,6 +19,11 @@ public class DashboardController {
         this.dashboardService = dashboardService;
     }
 
+    @GetMapping
+    public DashboardDtos.DashboardScreenResponse dashboard(@RequestParam(required = false) String period) {
+        return dashboardService.dashboard(period);
+    }
+
     @GetMapping("/summary")
     public DashboardDtos.DashboardSummaryResponse summary(@RequestParam(required = false) String period) {
         return dashboardService.summary(period);

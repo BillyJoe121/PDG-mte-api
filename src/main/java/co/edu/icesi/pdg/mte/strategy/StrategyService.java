@@ -1,16 +1,19 @@
 package co.edu.icesi.pdg.mte.strategy;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
+import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.*;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.CacheNames;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.people.Professor;
 import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +41,7 @@ public class StrategyService {
     private final StrategyExecutionSummaryService executionSummaryService;
     private final StrategicHierarchyTreeService hierarchyTreeService;
     private final ObjectiveCoverageTrendService coverageTrendService;
+    private final CatalogCacheService catalogCacheService;
 
     public StrategyService(
             StrategicBetRepository strategicBetRepository,
@@ -53,7 +57,8 @@ public class StrategyService {
             AuditService auditService,
             StrategyExecutionSummaryService executionSummaryService,
             StrategicHierarchyTreeService hierarchyTreeService,
-            ObjectiveCoverageTrendService coverageTrendService
+            ObjectiveCoverageTrendService coverageTrendService,
+            CatalogCacheService catalogCacheService
     ) {
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
@@ -69,13 +74,19 @@ public class StrategyService {
         this.executionSummaryService = executionSummaryService;
         this.hierarchyTreeService = hierarchyTreeService;
         this.coverageTrendService = coverageTrendService;
+        this.catalogCacheService = catalogCacheService;
     }
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.WorldResponse> listWorlds() {
-        return worldRepository.findAll().stream().map(Mapper::toResponse).toList();
+        return catalogCacheService.listWorlds();
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.WORLDS,
+            CacheNames.STRATEGIC_BET_CATALOG,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public StrategyDtos.WorldResponse createWorld(StrategyDtos.WorldRequest request) {
         String name = request.name().trim();
         if (worldRepository.existsByNameIgnoreCase(name)) {
@@ -89,6 +100,11 @@ public class StrategyService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.WORLDS,
+            CacheNames.STRATEGIC_BET_CATALOG,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public StrategyDtos.WorldResponse updateWorld(Long id, StrategyDtos.WorldRequest request) {
         World world = findWorld(id);
         StrategyDtos.WorldResponse before = Mapper.toResponse(world);
@@ -103,6 +119,11 @@ public class StrategyService {
         return response;
     }
 
+    @CacheEvict(cacheNames = {
+            CacheNames.WORLDS,
+            CacheNames.STRATEGIC_BET_CATALOG,
+            CacheNames.GOAL_CATALOG
+    }, allEntries = true)
     public void deleteWorld(Long id) {
         World world = findWorld(id);
         if (strategicBetRepository.existsByWorldId(id) || goalRepository.existsByWorldId(id)) {
@@ -124,6 +145,7 @@ public class StrategyService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = CacheNames.STRATEGIC_BET_CATALOG, allEntries = true)
     public StrategyDtos.StrategicBetResponse createStrategicBet(StrategyDtos.StrategicBetRequest request) {
         validateDateRange(request.startDate(), request.endDate());
         if (strategicBetRepository.existsByNameIgnoreCase(request.name())) {
@@ -146,6 +168,7 @@ public class StrategyService {
         return Mapper.toResponse(bet, executionSummaryService.forBet(id, period));
     }
 
+    @CacheEvict(cacheNames = CacheNames.STRATEGIC_BET_CATALOG, allEntries = true)
     public StrategyDtos.StrategicBetResponse updateStrategicBet(Long id, StrategyDtos.StrategicBetRequest request) {
         StrategicBet bet = findStrategicBet(id);
         StrategyDtos.StrategicBetResponse before = Mapper.toResponse(bet, executionSummaryService.forBet(id, null));
@@ -181,6 +204,7 @@ public class StrategyService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = CacheNames.GOAL_CATALOG, allEntries = true)
     public StrategyDtos.GoalResponse createGoal(StrategyDtos.GoalRequest request) {
         validateDateRange(request.startDate(), request.endDate());
         InstitutionalGoal goal = new InstitutionalGoal();
@@ -202,6 +226,7 @@ public class StrategyService {
         return Mapper.toResponse(findGoal(id), executionSummaryService.forGoal(id, period));
     }
 
+    @CacheEvict(cacheNames = CacheNames.GOAL_CATALOG, allEntries = true)
     public StrategyDtos.GoalResponse updateGoal(Long id, StrategyDtos.GoalRequest request) {
         InstitutionalGoal goal = findGoal(id);
         StrategyDtos.GoalResponse before = Mapper.toResponse(goal, executionSummaryService.forGoal(id, null));
@@ -224,6 +249,7 @@ public class StrategyService {
         return response;
     }
 
+    @CacheEvict(cacheNames = CacheNames.GOAL_CATALOG, allEntries = true)
     public StrategyDtos.GoalResponse attachGoalPeriod(Long goalId, Long periodId) {
         InstitutionalGoal goal = findGoal(goalId);
         StrategyDtos.GoalResponse before = Mapper.toResponse(goal);
@@ -233,6 +259,7 @@ public class StrategyService {
         return response;
     }
 
+    @CacheEvict(cacheNames = CacheNames.GOAL_CATALOG, allEntries = true)
     public StrategyDtos.GoalResponse detachGoalPeriod(Long goalId, Long periodId) {
         InstitutionalGoal goal = findGoal(goalId);
         StrategyDtos.GoalResponse before = Mapper.toResponse(goal);
@@ -253,6 +280,18 @@ public class StrategyService {
                 .stream()
                 .map(this::toObjectiveCard)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StrategyDtos.ObjectiveScreenDataResponse objectivesScreenData(Long strategicBetId, Long goalId, Long departmentId, Long periodId) {
+        return new StrategyDtos.ObjectiveScreenDataResponse(
+                listObjectiveCards(strategicBetId, goalId, departmentId, periodId),
+                strategicBetCatalog(),
+                goalCatalog(),
+                periodCatalog(),
+                measurementUnitCatalog(),
+                departmentCatalog()
+        );
     }
 
     private List<Objective> findObjectives(Long strategicBetId, Long goalId, Long departmentId, Long periodId) {
@@ -389,6 +428,26 @@ public class StrategyService {
                 completion.compareTo(BigDecimal.valueOf(30)) < 0,
                 objective.getKeyResults().stream().map(Mapper::toResponse).toList()
         );
+    }
+
+    private List<StrategyDtos.StrategicBetResponse> strategicBetCatalog() {
+        return catalogCacheService.strategicBetCatalog();
+    }
+
+    private List<StrategyDtos.GoalResponse> goalCatalog() {
+        return catalogCacheService.goalCatalog();
+    }
+
+    private List<CatalogDtos.AcademicPeriodResponse> periodCatalog() {
+        return catalogCacheService.listPeriods();
+    }
+
+    private List<CatalogDtos.MeasurementUnitResponse> measurementUnitCatalog() {
+        return catalogCacheService.listUnits();
+    }
+
+    private List<CatalogDtos.DepartmentResponse> departmentCatalog() {
+        return catalogCacheService.listDepartments();
     }
 
     private KeyResult buildKeyResult(StrategyDtos.KeyResultRequest request) {

@@ -83,16 +83,17 @@ class ConsistencyServiceTest {
     @Test
     void reportsTheThreeConsistencyFindingTypesAndCounters() {
         when(keyResultRepository.findAll()).thenReturn(List.of(linkedKr, unlinkedKr));
-        when(projectRepository.existsByKeyResultIdAndStatus(1L, ProjectStatus.ACTIVO)).thenReturn(true);
+        when(projectRepository.findDistinctKeyResultIdsByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(1L));
+        when(linkRepository.findActiveKeyResultIdsByProjectStatus(ProjectStatus.ACTIVO)).thenReturn(List.of());
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO))
                 .thenReturn(List.of(linkedActiveProject, projectWithoutKr, staleProject, recentProject));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(1L))
-                .thenReturn(Optional.of(progressEntry(linkedActiveProject, Instant.now())));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(2L)).thenReturn(Optional.empty());
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L))
-                .thenReturn(Optional.of(progressEntry(staleProject, Instant.now().minusSeconds(20L * 24 * 60 * 60))));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(4L))
-                .thenReturn(Optional.of(progressEntry(recentProject, Instant.now())));
+        when(linkRepository.findActiveProjectIdsByProjectIds(List.of(1L, 2L, 3L, 4L))).thenReturn(List.of());
+        when(progressRepository.findByProjectIdsOrderByProjectIdAscCreatedAtDesc(List.of(1L, 2L, 3L, 4L)))
+                .thenReturn(List.of(
+                        progressEntry(linkedActiveProject, Instant.now()),
+                        progressEntry(staleProject, Instant.now().minusSeconds(20L * 24 * 60 * 60)),
+                        progressEntry(recentProject, Instant.now())
+                ));
 
         var response = service.check(null, null, 15);
 
@@ -114,7 +115,8 @@ class ConsistencyServiceTest {
     void filtersBySeverityAndModuleAndExportsCsv() {
         when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(staleProject));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L)).thenReturn(Optional.empty());
+        when(linkRepository.findActiveProjectIdsByProjectIds(List.of(3L))).thenReturn(List.of());
+        when(progressRepository.findByProjectIdsOrderByProjectIdAscCreatedAtDesc(List.of(3L))).thenReturn(List.of());
 
         var onlyHigh = service.check("alta", null, null);
         var onlyProjects = service.check(null, "proyectos", null);

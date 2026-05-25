@@ -108,12 +108,19 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(progressRepository.save(any(ProjectProgressEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(entry));
+        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link(project, keyResult, 25)));
 
         assertThat(service.get(1L).name()).isEqualTo("Proyecto MSP");
         assertThat(service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.FINALIZADO)).status())
                 .isEqualTo(ProjectStatus.FINALIZADO);
-        assertThat(service.registerProgress(1L, new ProjectDtos.ProjectProgressRequest(BigDecimal.valueOf(45), "Avance registrado", "Hito")).progressPercent())
-                .isEqualByComparingTo("45");
+        var progress = service.registerProgress(1L, new ProjectDtos.ProjectProgressRequest(BigDecimal.valueOf(45), "Avance registrado", "Hito"));
+        assertThat(progress.progressPercent()).isEqualByComparingTo("45");
+        assertThat(progress.affected().projectId()).isEqualTo(1L);
+        assertThat(progress.affected().keyResultIds()).containsExactly(1L);
+        assertThat(progress.affected().objectiveIds()).containsExactly(1L);
+        assertThat(progress.affected().goalIds()).containsExactly(1L);
+        assertThat(progress.affected().strategicBetIds()).containsExactly(1L);
+        assertThat(progress.affected().periods()).containsExactly("2026-1", "2026-2");
         assertThat(service.history(1L)).hasSize(1);
         assertThat(project.getActualEndDate()).isNotNull();
     }

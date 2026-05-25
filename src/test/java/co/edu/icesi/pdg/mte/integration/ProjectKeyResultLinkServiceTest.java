@@ -72,7 +72,7 @@ class ProjectKeyResultLinkServiceTest {
         when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         when(linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L)).thenReturn(false);
         when(linkRepository.save(any(ProjectKeyResultLink.class))).thenReturn(saved);
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(existing, saved));
+        when(linkRepository.sumActiveContributionWeightsByKeyResultIds(List.of(1L))).thenReturn(List.of(total(1L, 110)));
 
         var response = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(60), ContributionType.DIRECTA));
 
@@ -88,7 +88,8 @@ class ProjectKeyResultLinkServiceTest {
         ProjectKeyResultLink link = link(project, keyResult, 35);
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
-        when(linkRepository.findAll()).thenReturn(List.of(link, inactiveLink(project, keyResult, 20)));
+        when(linkRepository.findByActiveTrueOrderByIdAsc()).thenReturn(List.of(link));
+        when(linkRepository.sumActiveContributionWeightsByKeyResultIds(List.of(1L))).thenReturn(List.of(total(1L, 35)));
 
         assertThat(service.list(1L, null)).hasSize(1);
         assertThat(service.list(1L, 1L)).hasSize(1);
@@ -100,8 +101,8 @@ class ProjectKeyResultLinkServiceTest {
     @Test
     void listsActiveExternalStyleLinkWithoutLocalProject() {
         ProjectKeyResultLink linkWithoutProject = link(null, keyResult, 35);
-        when(linkRepository.findAll()).thenReturn(List.of(linkWithoutProject));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutProject));
+        when(linkRepository.findByActiveTrueOrderByIdAsc()).thenReturn(List.of(linkWithoutProject));
+        when(linkRepository.sumActiveContributionWeightsByKeyResultIds(List.of(1L))).thenReturn(List.of(total(1L, 35)));
 
         var response = service.list(null, null);
 
@@ -194,6 +195,20 @@ class ProjectKeyResultLinkServiceTest {
         ProjectKeyResultLink link = link(project, keyResult, weight);
         link.setActive(false);
         return link;
+    }
+
+    private ProjectKeyResultLinkRepository.KeyResultWeightTotal total(Long keyResultId, int totalWeight) {
+        return new ProjectKeyResultLinkRepository.KeyResultWeightTotal() {
+            @Override
+            public Long getKeyResultId() {
+                return keyResultId;
+            }
+
+            @Override
+            public BigDecimal getTotalWeight() {
+                return BigDecimal.valueOf(totalWeight);
+            }
+        };
     }
 
     private Project project(Long id, ProjectStatus status, String startPeriod, String endPeriod) {

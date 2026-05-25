@@ -1,6 +1,7 @@
 package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.common.Pagination;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -29,14 +30,30 @@ public class ProjectController {
     }
 
     @GetMapping
-    public List<ProjectDtos.ProjectResponse> list(
+    public Object list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ProjectStatus status,
+            @RequestParam(required = false) ProjectType type,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        if (Pagination.requested(page, size)) {
+            return projectService.listPage(search, status, type, departmentId, period, page, size);
+        }
+        return projectService.list(search, status, type, departmentId, period);
+    }
+
+    @GetMapping("/screen-data")
+    public ProjectDtos.ProjectScreenDataResponse screenData(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(required = false) ProjectType type,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) String period
     ) {
-        return projectService.list(search, status, type, departmentId, period);
+        return projectService.screenData(search, status, type, departmentId, period);
     }
 
     @GetMapping("/{id}")
@@ -70,7 +87,7 @@ public class ProjectController {
     @PostMapping("/{id}/progress")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO','PROFESOR')")
-    public ProjectDtos.ProjectProgressResponse registerProgress(
+    public ProjectDtos.ProjectProgressMutationResponse registerProgress(
             @PathVariable Long id,
             @Valid @RequestBody ProjectDtos.ProjectProgressRequest request
     ) {

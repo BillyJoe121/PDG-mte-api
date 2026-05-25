@@ -1,11 +1,15 @@
 package co.edu.icesi.pdg.mte.audit;
 
 import co.edu.icesi.pdg.mte.api.dto.AuditDtos;
+import co.edu.icesi.pdg.mte.api.dto.PageDtos;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.Pagination;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -43,29 +47,32 @@ public class AuditService {
     @Transactional(readOnly = true)
     public List<AuditDtos.AuditLogResponse> list(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
         validateRange(from, to);
-        Specification<AuditLog> specification = (root, query, builder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (action != null) {
-                predicates.add(builder.equal(root.get("action"), action));
-            }
-            if (entityType != null && !entityType.isBlank()) {
-                predicates.add(builder.equal(builder.upper(root.get("entityType")), entityType.trim().toUpperCase()));
-            }
-            if (entityId != null && !entityId.isBlank()) {
-                predicates.add(builder.equal(root.get("entityId"), entityId.trim()));
-            }
-            if (from != null) {
-                predicates.add(builder.greaterThanOrEqualTo(root.get("createdAt"), from));
-            }
-            if (to != null) {
-                predicates.add(builder.lessThanOrEqualTo(root.get("createdAt"), to));
-            }
-            return builder.and(predicates.toArray(Predicate[]::new));
-        };
-        return repository.findAll(specification, Sort.by(Sort.Direction.DESC, "createdAt"))
+        return repository.findAll(specification(action, entityType, entityId, from, to), Sort.by(Sort.Direction.DESC, "createdAt"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageDtos.PageResponse<AuditDtos.AuditLogResponse> listPage(
+            AuditAction action,
+            String entityType,
+            String entityId,
+            Instant from,
+            Instant to,
+            Integer page,
+            Integer size
+    ) {
+        validateRange(from, to);
+        PageRequest pageRequest = Pagination.pageRequest(page, size, 50, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        Page<AuditLog> logs = repository.findAll(specification(action, entityType, entityId, from, to), pageRequest);
+        return new PageDtos.PageResponse<>(
+                logs.getContent().stream().map(this::toResponse).toList(),
+                logs.getNumber(),
+                logs.getSize(),
+                logs.getTotalElements(),
+                logs.getTotalPages()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -119,6 +126,28 @@ public class AuditService {
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "El rango de fechas de auditoria es invalido.");
         }
+    }
+
+    private Specification<AuditLog> specification(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
+        return (root, query, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (action != null) {
+                predicates.add(builder.equal(root.get("action"), action));
+            }
+            if (entityType != null && !entityType.isBlank()) {
+                predicates.add(builder.equal(builder.upper(root.get("entityType")), entityType.trim().toUpperCase()));
+            }
+            if (entityId != null && !entityId.isBlank()) {
+                predicates.add(builder.equal(root.get("entityId"), entityId.trim()));
+            }
+            if (from != null) {
+                predicates.add(builder.greaterThanOrEqualTo(root.get("createdAt"), from));
+            }
+            if (to != null) {
+                predicates.add(builder.lessThanOrEqualTo(root.get("createdAt"), to));
+            }
+            return builder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private AuditDtos.AuditLogResponse toResponse(AuditLog log) {
