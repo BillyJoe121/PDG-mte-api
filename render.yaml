@@ -14,14 +14,6 @@ services:
         value: staging
       - key: JAVA_OPTS
         value: -Xms96m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -XX:MaxDirectMemorySize=32m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError
-      - key: SPRING_MAIN_LAZY_INITIALIZATION
-        value: "true"
-      - key: SPRING_DATA_JPA_REPOSITORIES_BOOTSTRAP_MODE
-        value: lazy
-      - key: SPRINGDOC_API_DOCS_ENABLED
-        value: "false"
-      - key: SPRINGDOC_SWAGGER_UI_ENABLED
-        value: "false"
       - key: DB_MAX_POOL_SIZE
         value: "3"
       - key: DB_MIN_IDLE
@@ -37,7 +29,7 @@ services:
       - key: DB_DRIVER
         value: org.postgresql.Driver
       - key: JPA_DDL_AUTO
-        value: none
+        value: validate
       - key: FLYWAY_ENABLED
         value: "true"
       - key: FLYWAY_BASELINE_ON_MIGRATE
