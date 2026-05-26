@@ -9,8 +9,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -92,22 +90,6 @@ class AuditServiceTest {
         assertThat(summary.totalEvents()).isEqualTo(2);
         assertThat(summary.byAction()).extracting("key").contains("CREATE", "UPDATE");
         assertThat(summary.byEntityType()).extracting("key").contains("PROJECT");
-    }
-
-    @Test
-    void returnsPagedAuditLogsWithMetadata() {
-        AuditService service = new AuditService(repository, new ObjectMapper());
-        AuditLog create = log(AuditAction.CREATE, "PROJECT", "1");
-        when(repository.findAll(any(Specification.class), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(create), PageRequest.of(0, 50), 75));
-
-        var page = service.listPage(null, null, null, null, null, 0, 50);
-
-        assertThat(page.content()).hasSize(1);
-        assertThat(page.page()).isZero();
-        assertThat(page.size()).isEqualTo(50);
-        assertThat(page.totalElements()).isEqualTo(75);
-        assertThat(page.totalPages()).isEqualTo(2);
     }
 
     @Test

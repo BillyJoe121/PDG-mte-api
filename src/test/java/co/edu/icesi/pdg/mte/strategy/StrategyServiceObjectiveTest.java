@@ -76,7 +76,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
     void returnsObjectiveAndStrategicBetDetail() {
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of(objective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         assertThat(service.getObjective(1L).id()).isEqualTo(1L);
@@ -87,7 +87,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
     @Test
     void returnsEmptyStrategicBetSummaryWhenThereAreNoObjectives() {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of());
+        when(objectiveRepository.findAll()).thenReturn(List.of());
 
         assertThat(service.getStrategicBet(1L, null).executionSummary().summaryText()).contains("0 objetivos completos");
     }
@@ -114,27 +114,6 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
 
         assertThat(cards).hasSize(1);
         assertThat(cards.get(0).lowCompletionAlert()).isFalse();
-    }
-
-    @Test
-    void objectiveScreenDataAggregatesCardsAndCatalogs() {
-        when(objectiveRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
-                .thenReturn(List.of(objective));
-        StrategyDtos.ExecutionSummaryResponse emptySummary = new StrategyDtos.ExecutionSummaryResponse("", 0, 0, 0, 0, 0, 0, List.of());
-        when(catalogCacheService.strategicBetCatalog()).thenReturn(List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(bet, emptySummary)));
-        when(catalogCacheService.goalCatalog()).thenReturn(List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(goal, emptySummary)));
-        when(catalogCacheService.listPeriods()).thenReturn(List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(period)));
-        when(catalogCacheService.listUnits()).thenReturn(List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(unit)));
-        when(catalogCacheService.listDepartments()).thenReturn(List.of(co.edu.icesi.pdg.mte.api.Mapper.toResponse(department)));
-
-        var screenData = service.objectivesScreenData(1L, 1L, 1L, 1L);
-
-        assertThat(screenData.objectiveCards()).hasSize(1);
-        assertThat(screenData.strategicBets()).extracting("id").containsExactly(1L);
-        assertThat(screenData.goals()).extracting("id").containsExactly(1L);
-        assertThat(screenData.academicPeriods()).extracting("name").containsExactly("2026-1");
-        assertThat(screenData.measurementUnits()).extracting("name").containsExactly("Porcentaje");
-        assertThat(screenData.departments()).extracting("id").containsExactly(1L);
     }
 
     @Test
@@ -243,12 +222,12 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
         ProjectProgressEntry ignoredEntry = progressEntry(otherProject, BigDecimal.valueOf(100), first);
 
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
-        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(List.of(1L))).thenReturn(List.of(
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(
                 nullProjectLink,
                 withoutIdLink,
                 validLink
         ));
-        when(progressRepository.findByProjectIdsOrderByCreatedAtAsc(anyCollection())).thenReturn(List.of(firstEntry, secondEntry));
+        when(progressRepository.findAll()).thenReturn(List.of(secondEntry, ignoredEntry, firstEntry));
 
         var trend = service.coverageTrend(1L);
 

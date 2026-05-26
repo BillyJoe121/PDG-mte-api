@@ -3,9 +3,8 @@ package co.edu.icesi.pdg.mte.security;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Map;
@@ -13,27 +12,22 @@ import java.util.Map;
 @Component
 public class ExternalAuthClient {
 
-    private final RestClient restClient;
+    private final WebClient webClient;
     private final AuthProperties properties;
 
-    public ExternalAuthClient(RestClient.Builder builder, AuthProperties properties) {
+    public ExternalAuthClient(WebClient.Builder builder, AuthProperties properties) {
         this.properties = properties;
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(properties.introspectionTimeout());
-        requestFactory.setReadTimeout(properties.introspectionTimeout());
-        this.restClient = builder
-                .baseUrl(properties.externalBaseUrl())
-                .requestFactory(requestFactory)
-                .build();
+        this.webClient = builder.baseUrl(properties.externalBaseUrl()).build();
     }
 
     public ExternalUserContext introspect(String bearerToken) {
         try {
-            Map<?, ?> response = restClient.get()
+            Map<?, ?> response = webClient.get()
                     .uri(properties.introspectionPath())
                     .header(HttpHeaders.AUTHORIZATION, bearerToken)
                     .retrieve()
-                    .body(Map.class);
+                    .bodyToMono(Map.class)
+                    .block();
 
             if (response == null) {
                 throw new BusinessException(HttpStatus.UNAUTHORIZED, "No fue posible validar el token externo.");

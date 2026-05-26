@@ -1,17 +1,12 @@
 package co.edu.icesi.pdg.mte.people;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
-import co.edu.icesi.pdg.mte.api.dto.PageDtos;
 import co.edu.icesi.pdg.mte.api.dto.PeopleDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
-import co.edu.icesi.pdg.mte.common.Pagination;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import co.edu.icesi.pdg.mte.project.ProjectTeacherRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -138,28 +133,11 @@ public class PeopleService {
 
     @Transactional(readOnly = true)
     public List<PeopleDtos.ProfessorResponse> listProfessors(Long departmentId) {
-        List<Professor> professors = departmentId == null
-                ? professorRepository.findAll()
-                : professorRepository.findByDepartmentId(departmentId);
-        return professors.stream()
+        return professorRepository.findAll().stream()
+                .filter(professor -> departmentId == null || professor.getDepartment().getId().equals(departmentId))
                 .sorted(Comparator.comparing(Professor::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(Mapper::toResponse)
                 .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public PageDtos.PageResponse<PeopleDtos.ProfessorResponse> listProfessorsPage(Long departmentId, Integer page, Integer size) {
-        PageRequest pageRequest = Pagination.pageRequest(page, size, 50, Sort.by(Sort.Direction.ASC, "name", "id"));
-        Page<Professor> professors = departmentId == null
-                ? professorRepository.findAll(pageRequest)
-                : professorRepository.findByDepartmentId(departmentId, pageRequest);
-        return new PageDtos.PageResponse<>(
-                professors.getContent().stream().map(Mapper::toResponse).toList(),
-                professors.getNumber(),
-                professors.getSize(),
-                professors.getTotalElements(),
-                professors.getTotalPages()
-        );
     }
 
     public PeopleDtos.ProfessorResponse createProfessor(PeopleDtos.ProfessorRequest request) {

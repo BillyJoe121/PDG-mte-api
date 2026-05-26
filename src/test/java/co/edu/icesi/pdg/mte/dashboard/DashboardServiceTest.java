@@ -33,7 +33,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -99,23 +98,16 @@ class DashboardServiceTest {
         KeyResult nullProgressKr = keyResult(5L, TestFixtures.unit(1L), null);
         closedLowObjective.addKeyResult(nullProgressKr);
 
-        when(projectRepository.findDashboardByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
-                .thenReturn(List.of(active, completed, draft, suspended, archivedOutsidePeriod, withoutId, outsidePeriod));
-        when(objectiveRepository.findDashboardByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
-                .thenReturn(List.of(objective, closedLowObjective));
+        when(projectRepository.findAll()).thenReturn(List.of(active, completed, draft, suspended, archivedOutsidePeriod, withoutId, outsidePeriod));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective, closedLowObjective));
         when(departmentRepository.findAll()).thenReturn(List.of(department));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of(goal));
-        when(linkRepository.findDashboardActiveByKeyResultIds(anyCollection())).thenReturn(List.of(
-                link(lowKr, active),
-                link(atRiskKr, completed),
-                link(atRiskKr, active),
-                link(onTrackKr, null),
-                link(completedKr, completed),
-                link(completedKr, withoutId),
-                link(completedKr, outsidePeriod),
-                link(nullProgressKr, active)
-        ));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link(lowKr, active)));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(2L)).thenReturn(List.of(link(atRiskKr, completed), link(atRiskKr, active)));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(3L)).thenReturn(List.of(link(onTrackKr, null)));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(4L)).thenReturn(List.of(link(completedKr, completed), link(completedKr, withoutId), link(completedKr, outsidePeriod)));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(5L)).thenReturn(List.of(link(nullProgressKr, active)));
         when(periodRepository.findFirstByStatusOrderByStartDateDesc(co.edu.icesi.pdg.mte.catalog.PeriodStatus.ACTIVO))
                 .thenReturn(Optional.of(TestFixtures.period(1L)));
 
@@ -127,7 +119,6 @@ class DashboardServiceTest {
         var bets = service.strategicBets("2026-1");
         var goals = service.goals("2026-1");
         var activePeriodSummary = service.summary(null);
-        var dashboard = service.dashboard("2026-1");
 
         assertThat(summary.activeProjects()).isEqualTo(2);
         assertThat(summary.completedProjects()).isEqualTo(1);
@@ -163,15 +154,12 @@ class DashboardServiceTest {
         assertThat(goals.get(0).objectivesAbove50()).isEqualTo(1);
         assertThat(goals.get(0).objectivesAtZero()).isEqualTo(1);
         assertThat(goals.get(0).keyResults()).isEqualTo(5);
-        assertThat(dashboard.summary().activeProjects()).isEqualTo(2);
-        assertThat(dashboard.projectsByStatus()).hasSize(5);
-        assertThat(dashboard.keyResultsByProgress()).hasSize(4);
     }
 
     @Test
     void returnsEmptyAggregatesWhenThereIsNoData() {
-        when(projectRepository.findAllForDashboard()).thenReturn(List.of());
-        when(objectiveRepository.findAllForDashboard()).thenReturn(List.of());
+        when(projectRepository.findAll()).thenReturn(List.of());
+        when(objectiveRepository.findAll()).thenReturn(List.of());
         when(departmentRepository.findAll()).thenReturn(List.of());
         when(strategicBetRepository.findAll()).thenReturn(List.of());
         when(goalRepository.findAll()).thenReturn(List.of());

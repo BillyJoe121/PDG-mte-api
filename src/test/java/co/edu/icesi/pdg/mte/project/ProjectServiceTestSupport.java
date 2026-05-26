@@ -3,8 +3,6 @@ package co.edu.icesi.pdg.mte.project;
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.audit.AuditService;
-import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
-import co.edu.icesi.pdg.mte.catalog.CatalogCacheService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
@@ -21,7 +19,6 @@ import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import co.edu.icesi.pdg.mte.strategy.Objective;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -41,12 +38,6 @@ abstract class ProjectServiceTestSupport {
     protected ProjectProgressEntryRepository progressRepository;
     @Mock
     protected DepartmentRepository departmentRepository;
-    @Mock
-    protected AcademicPeriodRepository periodRepository;
-    @Mock
-    protected CatalogCacheService catalogCacheService;
-    @Mock
-    protected ObjectiveRepository objectiveRepository;
     @Mock
     protected TrayectoriaProjectClient trayectoriaProjectClient;
     @Mock
@@ -90,9 +81,7 @@ abstract class ProjectServiceTestSupport {
                 new AccessControlService(),
                 periodService,
                 responseAssembler,
-                fieldMapper,
-                catalogCacheService,
-                objectiveRepository
+                fieldMapper
         );
         department = TestFixtures.department(1L);
         Objective objective = TestFixtures.objective(
@@ -106,7 +95,6 @@ abstract class ProjectServiceTestSupport {
         keyResult = objective.getKeyResults().get(0);
         org.mockito.Mockito.lenient().when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         org.mockito.Mockito.lenient().when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
-        org.mockito.Mockito.lenient().when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 ExternalUserContext.mock(),
                 null,

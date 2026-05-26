@@ -47,7 +47,6 @@ mte:
     mode: ${MTE_AUTH_MODE:mock}
     external-base-url: ${TRAYECTORIA_BASE_URL:http://localhost:8080/api/v1}
     introspection-path: ${TRAYECTORIA_ME_PATH:/auth/me}
-    introspection-timeout: ${MTE_AUTH_INTROSPECTION_TIMEOUT:2s}
   seed:
     enabled: ${MTE_SEED_ENABLED:true}
   integration:

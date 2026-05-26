@@ -2,13 +2,10 @@ package co.edu.icesi.pdg.mte.catalog;
 
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
 import jakarta.validation.Valid;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -19,13 +16,6 @@ public class CatalogController {
 
     public CatalogController(CatalogService catalogService) {
         this.catalogService = catalogService;
-    }
-
-    @GetMapping("/catalogs/bootstrap")
-    ResponseEntity<CatalogDtos.CatalogBootstrapResponse> bootstrap() {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate())
-                .body(catalogService.bootstrap());
     }
 
     @GetMapping("/measurement-units")

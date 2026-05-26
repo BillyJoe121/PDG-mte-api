@@ -1,6 +1,5 @@
 package co.edu.icesi.pdg.mte.dashboard;
 
-import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.DashboardDtos;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
@@ -27,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -71,34 +69,15 @@ public class DashboardService {
         this.periodRepository = periodRepository;
     }
 
-    public DashboardDtos.DashboardScreenResponse dashboard(String period) {
-        DashboardData data = loadDashboardData(period, true, true);
-        return new DashboardDtos.DashboardScreenResponse(
-                data.periods().stream()
-                        .sorted(Comparator.comparing(AcademicPeriod::getStartDate).thenComparing(AcademicPeriod::getName))
-                        .map(Mapper::toResponse)
-                        .toList(),
-                summary(data),
-                projectsByStatus(data),
-                keyResultsByProgress(data),
-                departments(data),
-                strategicBets(data),
-                goals(data)
-        );
-    }
-
     public DashboardDtos.DashboardSummaryResponse summary(String period) {
-        return summary(loadDashboardData(period, false, false));
-    }
-
-    private DashboardDtos.DashboardSummaryResponse summary(DashboardData data) {
-        List<Project> projects = data.projects();
-        List<Objective> objectives = data.objectives();
-        List<KeyResult> keyResults = data.keyResults();
+        String normalizedPeriod = resolvePeriod(period);
+        List<Project> projects = filteredProjects(normalizedPeriod);
+        List<Objective> objectives = filteredObjectives(normalizedPeriod);
+        List<KeyResult> keyResults = keyResultsFrom(objectives);
         ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
 
         return new DashboardDtos.DashboardSummaryResponse(
-                data.period(),
+                normalizedPeriod,
                 countProjects(projects, ProjectStatus.ACTIVO),
                 countProjects(projects, ProjectStatus.FINALIZADO),
                 countProjects(projects, ProjectStatus.BORRADOR),
@@ -117,11 +96,7 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.CountByStatusResponse> projectsByStatus(String period) {
-        return projectsByStatus(loadDashboardData(period, false, false));
-    }
-
-    private List<DashboardDtos.CountByStatusResponse> projectsByStatus(DashboardData data) {
-        List<Project> projects = data.projects();
+        List<Project> projects = filteredProjects(resolvePeriod(period));
         return List.of(ProjectStatus.values())
                 .stream()
                 .map(status -> new DashboardDtos.CountByStatusResponse(status.name(), countProjects(projects, status)))
@@ -129,17 +104,13 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.ProgressBucketResponse> keyResultsByProgress(String period) {
-        return keyResultsByProgress(loadDashboardData(period, false, false));
-    }
-
-    private List<DashboardDtos.ProgressBucketResponse> keyResultsByProgress(DashboardData data) {
         Map<String, Long> buckets = new LinkedHashMap<>();
         buckets.put("COMPLETED", 0L);
         buckets.put("ON_TRACK", 0L);
         buckets.put("AT_RISK", 0L);
         buckets.put("LOW", 0L);
 
-        data.keyResults().stream()
+        keyResultsFrom(filteredObjectives(resolvePeriod(period))).stream()
                 .map(this::progressBucket)
                 .forEach(bucket -> buckets.merge(bucket, 1L, Long::sum));
 
@@ -150,38 +121,36 @@ public class DashboardService {
     }
 
     public List<DashboardDtos.DepartmentExecutionResponse> departments(String period) {
-        return departments(loadDashboardData(period, true, false));
-    }
+        String normalizedPeriod = resolvePeriod(period);
+        List<Project> projects = filteredProjects(normalizedPeriod);
+        List<Objective> objectives = filteredObjectives(normalizedPeriod);
 
-    private List<DashboardDtos.DepartmentExecutionResponse> departments(DashboardData data) {
-        return data.departments()
+        return departmentRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(Department::getName))
-                .map(department -> departmentSummary(department, data.projects(), data.objectives()))
+                .map(department -> departmentSummary(department, projects, objectives))
                 .toList();
     }
 
     public List<DashboardDtos.StrategicBetExecutionResponse> strategicBets(String period) {
-        return strategicBets(loadDashboardData(period, true, true));
-    }
+        String normalizedPeriod = resolvePeriod(period);
+        List<Objective> objectives = filteredObjectives(normalizedPeriod);
 
-    private List<DashboardDtos.StrategicBetExecutionResponse> strategicBets(DashboardData data) {
-        return data.strategicBets()
+        return strategicBetRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(StrategicBet::getName))
-                .map(bet -> strategicBetSummary(bet, data.objectives(), data.period(), data.linksByKeyResult()))
+                .map(bet -> strategicBetSummary(bet, objectives, normalizedPeriod))
                 .toList();
     }
 
     public List<DashboardDtos.GoalExecutionResponse> goals(String period) {
-        return goals(loadDashboardData(period, true, true));
-    }
+        String normalizedPeriod = resolvePeriod(period);
+        List<Objective> objectives = filteredObjectives(normalizedPeriod);
 
-    private List<DashboardDtos.GoalExecutionResponse> goals(DashboardData data) {
-        return data.goals()
+        return goalRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(InstitutionalGoal::getName))
-                .map(goal -> goalSummary(goal, data.objectives(), data.period(), data.linksByKeyResult()))
+                .map(goal -> goalSummary(goal, objectives, normalizedPeriod))
                 .toList();
     }
 
@@ -218,13 +187,12 @@ public class DashboardService {
     private DashboardDtos.StrategicBetExecutionResponse strategicBetSummary(
             StrategicBet bet,
             List<Objective> objectives,
-            String period,
-            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
+            String period
     ) {
         List<Objective> betObjectives = objectives.stream()
                 .filter(objective -> bet.getId().equals(objective.getStrategicBet().getId()))
                 .toList();
-        ExecutionBreakdown breakdown = executionBreakdown(betObjectives, period, linksByKeyResult);
+        ExecutionBreakdown breakdown = executionBreakdown(betObjectives, period);
 
         return new DashboardDtos.StrategicBetExecutionResponse(
                 bet.getId(),
@@ -243,13 +211,12 @@ public class DashboardService {
     private DashboardDtos.GoalExecutionResponse goalSummary(
             InstitutionalGoal goal,
             List<Objective> objectives,
-            String period,
-            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
+            String period
     ) {
         List<Objective> goalObjectives = objectives.stream()
                 .filter(objective -> goal.getId().equals(objective.getGoal().getId()))
                 .toList();
-        ExecutionBreakdown breakdown = executionBreakdown(goalObjectives, period, linksByKeyResult);
+        ExecutionBreakdown breakdown = executionBreakdown(goalObjectives, period);
 
         return new DashboardDtos.GoalExecutionResponse(
                 goal.getId(),
@@ -265,18 +232,14 @@ public class DashboardService {
         );
     }
 
-    private ExecutionBreakdown executionBreakdown(
-            List<Objective> objectives,
-            String period,
-            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
-    ) {
+    private ExecutionBreakdown executionBreakdown(List<Objective> objectives, String period) {
         List<KeyResult> keyResults = keyResultsFrom(objectives);
         ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
         Set<Long> completedProjects = new LinkedHashSet<>();
         Set<Long> inProgressProjects = new LinkedHashSet<>();
 
         for (KeyResult keyResult : keyResults) {
-            for (ProjectKeyResultLink link : linksByKeyResult.getOrDefault(keyResult.getId(), List.of())) {
+            for (ProjectKeyResultLink link : linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId())) {
                 Project project = link.getProject();
                 if (project == null || project.getId() == null || !periodMatches(project, period)) {
                     continue;
@@ -298,57 +261,15 @@ public class DashboardService {
         );
     }
 
-    private DashboardData loadDashboardData(String period, boolean includeCatalogs, boolean includeLinks) {
-        String normalizedPeriod = resolvePeriod(period);
-        List<Project> projects = filteredProjects(normalizedPeriod);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod);
-        List<KeyResult> keyResults = keyResultsFrom(objectives);
-        return new DashboardData(
-                normalizedPeriod,
-                projects,
-                objectives,
-                keyResults,
-                includeCatalogs ? departmentRepository.findAll() : List.of(),
-                includeCatalogs ? strategicBetRepository.findAll() : List.of(),
-                includeCatalogs ? goalRepository.findAll() : List.of(),
-                includeLinks ? activeLinksByKeyResult(keyResults) : Map.of(),
-                includeCatalogs ? periodRepository.findAll() : List.of()
-        );
-    }
-
-    private Map<Long, List<ProjectKeyResultLink>> activeLinksByKeyResult(Collection<KeyResult> keyResults) {
-        List<Long> keyResultIds = keyResults.stream()
-                .map(KeyResult::getId)
-                .filter(id -> id != null)
-                .distinct()
-                .toList();
-        if (keyResultIds.isEmpty()) {
-            return Map.of();
-        }
-        return linkRepository.findDashboardActiveByKeyResultIds(keyResultIds)
-                .stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        link -> link.getKeyResult().getId(),
-                        LinkedHashMap::new,
-                        java.util.stream.Collectors.toList()
-                ));
-    }
-
     private List<Project> filteredProjects(String period) {
-        List<Project> candidates = period == null
-                ? projectRepository.findAllForDashboard()
-                : projectRepository.findDashboardByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
-        return candidates
+        return projectRepository.findAll()
                 .stream()
                 .filter(project -> periodMatches(project, period))
                 .toList();
     }
 
     private List<Objective> filteredObjectives(String period) {
-        List<Objective> candidates = period == null
-                ? objectiveRepository.findAllForDashboard()
-                : objectiveRepository.findDashboardByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
-        return candidates
+        return objectiveRepository.findAll()
                 .stream()
                 .filter(objective -> periodMatches(objective, period))
                 .toList();
@@ -494,19 +415,6 @@ public class DashboardService {
             long keyResults,
             long completedProjects,
             long inProgressProjects
-    ) {
-    }
-
-    private record DashboardData(
-            String period,
-            List<Project> projects,
-            List<Objective> objectives,
-            List<KeyResult> keyResults,
-            List<Department> departments,
-            List<StrategicBet> strategicBets,
-            List<InstitutionalGoal> goals,
-            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult,
-            List<AcademicPeriod> periods
     ) {
     }
 }

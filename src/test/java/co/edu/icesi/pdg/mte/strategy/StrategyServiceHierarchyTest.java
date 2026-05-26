@@ -33,6 +33,8 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     @Test
     void objectiveDetailIncludesObjectiveAndCoverageTrend() {
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
+        when(progressRepository.findAll()).thenReturn(List.of());
 
         var detail = service.getObjectiveDetail(1L);
 
@@ -46,6 +48,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         Objective emptyObjective = TestFixtures.objective(9L, unit, period, department, goal, bet);
         emptyObjective.setKeyResults(List.of());
         when(objectiveRepository.findById(9L)).thenReturn(Optional.of(emptyObjective));
+        when(progressRepository.findAll()).thenReturn(List.of());
 
         var trend = service.coverageTrend(9L);
 
@@ -56,7 +59,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     void strategicSummaryCountsCompletedObjectivesAndKeyResultsWithBlankPeriodFilter() {
         objective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(100));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of(objective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         var response = service.getStrategicBet(1L, "   ");
@@ -84,7 +87,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         withoutId.setEndPeriod("2026-Q2");
 
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
-        when(objectiveRepository.findByGoalIdIn(any())).thenReturn(List.of(objective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
                 link(keyResult, completed, 40),
                 link(keyResult, activeSameId, 20),
@@ -106,7 +109,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         Project project = project(2L, ProjectStatus.ACTIVO);
         project.setEndPeriod("2026-Q4");
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
-        when(objectiveRepository.findByGoalIdIn(any())).thenReturn(List.of(objective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
                 link(objective.getKeyResults().get(0), project, 20)
         ));
@@ -127,7 +130,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         duplicateObjective.getKeyResults().get(0).setProgressPercentage(null);
 
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of(completedObjective, duplicateObjective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(completedObjective, duplicateObjective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         var response = service.getStrategicBet(1L, null);

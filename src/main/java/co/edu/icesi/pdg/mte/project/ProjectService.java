@@ -1,15 +1,10 @@
 package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
-import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
-import co.edu.icesi.pdg.mte.api.dto.PageDtos;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
-import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
-import co.edu.icesi.pdg.mte.catalog.CatalogCacheService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
-import co.edu.icesi.pdg.mte.common.Pagination;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
@@ -24,12 +19,8 @@ import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
-import co.edu.icesi.pdg.mte.strategy.Objective;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,12 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 @Transactional
@@ -62,8 +50,6 @@ public class ProjectService {
     private final ProjectPeriodService periodService;
     private final ProjectResponseAssembler responseAssembler;
     private final ProjectFieldMapper fieldMapper;
-    private final CatalogCacheService catalogCacheService;
-    private final ObjectiveRepository objectiveRepository;
 
     public ProjectService(
             ProjectRepository projectRepository,
@@ -80,9 +66,7 @@ public class ProjectService {
             AccessControlService accessControlService,
             ProjectPeriodService periodService,
             ProjectResponseAssembler responseAssembler,
-            ProjectFieldMapper fieldMapper,
-            CatalogCacheService catalogCacheService,
-            ObjectiveRepository objectiveRepository
+            ProjectFieldMapper fieldMapper
     ) {
         this.projectRepository = projectRepository;
         this.progressRepository = progressRepository;
@@ -99,8 +83,6 @@ public class ProjectService {
         this.periodService = periodService;
         this.responseAssembler = responseAssembler;
         this.fieldMapper = fieldMapper;
-        this.catalogCacheService = catalogCacheService;
-        this.objectiveRepository = objectiveRepository;
     }
 
     public ProjectDtos.ProjectResponse create(ProjectDtos.ProjectRequest request) {
@@ -120,45 +102,32 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectDtos.ProjectResponse> list(String search, ProjectStatus status, ProjectType type, Long departmentId, String period) {
-        return responseAssembler.toProjectResponses(projectsPage(search, status, type, departmentId, period, Pageable.unpaged()).getContent());
-    }
-
-    @Transactional(readOnly = true)
-    public PageDtos.PageResponse<ProjectDtos.ProjectResponse> listPage(
-            String search,
-            ProjectStatus status,
-            ProjectType type,
-            Long departmentId,
-            String period,
-            Integer page,
-            Integer size
-    ) {
-        PageRequest pageRequest = Pagination.pageRequest(page, size, 25, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        Page<Project> projects = projectsPage(search, status, type, departmentId, period, pageRequest);
-        return new PageDtos.PageResponse<>(
-                responseAssembler.toProjectResponses(projects.getContent()),
-                projects.getNumber(),
-                projects.getSize(),
-                projects.getTotalElements(),
-                projects.getTotalPages()
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public ProjectDtos.ProjectScreenDataResponse screenData(
-            String search,
-            ProjectStatus status,
-            ProjectType type,
-            Long departmentId,
-            String period
-    ) {
-        String normalizedPeriod = period == null || period.isBlank() ? null : period.trim();
-        return new ProjectDtos.ProjectScreenDataResponse(
-                list(search, status, type, departmentId, normalizedPeriod),
-                listDepartmentCatalog(),
-                listPeriodCatalog(),
-                objectiveCards(departmentId, normalizedPeriod)
-        );
+        ProjectPeriodService.PeriodRange requestedPeriod = period == null || period.isBlank() ? null : periodService.parse(period.trim());
+        Specification<Project> specification = (root, query, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (search != null && !search.isBlank()) {
+                String like = "%" + search.toLowerCase(Locale.ROOT).trim() + "%";
+                predicates.add(builder.or(
+                        builder.like(builder.lower(root.get("name")), like),
+                        builder.like(builder.lower(root.get("description")), like)
+                ));
+            }
+            if (status != null) {
+                predicates.add(builder.equal(root.get("status"), status));
+            }
+            if (type != null) {
+                predicates.add(builder.equal(root.get("type"), type));
+            }
+            if (departmentId != null) {
+                predicates.add(builder.equal(root.get("department").get("id"), departmentId));
+            }
+            return builder.and(predicates.toArray(Predicate[]::new));
+        };
+        return projectRepository.findAll(specification)
+                .stream()
+                .filter(project -> requestedPeriod == null || periodService.overlaps(project, requestedPeriod))
+                .map(responseAssembler::toProjectResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -174,7 +143,9 @@ public class ProjectService {
                 .map(Mapper::toResponse)
                 .toList();
         List<ProjectKeyResultLink> links = linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(id);
-        List<ProjectDtos.ProjectKeyResultLinkResponse> linkedKeyResults = responseAssembler.toLinkResponses(links);
+        List<ProjectDtos.ProjectKeyResultLinkResponse> linkedKeyResults = links.stream()
+                .map(responseAssembler::toLinkResponse)
+                .toList();
         ProjectDtos.ImpactChainResponse contributionChain = responseAssembler.contributionChain(project, links);
         return new ProjectDtos.ProjectDetailResponse(
                 responseAssembler.toProjectResponse(project),
@@ -218,9 +189,8 @@ public class ProjectService {
         return response;
     }
 
-    public ProjectDtos.ProjectProgressMutationResponse registerProgress(Long id, ProjectDtos.ProjectProgressRequest request) {
+    public ProjectDtos.ProjectProgressResponse registerProgress(Long id, ProjectDtos.ProjectProgressRequest request) {
         Project project = findProject(id);
-        ProjectDtos.ProjectMutationAffectedResponse affected = affectedByProject(project);
         ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         ProjectProgressEntry entry = new ProjectProgressEntry();
         entry.setProject(project);
@@ -233,16 +203,7 @@ public class ProjectService {
         projectRepository.save(project);
         ProjectDtos.ProjectProgressResponse response = Mapper.toResponse(progressRepository.save(entry));
         auditService.record(AuditAction.PROGRESS_REGISTERED, "PROJECT", id, "Avance de proyecto registrado: " + response.progressPercent() + "%", before, Mapper.toResponse(project));
-        return new ProjectDtos.ProjectProgressMutationResponse(
-                response.id(),
-                response.projectId(),
-                response.progressPercent(),
-                response.comment(),
-                response.milestones(),
-                response.createdByExternalUserId(),
-                response.createdAt(),
-                affected
-        );
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -325,7 +286,8 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<ProjectDtos.ProjectTeacherResponse> listTeachers(Long projectId) {
         findProject(projectId);
-        return projectTeacherRepository.findByProject_Id(projectId).stream()
+        return projectTeacherRepository.findAll().stream()
+                .filter(projectTeacher -> projectTeacher.getProject().getId().equals(projectId))
                 .map(Mapper::toResponse)
                 .toList();
     }
@@ -378,88 +340,6 @@ public class ProjectService {
         project.setJiraKey(jiraKey);
     }
 
-    private List<CatalogDtos.DepartmentResponse> listDepartmentCatalog() {
-        return catalogCacheService.listDepartments();
-    }
-
-    private Page<Project> projectsPage(
-            String search,
-            ProjectStatus status,
-            ProjectType type,
-            Long departmentId,
-            String period,
-            Pageable pageable
-    ) {
-        ProjectPeriodService.PeriodRange requestedPeriod = period == null || period.isBlank() ? null : periodService.parse(period.trim());
-        String normalizedSearch = search == null || search.isBlank()
-                ? null
-                : "%" + search.toLowerCase(Locale.ROOT).trim() + "%";
-        return projectRepository.findPage(
-                normalizedSearch,
-                status,
-                type,
-                departmentId,
-                requestedPeriod != null,
-                requestedPeriod == null ? 0 : requestedPeriod.startIndex(),
-                requestedPeriod == null ? 0 : requestedPeriod.endIndex(),
-                pageable
-        );
-    }
-
-    private List<CatalogDtos.AcademicPeriodResponse> listPeriodCatalog() {
-        return catalogCacheService.listPeriods();
-    }
-
-    private List<StrategyDtos.ObjectiveCardResponse> objectiveCards(Long departmentId, String period) {
-        ProjectPeriodService.PeriodRange requestedPeriod = period == null ? null : periodService.parse(period);
-        List<Objective> objectives = period == null && departmentId == null
-                ? objectiveRepository.findAll()
-                : objectiveRepository.findReportCandidates(
-                        requestedPeriod != null,
-                        requestedPeriod == null ? 0 : requestedPeriod.startIndex(),
-                        requestedPeriod == null ? 0 : requestedPeriod.endIndex(),
-                        departmentId,
-                        null
-                );
-        return objectives.stream()
-                .filter(objective -> objectivePeriodMatches(objective, requestedPeriod))
-                .sorted(Comparator.comparing(Objective::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toObjectiveCard)
-                .toList();
-    }
-
-    private boolean objectivePeriodMatches(Objective objective, ProjectPeriodService.PeriodRange requestedPeriod) {
-        if (requestedPeriod == null) {
-            return true;
-        }
-        if (objective.getAcademicPeriod() == null || objective.getAcademicPeriod().getName() == null) {
-            return false;
-        }
-        ProjectPeriodService.PeriodRange objectivePeriod = periodService.parse(objective.getAcademicPeriod().getName());
-        return objectivePeriod.startIndex() <= requestedPeriod.endIndex()
-                && requestedPeriod.startIndex() <= objectivePeriod.endIndex();
-    }
-
-    private StrategyDtos.ObjectiveCardResponse toObjectiveCard(Objective objective) {
-        BigDecimal completion = objective.completionPercentage();
-        return new StrategyDtos.ObjectiveCardResponse(
-                objective.getId(),
-                objective.getName(),
-                objective.getDescription(),
-                objective.getStrategicBet().getId(),
-                objective.getStrategicBet().getName(),
-                objective.getGoal().getId(),
-                objective.getGoal().getName(),
-                objective.getDepartment().getId(),
-                objective.getDepartment().getName(),
-                objective.getAcademicPeriod().getId(),
-                objective.getAcademicPeriod().getName(),
-                completion,
-                completion.compareTo(BigDecimal.valueOf(30)) < 0,
-                objective.getKeyResults().stream().map(Mapper::toResponse).toList()
-        );
-    }
-
     private Project findProject(Long id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proyecto no encontrado."));
@@ -468,72 +348,6 @@ public class ProjectService {
     private KeyResult findKeyResult(Long id) {
         return keyResultRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
-    }
-
-    private ProjectDtos.ProjectMutationAffectedResponse affectedByProject(Project project) {
-        Set<Long> keyResultIds = new LinkedHashSet<>();
-        Set<Long> objectiveIds = new LinkedHashSet<>();
-        Set<Long> goalIds = new LinkedHashSet<>();
-        Set<Long> strategicBetIds = new LinkedHashSet<>();
-        Set<String> periods = new LinkedHashSet<>();
-
-        addProjectPeriod(project, periods);
-        addAffectedKeyResult(project.getKeyResult(), keyResultIds, objectiveIds, goalIds, strategicBetIds, periods);
-        linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(project.getId())
-                .forEach(link -> addAffectedKeyResult(link.getKeyResult(), keyResultIds, objectiveIds, goalIds, strategicBetIds, periods));
-
-        return new ProjectDtos.ProjectMutationAffectedResponse(
-                project.getId(),
-                List.copyOf(keyResultIds),
-                List.copyOf(objectiveIds),
-                List.copyOf(goalIds),
-                List.copyOf(strategicBetIds),
-                List.copyOf(periods)
-        );
-    }
-
-    private void addAffectedKeyResult(
-            KeyResult keyResult,
-            Set<Long> keyResultIds,
-            Set<Long> objectiveIds,
-            Set<Long> goalIds,
-            Set<Long> strategicBetIds,
-            Set<String> periods
-    ) {
-        if (keyResult == null) {
-            return;
-        }
-        if (keyResult.getId() != null) {
-            keyResultIds.add(keyResult.getId());
-        }
-        if (keyResult.getAcademicPeriod() != null && keyResult.getAcademicPeriod().getName() != null) {
-            periods.add(keyResult.getAcademicPeriod().getName());
-        }
-        var objective = keyResult.getObjective();
-        if (objective == null) {
-            return;
-        }
-        if (objective.getId() != null) {
-            objectiveIds.add(objective.getId());
-        }
-        if (objective.getAcademicPeriod() != null && objective.getAcademicPeriod().getName() != null) {
-            periods.add(objective.getAcademicPeriod().getName());
-        }
-        if (objective.getGoal() != null && objective.getGoal().getId() != null) {
-            goalIds.add(objective.getGoal().getId());
-        }
-        if (objective.getStrategicBet() != null && objective.getStrategicBet().getId() != null) {
-            strategicBetIds.add(objective.getStrategicBet().getId());
-        }
-    }
-
-    private void addProjectPeriod(Project project, Set<String> periods) {
-        if (project.getStartPeriod() != null && !project.getStartPeriod().isBlank()) {
-            periods.add(project.getStartPeriod());
-        }
-        if (project.getEndPeriod() != null && !project.getEndPeriod().isBlank()) {
-            periods.add(project.getEndPeriod());
-        }
     }
 
     private Long currentExternalUserId() {

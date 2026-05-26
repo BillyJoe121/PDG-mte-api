@@ -4,11 +4,9 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,14 +14,14 @@ import java.util.List;
 @Component
 public class TrayectoriaProjectClient {
     private final IntegrationProperties properties;
-    private final RestClient.Builder restClientBuilder;
+    private final WebClient.Builder webClientBuilder;
 
     public TrayectoriaProjectClient(
             IntegrationProperties properties,
-            RestClient.Builder restClientBuilder
+            WebClient.Builder webClientBuilder
     ) {
         this.properties = properties;
-        this.restClientBuilder = restClientBuilder;
+        this.webClientBuilder = webClientBuilder;
     }
 
     public List<ExternalProjectPayload> fetchProjects(String bearerToken) {
@@ -33,17 +31,13 @@ public class TrayectoriaProjectClient {
         if (bearerToken == null || bearerToken.isBlank()) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Se requiere token Bearer para sincronizar proyectos externos.");
         }
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
-        requestFactory.setReadTimeout(Duration.ofSeconds(10));
-        JsonNode payload = restClientBuilder
-                .requestFactory(requestFactory)
-                .build()
+        JsonNode payload = webClientBuilder.build()
                 .get()
                 .uri(properties.getExternalBaseUrl() + properties.getProjectsPath())
                 .header(HttpHeaders.AUTHORIZATION, bearerToken)
                 .retrieve()
-                .body(JsonNode.class);
+                .bodyToMono(JsonNode.class)
+                .block();
         return parseProjectList(payload);
     }
 

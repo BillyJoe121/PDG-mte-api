@@ -5,7 +5,6 @@ import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
-import co.edu.icesi.pdg.mte.catalog.CatalogCacheService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
@@ -56,8 +55,6 @@ abstract class StrategyServiceTestSupport {
     protected ProjectProgressEntryRepository progressRepository;
     @Mock
     protected AuditService auditService;
-    @Mock
-    protected CatalogCacheService catalogCacheService;
 
     protected StrategyService service;
     protected MeasurementUnit unit;
@@ -96,8 +93,7 @@ abstract class StrategyServiceTestSupport {
                 auditService,
                 executionSummaryService,
                 hierarchyTreeService,
-                coverageTrendService,
-                catalogCacheService
+                coverageTrendService
         );
         unit = TestFixtures.unit(1L);
         period = TestFixtures.period(1L);

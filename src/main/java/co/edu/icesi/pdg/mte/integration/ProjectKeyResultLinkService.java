@@ -16,10 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -67,16 +64,23 @@ public class ProjectKeyResultLinkService {
     @Transactional(readOnly = true)
     public List<ProjectDtos.ProjectKeyResultLinkResponse> list(Long projectId, Long keyResultId) {
         if (projectId != null) {
-            List<ProjectKeyResultLink> links = linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(projectId)
+            return linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(projectId)
                     .stream()
                     .filter(link -> keyResultId == null || link.getKeyResult().getId().equals(keyResultId))
+                    .map(this::toResponse)
                     .toList();
-            return toResponses(links);
         }
         if (keyResultId != null) {
-            return toResponses(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId));
+            return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
+                    .stream()
+                    .map(this::toResponse)
+                    .toList();
         }
-        return toResponses(linkRepository.findByActiveTrueOrderByIdAsc());
+        return linkRepository.findAll()
+                .stream()
+                .filter(ProjectKeyResultLink::isActive)
+                .map(this::toResponse)
+                .toList();
     }
 
     public void unlink(Long id) {
@@ -106,17 +110,7 @@ public class ProjectKeyResultLinkService {
     }
 
     private ProjectDtos.ProjectKeyResultLinkResponse toResponse(ProjectKeyResultLink link) {
-        return toResponse(link, totalWeightForKeyResult(link.getKeyResult().getId()));
-    }
-
-    private List<ProjectDtos.ProjectKeyResultLinkResponse> toResponses(List<ProjectKeyResultLink> links) {
-        Map<Long, BigDecimal> totalWeightsByKeyResult = totalWeightsByKeyResult(links);
-        return links.stream()
-                .map(link -> toResponse(link, totalWeightsByKeyResult.getOrDefault(link.getKeyResult().getId(), BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP))))
-                .toList();
-    }
-
-    private ProjectDtos.ProjectKeyResultLinkResponse toResponse(ProjectKeyResultLink link, BigDecimal totalWeight) {
+        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
         return new ProjectDtos.ProjectKeyResultLinkResponse(
                 link.getId(),
                 link.getProject() == null ? null : link.getProject().getId(),
@@ -151,36 +145,11 @@ public class ProjectKeyResultLinkService {
     }
 
     private BigDecimal totalWeightForKeyResult(Long keyResultId) {
-        return totalWeightsByKeyResult(List.of(linkWithKeyResultId(keyResultId)))
-                .getOrDefault(keyResultId, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
-    }
-
-    private Map<Long, BigDecimal> totalWeightsByKeyResult(List<ProjectKeyResultLink> links) {
-        List<Long> keyResultIds = links.stream()
-                .map(ProjectKeyResultLink::getKeyResult)
-                .filter(keyResult -> keyResult != null && keyResult.getId() != null)
-                .map(KeyResult::getId)
-                .distinct()
-                .toList();
-        if (keyResultIds.isEmpty()) {
-            return Map.of();
-        }
-        return linkRepository.sumActiveContributionWeightsByKeyResultIds(keyResultIds)
+        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
                 .stream()
-                .collect(Collectors.toMap(
-                        ProjectKeyResultLinkRepository.KeyResultWeightTotal::getKeyResultId,
-                        total -> total.getTotalWeight().setScale(2, RoundingMode.HALF_UP),
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-    }
-
-    private ProjectKeyResultLink linkWithKeyResultId(Long keyResultId) {
-        KeyResult keyResult = new KeyResult();
-        keyResult.setId(keyResultId);
-        ProjectKeyResultLink link = new ProjectKeyResultLink();
-        link.setKeyResult(keyResult);
-        return link;
+                .map(ProjectKeyResultLink::getContributionWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private String periodOf(Project project) {

@@ -1,7 +1,6 @@
 package co.edu.icesi.pdg.mte.api.dto;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 public final class DashboardDtos {
     private DashboardDtos() {
@@ -78,17 +77,6 @@ public final class DashboardDtos {
             long keyResults,
             long completedProjects,
             long inProgressProjects
-    ) {
-    }
-
-    public record DashboardScreenResponse(
-            List<CatalogDtos.AcademicPeriodResponse> periods,
-            DashboardSummaryResponse summary,
-            List<CountByStatusResponse> projectsByStatus,
-            List<ProgressBucketResponse> keyResultsByProgress,
-            List<DepartmentExecutionResponse> departments,
-            List<StrategicBetExecutionResponse> strategicBets,
-            List<GoalExecutionResponse> goals
     ) {
     }
 }

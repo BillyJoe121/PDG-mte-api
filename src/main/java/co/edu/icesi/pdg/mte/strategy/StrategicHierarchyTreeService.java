@@ -42,13 +42,11 @@ class StrategicHierarchyTreeService {
         List<InstitutionalGoal> goals = goalRepository.findAll();
         Map<Long, StrategyDtos.ExecutionSummaryResponse> betSummaries = executionSummaryService.forBets(
                 bets.stream().map(StrategicBet::getId).toList(),
-                period,
-                objectives
+                period
         );
         Map<Long, StrategyDtos.ExecutionSummaryResponse> goalSummaries = executionSummaryService.forGoals(
                 goals.stream().map(InstitutionalGoal::getId).toList(),
-                period,
-                objectives
+                period
         );
         Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(objectives);
 

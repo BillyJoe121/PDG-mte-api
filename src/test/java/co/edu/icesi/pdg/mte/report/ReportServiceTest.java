@@ -24,10 +24,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.nullable;
 
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -65,12 +61,13 @@ class ReportServiceTest {
         Project firstProject = project(1L, ProjectStatus.ACTIVO, department, "2026-1", "2026-2");
         Project secondProject = project(2L, ProjectStatus.FINALIZADO, department, "2026-Q1", "2026-1");
         Project unlinkedProject = project(3L, ProjectStatus.BORRADOR, null, "2026-1", null);
-        when(projectRepository.findReportCandidates(anyBoolean(), anyInt(), anyInt(), nullable(Long.class), anyBoolean(), anyCollection()))
-                .thenReturn(List.of(firstProject, secondProject, unlinkedProject));
-        when(objectiveRepository.findReportCandidates(anyBoolean(), anyInt(), anyInt(), nullable(Long.class), nullable(Long.class)))
-                .thenReturn(List.of(objective));
+        when(projectRepository.findAll()).thenReturn(List.of(firstProject, secondProject, unlinkedProject));
+        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
         when(departmentRepository.findAll()).thenReturn(List.of(department));
-        when(linkRepository.findActiveProjectIdsByObjectiveId(1L)).thenReturn(List.of(1L, 2L));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(
+                link(firstProject),
+                link(secondProject)
+        ));
 
         var general = service.general("2026-1", 1L, 1L);
         var quarterlyGeneral = service.general("2026-Q3", 1L, 1L);
@@ -125,13 +122,11 @@ class ReportServiceTest {
         baseObjective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(40));
         compareObjective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(90));
 
-        when(projectRepository.findReportCandidates(anyBoolean(), anyInt(), anyInt(), nullable(Long.class), anyBoolean(), anyCollection()))
-                .thenReturn(List.of(
+        when(projectRepository.findAll()).thenReturn(List.of(
                 project(1L, ProjectStatus.ACTIVO, department, "2026-1", "2026-1"),
                 project(2L, ProjectStatus.FINALIZADO, quotedDepartment, "2026-2", "2026-2")
         ));
-        when(objectiveRepository.findReportCandidates(anyBoolean(), anyInt(), anyInt(), nullable(Long.class), nullable(Long.class)))
-                .thenReturn(List.of(baseObjective, compareObjective));
+        when(objectiveRepository.findAll()).thenReturn(List.of(baseObjective, compareObjective));
         when(departmentRepository.findAll()).thenReturn(List.of(department, quotedDepartment));
 
         var comparison = service.periodComparison("2026-1", "2026-2", null);
