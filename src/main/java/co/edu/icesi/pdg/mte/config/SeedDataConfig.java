@@ -13,14 +13,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 @Configuration
 public class SeedDataConfig {
+    private static final Logger log = LoggerFactory.getLogger(SeedDataConfig.class);
     private static final String COMPUTING_DEPARTMENT = "Departamento de Computaci\u00f3n y Sistemas inteligentes.";
     private static final String TDI_DIRECTION_DEPARTMENT = "Direcci\u00f3n TDI";
     private static final String DESIGN_DEPARTMENT = "Departamento de Dise\u00f1o e Innovaci\u00f3n";
@@ -64,6 +68,7 @@ public class SeedDataConfig {
             ProjectKeyResultLinkRepository linkRepository
     ) {
         return args -> {
+            log.info("Starting demo seed data refresh.");
             cleanDatabase(jdbcTemplate);
 
             seedUnits(unitRepository);
@@ -97,6 +102,7 @@ public class SeedDataConfig {
                     jdbcTemplate
             );
             restoreSeedKeyResultProgress(jdbcTemplate);
+            log.info("Demo seed data refresh completed.");
         };
     }
 
@@ -510,18 +516,18 @@ public class SeedDataConfig {
                 period20271
         );
 
-        Objective admissionObjective = seedObjective(objectiveRepository, "Optimizar prospeccion, admision y seguimiento temprano", "Implementar capacidades analiticas y digitales para identificar, atraer y acompanar talento desde el primer contacto.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(55), 1, BigDecimal.valueOf(38), computing, period20261, talentGoal, talentBet);
-        Objective competitiveObjective = seedObjective(objectiveRepository, "Fortalecer ingreso y entrenamiento de talento destacado", "Sistematizar rutas de ingreso, entrenamiento y acompanamiento para estudiantes con alto potencial en areas estrategicas.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(45), 2, BigDecimal.valueOf(30), sciences, period20261, talentGoal, talentBet);
-        Objective postgraduateObjective = seedObjective(objectiveRepository, "Modernizar oferta posgradual y rutas flexibles", "Gestionar la oferta posgradual con informacion actualizada, trazabilidad comercial y mayor flexibilidad para el estudiante.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 1, BigDecimal.valueOf(42), design, period20261, learningGoal, learningBet);
-        Objective learningInnovationObjective = seedObjective(objectiveRepository, "Integrar experiencias inteligentes de aprendizaje", "Desarrollar tutores, simuladores y recursos interactivos que mejoren la experiencia de aprendizaje en cursos complejos.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 2, BigDecimal.valueOf(35), design, period20262, learningGoal, learningBet);
-        Objective facultyDevelopmentObjective = seedObjective(objectiveRepository, "Impulsar capacidades docentes en IA, datos e innovacion", "Crear entornos y herramientas para que profesores y colaboradores disenen, ejecuten y mejoren iniciativas de alto impacto.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(60), 1, BigDecimal.valueOf(40), computing, period20261, facultyGoal, facultyBet);
-        Objective facultyAnalyticsObjective = seedObjective(objectiveRepository, "Conectar profesores con retos de frontera aplicada", "Articular profesores con proyectos de analitica, energia, salud e innovacion digital junto a organizaciones externas.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(40), 2, BigDecimal.valueOf(28), sciences, period20262, facultyGoal, facultyBet);
-        Objective consultingObjective = seedObjective(objectiveRepository, "Consolidar portafolio de consultoria basada en datos", "Estandarizar activos analiticos y agentes consultores para apoyar procesos de mejora y gobierno de datos en organizaciones.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(55), 1, BigDecimal.valueOf(45), computing, period20261, alliancesGoal, alliancesBet);
-        Objective appliedInnovationObjective = seedObjective(objectiveRepository, "Acelerar proyectos de innovacion aplicada con aliados", "Desarrollar prototipos y modelos para resolver retos reales de sectores como energia, salud y transformacion digital.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(45), 3, BigDecimal.valueOf(32), design, period20262, alliancesGoal, alliancesBet);
-        Objective employabilityObjective = seedObjective(objectiveRepository, "Fortalecer conexiones con egresados y organizaciones", "Crear mecanismos de relacionamiento que conecten talento, oportunidades laborales y aprendizaje para toda la vida.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 2, BigDecimal.valueOf(25), design, period20262, communityGoal, communityBet);
-        Objective lifelongLearningObjective = seedObjective(objectiveRepository, "Expandir aprendizaje permanente para comunidad extendida", "Disenar experiencias cortas, modulares y actualizables para egresados, profesionales y aliados.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 3, BigDecimal.valueOf(22), design, period20262, communityGoal, communityBet);
-        Objective campusTechnologyObjective = seedObjective(objectiveRepository, "Elevar servicios digitales y tecnologia de campus", "Mejorar disponibilidad, facilidad de uso y trazabilidad de servicios digitales para estudiantes, profesores y colaboradores.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(60), 2, BigDecimal.valueOf(36), computing, period20262, campusGoal, campusBet);
-        Objective careObjective = seedObjective(objectiveRepository, "Fortalecer cultura de servicio y cuidado", "Implementar mediciones y acciones de mejora para experiencias de servicio oportunas, empaticas y consistentes.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(40), 4, BigDecimal.valueOf(20), design, period20271, campusGoal, campusBet);
+        Objective admissionObjective = seedObjective(objectiveRepository, "Optimizar prospeccion, admision y seguimiento temprano", "Implementar capacidades analiticas y digitales para identificar, atraer y acompanar talento desde el primer contacto.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(55), 1, BigDecimal.valueOf(75), computing, period20261, talentGoal, talentBet);
+        Objective competitiveObjective = seedObjective(objectiveRepository, "Fortalecer ingreso y entrenamiento de talento destacado", "Sistematizar rutas de ingreso, entrenamiento y acompanamiento para estudiantes con alto potencial en areas estrategicas.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(45), 2, BigDecimal.valueOf(42), sciences, period20261, talentGoal, talentBet);
+        Objective postgraduateObjective = seedObjective(objectiveRepository, "Modernizar oferta posgradual y rutas flexibles", "Gestionar la oferta posgradual con informacion actualizada, trazabilidad comercial y mayor flexibilidad para el estudiante.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 1, BigDecimal.valueOf(100), design, period20261, learningGoal, learningBet);
+        Objective learningInnovationObjective = seedObjective(objectiveRepository, "Integrar experiencias inteligentes de aprendizaje", "Desarrollar tutores, simuladores y recursos interactivos que mejoren la experiencia de aprendizaje en cursos complejos.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 2, BigDecimal.valueOf(100), design, period20262, learningGoal, learningBet);
+        Objective facultyDevelopmentObjective = seedObjective(objectiveRepository, "Impulsar capacidades docentes en IA, datos e innovacion", "Crear entornos y herramientas para que profesores y colaboradores disenen, ejecuten y mejoren iniciativas de alto impacto.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(60), 1, BigDecimal.valueOf(100), computing, period20261, facultyGoal, facultyBet);
+        Objective facultyAnalyticsObjective = seedObjective(objectiveRepository, "Conectar profesores con retos de frontera aplicada", "Articular profesores con proyectos de analitica, energia, salud e innovacion digital junto a organizaciones externas.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(40), 2, BigDecimal.valueOf(45), sciences, period20262, facultyGoal, facultyBet);
+        Objective consultingObjective = seedObjective(objectiveRepository, "Consolidar portafolio de consultoria basada en datos", "Estandarizar activos analiticos y agentes consultores para apoyar procesos de mejora y gobierno de datos en organizaciones.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(55), 1, BigDecimal.valueOf(68), computing, period20261, alliancesGoal, alliancesBet);
+        Objective appliedInnovationObjective = seedObjective(objectiveRepository, "Acelerar proyectos de innovacion aplicada con aliados", "Desarrollar prototipos y modelos para resolver retos reales de sectores como energia, salud y transformacion digital.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(45), 3, BigDecimal.valueOf(64), design, period20262, alliancesGoal, alliancesBet);
+        Objective employabilityObjective = seedObjective(objectiveRepository, "Fortalecer conexiones con egresados y organizaciones", "Crear mecanismos de relacionamiento que conecten talento, oportunidades laborales y aprendizaje para toda la vida.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 2, BigDecimal.valueOf(61), design, period20262, communityGoal, communityBet);
+        Objective lifelongLearningObjective = seedObjective(objectiveRepository, "Expandir aprendizaje permanente para comunidad extendida", "Disenar experiencias cortas, modulares y actualizables para egresados, profesionales y aliados.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(50), 3, BigDecimal.ZERO, design, period20262, communityGoal, communityBet);
+        Objective campusTechnologyObjective = seedObjective(objectiveRepository, "Elevar servicios digitales y tecnologia de campus", "Mejorar disponibilidad, facilidad de uso y trazabilidad de servicios digitales para estudiantes, profesores y colaboradores.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(60), 2, BigDecimal.valueOf(100), computing, period20262, campusGoal, campusBet);
+        Objective careObjective = seedObjective(objectiveRepository, "Fortalecer cultura de servicio y cuidado", "Implementar mediciones y acciones de mejora para experiencias de servicio oportunas, empaticas y consistentes.", ObjectiveStatus.ACTIVO, BigDecimal.valueOf(40), 4, BigDecimal.ZERO, design, period20271, campusGoal, campusBet);
 
         seedKeyResult(keyResultRepository, KR_PROSPECTS, "Aumentar la proporcion de prospectos priorizados con modelos de analitica comercial.", "Prospectos priorizados", BigDecimal.ZERO, BigDecimal.valueOf(1000), BigDecimal.valueOf(380), BigDecimal.valueOf(38), number, period20261, admissionObjective);
         seedKeyResult(keyResultRepository, KR_COMPETITIVE_PROGRAMMING, "Incrementar estudiantes que completan entrenamiento inicial del club de programacion competitiva.", "Estudiantes entrenados", BigDecimal.ZERO, BigDecimal.valueOf(120), BigDecimal.valueOf(36), BigDecimal.valueOf(30), number, period20261, competitiveObjective);
@@ -655,12 +661,12 @@ public class SeedDataConfig {
         updateKeyResultProgress(jdbcTemplate, KR_POSTGRADUATE_OFFER, BigDecimal.valueOf(100));
         updateKeyResultProgress(jdbcTemplate, KR_PROSPECTS, BigDecimal.valueOf(75));
         updateKeyResultProgress(jdbcTemplate, KR_CONSULTING_ASSETS, BigDecimal.valueOf(62));
-        updateKeyResultProgress(jdbcTemplate, KR_DIGITAL_SERVICES, BigDecimal.valueOf(55));
+        updateKeyResultProgress(jdbcTemplate, KR_DIGITAL_SERVICES, BigDecimal.valueOf(100));
         updateKeyResultProgress(jdbcTemplate, KR_COMPETITIVE_PROGRAMMING, BigDecimal.valueOf(42));
-        updateKeyResultProgress(jdbcTemplate, KR_INTERACTIVE_COURSES, BigDecimal.valueOf(35));
-        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(32));
-        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(28));
-        updateKeyResultProgress(jdbcTemplate, KR_EMPLOYABILITY_CONNECTIONS, BigDecimal.valueOf(15));
+        updateKeyResultProgress(jdbcTemplate, KR_INTERACTIVE_COURSES, BigDecimal.valueOf(100));
+        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(64));
+        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(45));
+        updateKeyResultProgress(jdbcTemplate, KR_EMPLOYABILITY_CONNECTIONS, BigDecimal.valueOf(61));
         updateKeyResultProgress(jdbcTemplate, KR_MICROCREDENTIALS, BigDecimal.ZERO);
         updateKeyResultProgress(jdbcTemplate, KR_SERVICE_CARE, BigDecimal.ZERO);
         updateKeyResultProgress(jdbcTemplate, KR_UNLINKED_STUDENT_SUCCESS, BigDecimal.ZERO);
@@ -818,7 +824,7 @@ public class SeedDataConfig {
                               and external_project_id = ?
                         )
                         """,
-                Instant.now().minusSeconds(daysAgo * 24L * 60L * 60L),
+                Timestamp.from(Instant.now().minusSeconds(daysAgo * 24L * 60L * 60L)),
                 externalProjectId
         );
     }
