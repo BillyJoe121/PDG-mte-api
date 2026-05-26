@@ -8,6 +8,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,12 +26,13 @@ class MteAuthenticationFilterTest {
     @Test
     void shouldNotFilterPublicRoutesAndOptionsRequests() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                new AuthProperties("mock", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
 
         assertThat(filter.shouldNotFilter(request("GET", "/api/v1/health"))).isTrue();
+        assertThat(filter.shouldNotFilter(request("GET", "/api/v1/health/db"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/swagger-ui/index.html"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/v3/api-docs"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/h2-console"))).isTrue();
@@ -40,7 +43,7 @@ class MteAuthenticationFilterTest {
     @Test
     void mockModeAuthenticatesWithDemoContext() throws Exception {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                new AuthProperties("mock", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
@@ -55,7 +58,7 @@ class MteAuthenticationFilterTest {
     @Test
     void mockModeMapsFrontendMockTokenRolesToSpringAuthorities() throws Exception {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                new AuthProperties("mock", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
@@ -72,7 +75,7 @@ class MteAuthenticationFilterTest {
     @Test
     void mockModeMapsNamedDemoUsersToRealRolesAndContext() throws Exception {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                new AuthProperties("mock", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
@@ -105,7 +108,7 @@ class MteAuthenticationFilterTest {
                 null
         ));
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
+                new AuthProperties("external", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 client,
                 accessControlService
         );
@@ -121,7 +124,7 @@ class MteAuthenticationFilterTest {
     @Test
     void externalModeRejectsMissingBearerToken() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
+                new AuthProperties("external", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
@@ -136,7 +139,7 @@ class MteAuthenticationFilterTest {
     @Test
     void externalModeRejectsMalformedAuthorizationHeader() {
         MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
+                new AuthProperties("external", "http://localhost", "/auth/me", Duration.ofSeconds(2)),
                 mock(ExternalAuthClient.class),
                 accessControlService
         );

@@ -4,11 +4,12 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -153,6 +154,20 @@ class ExternalAuthClientTest {
     }
 
     @Test
+    void timesOutWhenExternalAuthProviderDoesNotRespond() throws Exception {
+        startSlowServer();
+
+        ExternalAuthClient client = new ExternalAuthClient(
+                RestClient.builder(),
+                new AuthProperties("external", "http://localhost:" + server.getAddress().getPort(), "/auth/me", Duration.ofMillis(100))
+        );
+
+        assertThatThrownBy(() -> client.introspect("Bearer token"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Token externo invalido");
+    }
+
+    @Test
     void rejectsEmptyExternalResponse() throws Exception {
         startServer(204, "");
 
@@ -163,15 +178,15 @@ class ExternalAuthClientTest {
 
     @Test
     void authPropertiesDetectsExternalModeCaseInsensitively() {
-        assertThat(new AuthProperties("external", "http://localhost", "/auth/me").externalMode()).isTrue();
-        assertThat(new AuthProperties("EXTERNAL", "http://localhost", "/auth/me").externalMode()).isTrue();
-        assertThat(new AuthProperties("mock", "http://localhost", "/auth/me").externalMode()).isFalse();
+        assertThat(new AuthProperties("external", "http://localhost", "/auth/me", Duration.ofSeconds(2)).externalMode()).isTrue();
+        assertThat(new AuthProperties("EXTERNAL", "http://localhost", "/auth/me", Duration.ofSeconds(2)).externalMode()).isTrue();
+        assertThat(new AuthProperties("mock", "http://localhost", "/auth/me", Duration.ofSeconds(2)).externalMode()).isFalse();
     }
 
     private ExternalAuthClient client() {
         return new ExternalAuthClient(
-                WebClient.builder(),
-                new AuthProperties("external", "http://localhost:" + server.getAddress().getPort(), "/auth/me")
+                RestClient.builder(),
+                new AuthProperties("external", "http://localhost:" + server.getAddress().getPort(), "/auth/me", Duration.ofSeconds(2))
         );
     }
 
@@ -181,6 +196,23 @@ class ExternalAuthClientTest {
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(status, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+    }
+
+    private void startSlowServer() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/auth/me", exchange -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+            byte[] bytes = "{}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });

@@ -4,7 +4,7 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -29,7 +29,7 @@ class TrayectoriaProjectClientTest {
         IntegrationProperties properties = new IntegrationProperties();
         properties.setMode("mock");
 
-        var projects = new TrayectoriaProjectClient(properties, WebClient.builder()).fetchProjects(null);
+        var projects = new TrayectoriaProjectClient(properties, RestClient.builder()).fetchProjects(null);
 
         assertThat(projects).hasSize(2);
         assertThat(projects.get(0).externalProjectId()).isEqualTo(9001L);
@@ -126,7 +126,7 @@ class TrayectoriaProjectClientTest {
         IntegrationProperties properties = new IntegrationProperties();
         properties.setMode("external");
         properties.setExternalBaseUrl("http://localhost:1");
-        TrayectoriaProjectClient client = new TrayectoriaProjectClient(properties, WebClient.builder());
+        TrayectoriaProjectClient client = new TrayectoriaProjectClient(properties, RestClient.builder());
 
         assertThatThrownBy(() -> client.fetchProjects(null)).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> client.fetchProjects("")).isInstanceOf(BusinessException.class);
@@ -140,7 +140,7 @@ class TrayectoriaProjectClientTest {
         properties.setMode("external");
         properties.setExternalBaseUrl("http://localhost:" + server.getAddress().getPort());
         properties.setProjectsPath("/proyectos");
-        return new TrayectoriaProjectClient(properties, WebClient.builder());
+        return new TrayectoriaProjectClient(properties, RestClient.builder());
     }
 
     private void startServer(int status, String body) throws IOException {
