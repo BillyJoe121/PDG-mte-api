@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -37,6 +38,8 @@ public class SeedDataConfig {
     private static final String KR_MICROCREDENTIALS = "Lanzar 15 microcredenciales para aprendizaje permanente para el final de Q3.";
     private static final String KR_DIGITAL_SERVICES = "Alcanzar un indice de satisfaccion digital de 90 en servicios de campus para el final de Q3.";
     private static final String KR_SERVICE_CARE = "Implementar 20 acciones de servicio y cuidado para el final de Q3.";
+    private static final String KR_UNLINKED_STUDENT_SUCCESS = "Reducir desercion temprana en 10 puntos porcentuales para el final de Q4.";
+    private static final String KR_UNLINKED_PARTNER_PORTAL = "Publicar portal de aliados estrategicos con 30 organizaciones para el final de Q4.";
 
     @Bean
     @ConditionalOnProperty(prefix = "mte.seed", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -90,7 +93,8 @@ public class SeedDataConfig {
                     projectRepository,
                     projectTeacherRepository,
                     progressRepository,
-                    linkRepository
+                    linkRepository,
+                    jdbcTemplate
             );
             restoreSeedKeyResultProgress(jdbcTemplate);
         };
@@ -531,6 +535,8 @@ public class SeedDataConfig {
         seedKeyResult(keyResultRepository, KR_MICROCREDENTIALS, "Lanzar rutas cortas actualizables para egresados, profesionales y aliados.", "Microcredenciales lanzadas", BigDecimal.ZERO, BigDecimal.valueOf(15), BigDecimal.valueOf(3), BigDecimal.valueOf(22), number, period20262, lifelongLearningObjective);
         seedKeyResult(keyResultRepository, KR_DIGITAL_SERVICES, "Mejorar servicios digitales criticos y aumentar su satisfaccion de uso.", "Indice de satisfaccion digital", BigDecimal.ZERO, BigDecimal.valueOf(90), BigDecimal.valueOf(36), BigDecimal.valueOf(36), index, period20262, campusTechnologyObjective);
         seedKeyResult(keyResultRepository, KR_SERVICE_CARE, "Implementar acciones de mejora derivadas de mediciones de experiencia.", "Acciones implementadas", BigDecimal.ZERO, BigDecimal.valueOf(20), BigDecimal.valueOf(4), BigDecimal.valueOf(20), number, period20271, careObjective);
+        seedKeyResult(keyResultRepository, KR_UNLINKED_STUDENT_SUCCESS, "KR intencional de demo sin proyectos activos vinculados.", "Reduccion de desercion", BigDecimal.ZERO, BigDecimal.valueOf(10), BigDecimal.ZERO, BigDecimal.ZERO, percentage, period20261, admissionObjective);
+        seedKeyResult(keyResultRepository, KR_UNLINKED_PARTNER_PORTAL, "KR intencional de demo sin proyectos vinculados para consistencia.", "Organizaciones en portal", BigDecimal.ZERO, BigDecimal.valueOf(30), BigDecimal.ZERO, BigDecimal.ZERO, number, period20262, appliedInnovationObjective);
     }
 
     private StrategicBet seedStrategicBet(StrategicBetRepository repository, String name, String description, World world) {
@@ -645,18 +651,20 @@ public class SeedDataConfig {
     }
 
     private void restoreSeedKeyResultProgress(JdbcTemplate jdbcTemplate) {
-        updateKeyResultProgress(jdbcTemplate, KR_PROSPECTS, BigDecimal.valueOf(38));
-        updateKeyResultProgress(jdbcTemplate, KR_COMPETITIVE_PROGRAMMING, BigDecimal.valueOf(30));
-        updateKeyResultProgress(jdbcTemplate, KR_POSTGRADUATE_OFFER, BigDecimal.valueOf(42));
+        updateKeyResultProgress(jdbcTemplate, KR_AI_FACULTY, BigDecimal.valueOf(100));
+        updateKeyResultProgress(jdbcTemplate, KR_POSTGRADUATE_OFFER, BigDecimal.valueOf(100));
+        updateKeyResultProgress(jdbcTemplate, KR_PROSPECTS, BigDecimal.valueOf(75));
+        updateKeyResultProgress(jdbcTemplate, KR_CONSULTING_ASSETS, BigDecimal.valueOf(62));
+        updateKeyResultProgress(jdbcTemplate, KR_DIGITAL_SERVICES, BigDecimal.valueOf(55));
+        updateKeyResultProgress(jdbcTemplate, KR_COMPETITIVE_PROGRAMMING, BigDecimal.valueOf(42));
         updateKeyResultProgress(jdbcTemplate, KR_INTERACTIVE_COURSES, BigDecimal.valueOf(35));
-        updateKeyResultProgress(jdbcTemplate, KR_AI_FACULTY, BigDecimal.valueOf(40));
-        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(28));
-        updateKeyResultProgress(jdbcTemplate, KR_CONSULTING_ASSETS, BigDecimal.valueOf(45));
         updateKeyResultProgress(jdbcTemplate, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(32));
-        updateKeyResultProgress(jdbcTemplate, KR_EMPLOYABILITY_CONNECTIONS, BigDecimal.valueOf(25));
-        updateKeyResultProgress(jdbcTemplate, KR_MICROCREDENTIALS, BigDecimal.valueOf(22));
-        updateKeyResultProgress(jdbcTemplate, KR_DIGITAL_SERVICES, BigDecimal.valueOf(36));
-        updateKeyResultProgress(jdbcTemplate, KR_SERVICE_CARE, BigDecimal.valueOf(20));
+        updateKeyResultProgress(jdbcTemplate, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(28));
+        updateKeyResultProgress(jdbcTemplate, KR_EMPLOYABILITY_CONNECTIONS, BigDecimal.valueOf(15));
+        updateKeyResultProgress(jdbcTemplate, KR_MICROCREDENTIALS, BigDecimal.ZERO);
+        updateKeyResultProgress(jdbcTemplate, KR_SERVICE_CARE, BigDecimal.ZERO);
+        updateKeyResultProgress(jdbcTemplate, KR_UNLINKED_STUDENT_SUCCESS, BigDecimal.ZERO);
+        updateKeyResultProgress(jdbcTemplate, KR_UNLINKED_PARTNER_PORTAL, BigDecimal.ZERO);
     }
 
     private void updateKeyResultProgress(JdbcTemplate jdbcTemplate, String keyResultName, BigDecimal progressPercentage) {
@@ -675,7 +683,8 @@ public class SeedDataConfig {
             ProjectRepository projectRepository,
             ProjectTeacherRepository projectTeacherRepository,
             ProjectProgressEntryRepository progressRepository,
-            ProjectKeyResultLinkRepository linkRepository
+            ProjectKeyResultLinkRepository linkRepository,
+            JdbcTemplate jdbcTemplate
     ) {
         Department computing = departmentRepository.findByNameIgnoreCase(COMPUTING_DEPARTMENT).orElse(null);
         Department design = departmentRepository.findByNameIgnoreCase(DESIGN_DEPARTMENT).orElse(null);
@@ -692,22 +701,26 @@ public class SeedDataConfig {
             return;
         }
 
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2001L, "Desarrollo de un sistema web para la configuracion, ejecucion y seguimiento de tareas distribuidas de entrenamiento de modelos de inteligencia artificial", "Plataforma para configurar, ejecutar y monitorear entrenamientos distribuidos de modelos de IA.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, computing, ana, leader, KR_AI_FACULTY, BigDecimal.valueOf(45), BigDecimal.valueOf(48), "2026-1", "2026-2", List.of("Laboratorio de IA Aplicada"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2002L, "Plataforma de gestion de la oferta de formacion posgradual de la Universidad Icesi", "Sistema para administrar, publicar y mantener actualizada la oferta posgradual.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, mariana, leader, KR_POSTGRADUATE_OFFER, BigDecimal.valueOf(50), BigDecimal.valueOf(42), "2026-1", "2026-2", List.of("Educacion Continua", "Mercadeo Institucional"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2003L, "Diseno de una Arquitectura Centralizada de Datos y Modelos Analiticos para la Optimizacion de la Prospeccion Comercial en los Servicios de Consultoria de la Universidad Icesi", "Arquitectura de datos y modelos para priorizar prospectos y optimizar procesos comerciales de consultoria.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, computing, felipe, leader, KR_PROSPECTS, BigDecimal.valueOf(40), BigDecimal.valueOf(38), "2026-1", "2026-2", List.of("Centro de Consultoria"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2004L, "Prototipo de Agente IA Consultor para la ejecucion y seguimiento de iniciativas de mejora continua de procesos LEAN", "Agente de IA para apoyar seguimiento, recomendaciones y trazabilidad de iniciativas Lean.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, computing, ana, leader, KR_CONSULTING_ASSETS, BigDecimal.valueOf(35), BigDecimal.valueOf(46), "2026-1", "2026-2", List.of("Consultoria Lean"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2005L, "Agente IA Consultor para el apoyo de procesos de analisis de capacidades de Gobierno de Datos en las organizaciones", "Agente consultivo para diagnosticar capacidades de gobierno de datos y sugerir rutas de mejora.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, computing, felipe, leader, KR_CONSULTING_ASSETS, BigDecimal.valueOf(30), BigDecimal.valueOf(45), "2026-1", "2026-2", List.of("Gobierno de Datos"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2006L, "MVP para diagnostico de madurez IRL y generacion de plan de intervencion para iniciativas de innovacion digital", "MVP para diagnosticar madurez y proponer planes de intervencion en innovacion digital.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, carlos, leader, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(30), BigDecimal.valueOf(32), "2026-2", "2027-1", List.of("Laboratorio de Innovacion Digital"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2007L, "Plataforma web gamificada para la sistematizacion del ingreso y entrenamiento de estudiantes del Club de Programacion Competitiva de la Universidad Icesi", "Plataforma gamificada para registrar ingreso, entrenamiento y progreso de estudiantes del club.", ProjectType.GRADO, ProjectStatus.ACTIVO, sciences, laura, leader, KR_COMPETITIVE_PROGRAMMING, BigDecimal.valueOf(40), BigDecimal.valueOf(30), "2026-1", "2026-2", List.of("Club de Programacion Competitiva"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2001L, "Desarrollo de un sistema web para la configuracion, ejecucion y seguimiento de tareas distribuidas de entrenamiento de modelos de inteligencia artificial", "Plataforma para configurar, ejecutar y monitorear entrenamientos distribuidos de modelos de IA.", ProjectType.INVESTIGACION, ProjectStatus.FINALIZADO, computing, ana, leader, KR_AI_FACULTY, BigDecimal.valueOf(100), BigDecimal.valueOf(100), "2026-1", "2026-2", List.of("Laboratorio de IA Aplicada"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2002L, "Plataforma de gestion de la oferta de formacion posgradual de la Universidad Icesi", "Sistema para administrar, publicar y mantener actualizada la oferta posgradual.", ProjectType.EXTENSION, ProjectStatus.FINALIZADO, design, mariana, leader, KR_POSTGRADUATE_OFFER, BigDecimal.valueOf(100), BigDecimal.valueOf(100), "2026-1", "2026-2", List.of("Educacion Continua", "Mercadeo Institucional"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2003L, "Diseno de una Arquitectura Centralizada de Datos y Modelos Analiticos para la Optimizacion de la Prospeccion Comercial en los Servicios de Consultoria de la Universidad Icesi", "Arquitectura de datos y modelos para priorizar prospectos y optimizar procesos comerciales de consultoria.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, computing, felipe, leader, KR_PROSPECTS, BigDecimal.valueOf(40), BigDecimal.valueOf(75), "2026-1", "2026-2", List.of("Centro de Consultoria"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2004L, "Prototipo de Agente IA Consultor para la ejecucion y seguimiento de iniciativas de mejora continua de procesos LEAN", "Agente de IA para apoyar seguimiento, recomendaciones y trazabilidad de iniciativas Lean.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, computing, ana, leader, KR_CONSULTING_ASSETS, BigDecimal.valueOf(35), BigDecimal.valueOf(62), "2026-1", "2026-2", List.of("Consultoria Lean"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2005L, "Agente IA Consultor para el apoyo de procesos de analisis de capacidades de Gobierno de Datos en las organizaciones", "Agente consultivo para diagnosticar capacidades de gobierno de datos y sugerir rutas de mejora.", ProjectType.EXTENSION, ProjectStatus.BORRADOR, computing, felipe, leader, KR_CONSULTING_ASSETS, BigDecimal.valueOf(30), BigDecimal.ZERO, "2026-1", "2026-2", List.of("Gobierno de Datos"), true, false);
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2006L, "MVP para diagnostico de madurez IRL y generacion de plan de intervencion para iniciativas de innovacion digital", "MVP para diagnosticar madurez y proponer planes de intervencion en innovacion digital.", ProjectType.EXTENSION, ProjectStatus.SUSPENDIDO, design, carlos, leader, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(30), BigDecimal.valueOf(32), "2026-2", "2027-1", List.of("Laboratorio de Innovacion Digital"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2007L, "Plataforma web gamificada para la sistematizacion del ingreso y entrenamiento de estudiantes del Club de Programacion Competitiva de la Universidad Icesi", "Plataforma gamificada para registrar ingreso, entrenamiento y progreso de estudiantes del club.", ProjectType.GRADO, ProjectStatus.ACTIVO, sciences, laura, leader, KR_COMPETITIVE_PROGRAMMING, BigDecimal.valueOf(40), BigDecimal.valueOf(42), "2026-1", "2026-2", List.of("Club de Programacion Competitiva"), true, false);
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2008L, "Sistema de proyeccion academica para simular matricula en doble titulacion interna y externa para los estudiantes", "Simulador academico para analizar escenarios de matricula, homologaciones y doble titulacion.", ProjectType.GRADO, ProjectStatus.ACTIVO, computing, ana, leader, KR_INTERACTIVE_COURSES, BigDecimal.valueOf(25), BigDecimal.valueOf(35), "2026-2", "2027-1", List.of("Registro Academico"));
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2009L, "VISTA: VISualizador y Tutor Interactivo e Inteligente de Estructuras Discretas", "Tutor inteligente para apoyar visualizacion y aprendizaje interactivo de estructuras discretas.", ProjectType.GRADO, ProjectStatus.ACTIVO, sciences, laura, leader, KR_INTERACTIVE_COURSES, BigDecimal.valueOf(35), BigDecimal.valueOf(36), "2026-2", "2027-1", List.of("Cursos de Matematicas Discretas"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2010L, "Desarrollo de modelo predictivo de precios de energia en bolsa basado en variables hidrometeorologicas del IDEAM y operativas de XM para la gestion del riesgo financiero en Colombia", "Modelo predictivo para anticipar precios de energia y apoyar decisiones de gestion de riesgo.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, sciences, laura, leader, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(30), BigDecimal.valueOf(28), "2026-2", "2027-1", List.of("Aliado sector energia"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2010L, "Desarrollo de modelo predictivo de precios de energia en bolsa basado en variables hidrometeorologicas del IDEAM y operativas de XM para la gestion del riesgo financiero en Colombia", "Modelo predictivo para anticipar precios de energia y apoyar decisiones de gestion de riesgo.", ProjectType.INVESTIGACION, ProjectStatus.SUSPENDIDO, sciences, laura, leader, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(30), BigDecimal.valueOf(28), "2026-2", "2027-1", List.of("Aliado sector energia"));
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2011L, "Herramienta Interactiva para el Analisis Historico y Predictivo de Estrategias de Oferta de Generadores Solares en el Mercado Mayorista de Energia", "Herramienta para explorar estrategias historicas y predictivas de oferta de generadores solares.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, sciences, laura, leader, KR_APPLIED_CHALLENGES, BigDecimal.valueOf(25), BigDecimal.valueOf(28), "2026-2", "2027-1", List.of("Mercado Mayorista de Energia"));
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2012L, "Diseno de un modelo de anonimizacion de datos clinicos para investigacion en entornos hospitalarios", "Modelo para anonimizar datos clinicos y habilitar investigacion responsable en salud.", ProjectType.INVESTIGACION, ProjectStatus.ACTIVO, computing, ana, leader, KR_APPLIED_PROTOTYPES, BigDecimal.valueOf(30), BigDecimal.valueOf(32), "2026-2", "2027-1", List.of("Hospital Universitario"));
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2013L, "Red de mentoria y empleabilidad para egresados TDI", "Plataforma y proceso de mentoria entre egresados, estudiantes y aliados empleadores.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, felipe, leader, KR_EMPLOYABILITY_CONNECTIONS, BigDecimal.valueOf(45), BigDecimal.valueOf(25), "2026-2", "2027-1", List.of("Egresados TDI"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2014L, "Ruta de microcredenciales en IA aplicada para profesionales", "Diseno de microcredenciales modulares para actualizacion profesional en IA aplicada.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, mariana, leader, KR_MICROCREDENTIALS, BigDecimal.valueOf(40), BigDecimal.valueOf(22), "2026-2", "2027-1", List.of("Educacion Continua"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2014L, "Ruta de microcredenciales en IA aplicada para profesionales", "Diseno de microcredenciales modulares para actualizacion profesional en IA aplicada.", ProjectType.EXTENSION, ProjectStatus.BORRADOR, design, mariana, leader, KR_MICROCREDENTIALS, BigDecimal.valueOf(40), BigDecimal.ZERO, "2026-2", "2027-1", List.of("Educacion Continua"), true, false);
         createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2015L, "Portal unificado de servicios y solicitudes de campus", "Portal para centralizar solicitudes, seguimiento y medicion de servicios a la comunidad.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, computing, valentina, leader, KR_DIGITAL_SERVICES, BigDecimal.valueOf(45), BigDecimal.valueOf(36), "2026-2", "2027-1", List.of("Servicios Universitarios"));
-        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2016L, "Programa de cultura del servicio y cuidado TDI", "Programa de medicion, formacion y acciones de mejora para cultura de servicio.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, valentina, leader, KR_SERVICE_CARE, BigDecimal.valueOf(40), BigDecimal.valueOf(20), "2027-1", "2027-1", List.of("Bienestar Universitario"));
+        createStrategicProject(projectRepository, projectTeacherRepository, progressRepository, linkRepository, keyResultRepository, 2016L, "Programa de cultura del servicio y cuidado TDI", "Programa de medicion, formacion y acciones de mejora para cultura de servicio.", ProjectType.EXTENSION, ProjectStatus.ACTIVO, design, valentina, leader, KR_SERVICE_CARE, BigDecimal.valueOf(40), BigDecimal.ZERO, "2027-1", "2027-1", List.of("Bienestar Universitario"), false, false);
+
+        ageProgressEntries(jdbcTemplate, 2003L, 45);
+        ageProgressEntries(jdbcTemplate, 2004L, 25);
+        ageProgressEntries(jdbcTemplate, 2013L, 60);
     }
 
     private void createStrategicProject(
@@ -731,14 +744,83 @@ public class SeedDataConfig {
             String endPeriod,
             List<String> tutors
     ) {
+        createStrategicProject(
+                projectRepository,
+                projectTeacherRepository,
+                progressRepository,
+                linkRepository,
+                keyResultRepository,
+                externalProjectId,
+                name,
+                description,
+                type,
+                status,
+                department,
+                leaderProfessor,
+                leaderRole,
+                keyResultName,
+                contributionWeight,
+                globalProgress,
+                startPeriod,
+                endPeriod,
+                tutors,
+                true,
+                true
+        );
+    }
+
+    private void createStrategicProject(
+            ProjectRepository projectRepository,
+            ProjectTeacherRepository projectTeacherRepository,
+            ProjectProgressEntryRepository progressRepository,
+            ProjectKeyResultLinkRepository linkRepository,
+            KeyResultRepository keyResultRepository,
+            Long externalProjectId,
+            String name,
+            String description,
+            ProjectType type,
+            ProjectStatus status,
+            Department department,
+            Professor leaderProfessor,
+            Role leaderRole,
+            String keyResultName,
+            BigDecimal contributionWeight,
+            BigDecimal globalProgress,
+            String startPeriod,
+            String endPeriod,
+            List<String> tutors,
+            boolean createLink,
+            boolean createProgress
+    ) {
         KeyResult keyResult = findKeyResultByName(keyResultRepository, keyResultName);
         if (keyResult == null) {
             return;
         }
         Project project = seedProject(projectRepository, externalProjectId, name, description, type, status, department, keyResult, contributionWeight, globalProgress, startPeriod, endPeriod, tutors);
         createProjectTeacher(projectTeacherRepository, project, leaderProfessor, leaderRole);
-        createProjectLink(linkRepository, project, keyResult, contributionWeight, ContributionType.DIRECTA);
-        createProgressEntries(progressRepository, project, globalProgress);
+        if (createLink) {
+            createProjectLink(linkRepository, project, keyResult, contributionWeight, ContributionType.DIRECTA);
+        }
+        if (createProgress) {
+            createProgressEntries(progressRepository, project, globalProgress);
+        }
+    }
+
+    private void ageProgressEntries(JdbcTemplate jdbcTemplate, Long externalProjectId, int daysAgo) {
+        jdbcTemplate.update(
+                """
+                        update project_progress_entry
+                        set created_at = ?
+                        where project_id in (
+                            select id
+                            from project
+                            where external_source = 'REAL_MTE'
+                              and external_project_id = ?
+                        )
+                        """,
+                Instant.now().minusSeconds(daysAgo * 24L * 60L * 60L),
+                externalProjectId
+        );
     }
 
     private KeyResult findKeyResultByName(KeyResultRepository repository, String name) {

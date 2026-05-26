@@ -86,6 +86,10 @@ class ConsistencyServiceTest {
         when(projectRepository.existsByKeyResultIdAndStatus(1L, ProjectStatus.ACTIVO)).thenReturn(true);
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO))
                 .thenReturn(List.of(linkedActiveProject, projectWithoutKr, staleProject, recentProject));
+        when(linkRepository.existsByProjectIdAndActiveTrue(1L)).thenReturn(true);
+        when(linkRepository.existsByProjectIdAndActiveTrue(2L)).thenReturn(false);
+        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
+        when(linkRepository.existsByProjectIdAndActiveTrue(4L)).thenReturn(true);
         when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(1L))
                 .thenReturn(Optional.of(progressEntry(linkedActiveProject, Instant.now())));
         when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(2L)).thenReturn(Optional.empty());
@@ -114,6 +118,7 @@ class ConsistencyServiceTest {
     void filtersBySeverityAndModuleAndExportsCsv() {
         when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(staleProject));
+        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
         when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L)).thenReturn(Optional.empty());
 
         var onlyHigh = service.check("alta", null, null);

@@ -133,7 +133,6 @@ public class ConsistencyService {
     private List<ConsistencyFindingResponse> activeProjectsWithoutKr(Instant detectedAt) {
         return projectRepository.findByStatus(ProjectStatus.ACTIVO)
                 .stream()
-                .filter(project -> project.getKeyResult() == null)
                 .filter(project -> project.getId() == null || !linkRepository.existsByProjectIdAndActiveTrue(project.getId()))
                 .map(project -> finding(
                         ConsistencyFindingType.ACTIVE_PROJECT_WITHOUT_KR,
