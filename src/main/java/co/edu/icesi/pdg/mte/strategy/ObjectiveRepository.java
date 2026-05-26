@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface ObjectiveRepository extends JpaRepository<Objective, Long>, JpaSpecificationExecutor<Objective> {
@@ -35,6 +36,30 @@ public interface ObjectiveRepository extends JpaRepository<Objective, Long>, Jpa
             "keyResults.academicPeriod"
     })
     List<Objective> findAll(Specification<Objective> specification);
+
+    @EntityGraph(attributePaths = {
+            "createdBy",
+            "department",
+            "academicPeriod",
+            "goal",
+            "strategicBet",
+            "keyResults",
+            "keyResults.measurementUnit",
+            "keyResults.academicPeriod"
+    })
+    List<Objective> findByStrategicBetIdIn(Collection<Long> strategicBetIds);
+
+    @EntityGraph(attributePaths = {
+            "createdBy",
+            "department",
+            "academicPeriod",
+            "goal",
+            "strategicBet",
+            "keyResults",
+            "keyResults.measurementUnit",
+            "keyResults.academicPeriod"
+    })
+    List<Objective> findByGoalIdIn(Collection<Long> goalIds);
 
     @EntityGraph(attributePaths = {
             "createdBy",

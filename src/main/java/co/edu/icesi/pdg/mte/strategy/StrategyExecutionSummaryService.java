@@ -44,10 +44,22 @@ class StrategyExecutionSummaryService {
     }
 
     Map<Long, StrategyDtos.ExecutionSummaryResponse> forBets(Collection<Long> betIds, String periodFilter) {
-        Map<Long, List<Objective>> objectivesByBet = objectiveRepository.findAll()
+        if (betIds.isEmpty()) {
+            return Map.of();
+        }
+        return forBets(betIds, periodFilter, objectiveRepository.findByStrategicBetIdIn(new LinkedHashSet<>(betIds)));
+    }
+
+    Map<Long, StrategyDtos.ExecutionSummaryResponse> forBets(
+            Collection<Long> betIds,
+            String periodFilter,
+            List<Objective> objectives
+    ) {
+        Set<Long> requestedIds = new LinkedHashSet<>(betIds);
+        Map<Long, List<Objective>> objectivesByBet = objectives
                 .stream()
                 .filter(objective -> objective.getStrategicBet() != null)
-                .filter(objective -> betIds.contains(objective.getStrategicBet().getId()))
+                .filter(objective -> requestedIds.contains(objective.getStrategicBet().getId()))
                 .collect(java.util.stream.Collectors.groupingBy(
                         objective -> objective.getStrategicBet().getId(),
                         LinkedHashMap::new,
@@ -57,10 +69,22 @@ class StrategyExecutionSummaryService {
     }
 
     Map<Long, StrategyDtos.ExecutionSummaryResponse> forGoals(Collection<Long> goalIds, String periodFilter) {
-        Map<Long, List<Objective>> objectivesByGoal = objectiveRepository.findAll()
+        if (goalIds.isEmpty()) {
+            return Map.of();
+        }
+        return forGoals(goalIds, periodFilter, objectiveRepository.findByGoalIdIn(new LinkedHashSet<>(goalIds)));
+    }
+
+    Map<Long, StrategyDtos.ExecutionSummaryResponse> forGoals(
+            Collection<Long> goalIds,
+            String periodFilter,
+            List<Objective> objectives
+    ) {
+        Set<Long> requestedIds = new LinkedHashSet<>(goalIds);
+        Map<Long, List<Objective>> objectivesByGoal = objectives
                 .stream()
                 .filter(objective -> objective.getGoal() != null)
-                .filter(objective -> goalIds.contains(objective.getGoal().getId()))
+                .filter(objective -> requestedIds.contains(objective.getGoal().getId()))
                 .collect(java.util.stream.Collectors.groupingBy(
                         objective -> objective.getGoal().getId(),
                         LinkedHashMap::new,

@@ -16,7 +16,7 @@ FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 ENV SPRING_PROFILES_ACTIVE=staging
-ENV JAVA_OPTS="-Xms64m -Xmx240m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -XX:MaxDirectMemorySize=24m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
 
 COPY --from=build /workspace/target/pdg-mte-api-0.0.1-SNAPSHOT.jar /app/app.jar
 

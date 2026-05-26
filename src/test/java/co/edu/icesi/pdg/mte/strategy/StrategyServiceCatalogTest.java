@@ -79,7 +79,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(strategicBetRepository.findByNameIgnoreCase("Apuesta editada")).thenReturn(Optional.empty());
         when(strategicBetRepository.save(any(StrategicBet.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of());
 
         var response = service.updateStrategicBet(1L, new StrategyDtos.StrategicBetRequest(
                 "Apuesta editada",
@@ -127,7 +127,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
         when(goalRepository.save(any(InstitutionalGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(objectiveRepository.findByGoalIdIn(any())).thenReturn(List.of());
 
         var response = service.updateGoal(1L, new StrategyDtos.GoalRequest(
                 "Meta editada",

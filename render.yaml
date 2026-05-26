@@ -13,29 +13,11 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: staging
       - key: JAVA_OPTS
-        value: -Xms64m -Xmx240m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -XX:MaxDirectMemorySize=24m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError
-      - key: SPRING_MAIN_LAZY_INITIALIZATION
-        value: "true"
-      - key: SPRINGDOC_API_DOCS_ENABLED
-        value: "false"
-      - key: SPRINGDOC_SWAGGER_UI_ENABLED
-        value: "false"
-      - key: SERVER_TOMCAT_THREADS_MAX
-        value: "32"
-      - key: SERVER_TOMCAT_THREADS_MIN_SPARE
-        value: "2"
-      - key: SERVER_TOMCAT_ACCEPT_COUNT
-        value: "32"
+        value: -XX:MaxRAMPercentage=75.0
       - key: DB_MAX_POOL_SIZE
         value: "3"
       - key: DB_MIN_IDLE
         value: "0"
-      - key: DB_CONNECTION_TIMEOUT_MS
-        value: "5000"
-      - key: DB_VALIDATION_TIMEOUT_MS
-        value: "3000"
-      - key: DB_MAX_LIFETIME_MS
-        value: "300000"
       - key: HIBERNATE_QUERY_PLAN_CACHE_MAX_SIZE
         value: "128"
       - key: SUPABASE_DB_URL
@@ -47,7 +29,7 @@ services:
       - key: DB_DRIVER
         value: org.postgresql.Driver
       - key: JPA_DDL_AUTO
-        value: none
+        value: validate
       - key: FLYWAY_ENABLED
         value: "true"
       - key: FLYWAY_BASELINE_ON_MIGRATE

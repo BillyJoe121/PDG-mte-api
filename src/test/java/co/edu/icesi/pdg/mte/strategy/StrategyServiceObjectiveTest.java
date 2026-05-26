@@ -76,7 +76,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
     void returnsObjectiveAndStrategicBetDetail() {
         when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findAll()).thenReturn(List.of(objective));
+        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of(objective));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
 
         assertThat(service.getObjective(1L).id()).isEqualTo(1L);
@@ -87,7 +87,7 @@ class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
     @Test
     void returnsEmptyStrategicBetSummaryWhenThereAreNoObjectives() {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(objectiveRepository.findByStrategicBetIdIn(any())).thenReturn(List.of());
 
         assertThat(service.getStrategicBet(1L, null).executionSummary().summaryText()).contains("0 objetivos completos");
     }
