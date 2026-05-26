@@ -325,7 +325,7 @@ public class DashboardService {
         if (keyResultIds.isEmpty()) {
             return Map.of();
         }
-        return linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(keyResultIds)
+        return linkRepository.findDashboardActiveByKeyResultIds(keyResultIds)
                 .stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         link -> link.getKeyResult().getId(),
@@ -336,8 +336,8 @@ public class DashboardService {
 
     private List<Project> filteredProjects(String period) {
         List<Project> candidates = period == null
-                ? projectRepository.findAll()
-                : projectRepository.findAllByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
+                ? projectRepository.findAllForDashboard()
+                : projectRepository.findDashboardByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
         return candidates
                 .stream()
                 .filter(project -> periodMatches(project, period))
@@ -346,8 +346,8 @@ public class DashboardService {
 
     private List<Objective> filteredObjectives(String period) {
         List<Objective> candidates = period == null
-                ? objectiveRepository.findAll()
-                : objectiveRepository.findAllByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
+                ? objectiveRepository.findAllForDashboard()
+                : objectiveRepository.findDashboardByOverlappingPeriod(parsePeriod(period).startIndex(), parsePeriod(period).endIndex());
         return candidates
                 .stream()
                 .filter(objective -> periodMatches(objective, period))

@@ -40,6 +40,17 @@ public interface ProjectKeyResultLinkRepository extends JpaRepository<ProjectKey
     })
     List<ProjectKeyResultLink> findByKeyResultIdInAndActiveTrueOrderByIdAsc(Collection<Long> keyResultIds);
 
+    @Query("""
+            select link
+            from ProjectKeyResultLink link
+            join fetch link.keyResult keyResult
+            left join fetch link.project project
+            where link.active = true
+              and keyResult.id in :keyResultIds
+            order by link.id asc
+            """)
+    List<ProjectKeyResultLink> findDashboardActiveByKeyResultIds(@Param("keyResultIds") Collection<Long> keyResultIds);
+
     @EntityGraph(attributePaths = {
             "keyResult",
             "keyResult.academicPeriod",

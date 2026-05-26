@@ -58,6 +58,49 @@ public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpec
             @Param("requestedEnd") int requestedEnd
     );
 
+    @EntityGraph(attributePaths = {"department"})
+    @Query("""
+            select p
+            from Project p
+            """)
+    List<Project> findAllForDashboard();
+
+    @EntityGraph(attributePaths = {"department"})
+    @Query("""
+            select p
+            from Project p
+            where (
+                cast(substring(p.startPeriod, 1, 4) as integer) * 4
+                + case
+                    when substring(p.startPeriod, 6, 1) = 'Q' then cast(substring(p.startPeriod, 7, 1) as integer)
+                    when substring(p.startPeriod, 6, 1) = '1' then 1
+                    else 3
+                  end
+            ) <= :requestedEnd
+              and case
+                    when p.endPeriod is null or p.endPeriod = '' then (
+                        cast(substring(p.startPeriod, 1, 4) as integer) * 4
+                        + case
+                            when substring(p.startPeriod, 6, 1) = 'Q' then cast(substring(p.startPeriod, 7, 1) as integer)
+                            when substring(p.startPeriod, 6, 1) = '1' then 2
+                            else 4
+                          end
+                    )
+                    else (
+                        cast(substring(p.endPeriod, 1, 4) as integer) * 4
+                        + case
+                            when substring(p.endPeriod, 6, 1) = 'Q' then cast(substring(p.endPeriod, 7, 1) as integer)
+                            when substring(p.endPeriod, 6, 1) = '1' then 2
+                            else 4
+                          end
+                    )
+                  end >= :requestedStart
+            """)
+    List<Project> findDashboardByOverlappingPeriod(
+            @Param("requestedStart") int requestedStart,
+            @Param("requestedEnd") int requestedEnd
+    );
+
     @EntityGraph(attributePaths = {"department", "keyResult", "tutors"})
     @Query("""
             select p

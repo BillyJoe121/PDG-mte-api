@@ -99,14 +99,14 @@ class DashboardServiceTest {
         KeyResult nullProgressKr = keyResult(5L, TestFixtures.unit(1L), null);
         closedLowObjective.addKeyResult(nullProgressKr);
 
-        when(projectRepository.findAllByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
+        when(projectRepository.findDashboardByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(List.of(active, completed, draft, suspended, archivedOutsidePeriod, withoutId, outsidePeriod));
-        when(objectiveRepository.findAllByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
+        when(objectiveRepository.findDashboardByOverlappingPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(List.of(objective, closedLowObjective));
         when(departmentRepository.findAll()).thenReturn(List.of(department));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of(goal));
-        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(anyCollection())).thenReturn(List.of(
+        when(linkRepository.findDashboardActiveByKeyResultIds(anyCollection())).thenReturn(List.of(
                 link(lowKr, active),
                 link(atRiskKr, completed),
                 link(atRiskKr, active),
@@ -170,8 +170,8 @@ class DashboardServiceTest {
 
     @Test
     void returnsEmptyAggregatesWhenThereIsNoData() {
-        when(projectRepository.findAll()).thenReturn(List.of());
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(projectRepository.findAllForDashboard()).thenReturn(List.of());
+        when(objectiveRepository.findAllForDashboard()).thenReturn(List.of());
         when(departmentRepository.findAll()).thenReturn(List.of());
         when(strategicBetRepository.findAll()).thenReturn(List.of());
         when(goalRepository.findAll()).thenReturn(List.of());

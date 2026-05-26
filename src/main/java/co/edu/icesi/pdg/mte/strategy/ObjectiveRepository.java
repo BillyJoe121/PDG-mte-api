@@ -98,6 +98,52 @@ public interface ObjectiveRepository extends JpaRepository<Objective, Long>, Jpa
     );
 
     @EntityGraph(attributePaths = {
+            "department",
+            "academicPeriod",
+            "goal",
+            "strategicBet",
+            "keyResults"
+    })
+    @Query("""
+            select o
+            from Objective o
+            """)
+    List<Objective> findAllForDashboard();
+
+    @EntityGraph(attributePaths = {
+            "department",
+            "academicPeriod",
+            "goal",
+            "strategicBet",
+            "keyResults"
+    })
+    @Query("""
+            select o
+            from Objective o
+            join o.academicPeriod period
+            where (
+                cast(substring(period.name, 1, 4) as integer) * 4
+                + case
+                    when substring(period.name, 6, 1) = 'Q' then cast(substring(period.name, 7, 1) as integer)
+                    when substring(period.name, 6, 1) = '1' then 1
+                    else 3
+                  end
+            ) <= :requestedEnd
+              and (
+                cast(substring(period.name, 1, 4) as integer) * 4
+                + case
+                    when substring(period.name, 6, 1) = 'Q' then cast(substring(period.name, 7, 1) as integer)
+                    when substring(period.name, 6, 1) = '1' then 2
+                    else 4
+                  end
+            ) >= :requestedStart
+            """)
+    List<Objective> findDashboardByOverlappingPeriod(
+            @Param("requestedStart") int requestedStart,
+            @Param("requestedEnd") int requestedEnd
+    );
+
+    @EntityGraph(attributePaths = {
             "createdBy",
             "department",
             "academicPeriod",

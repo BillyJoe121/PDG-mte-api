@@ -14,6 +14,8 @@ services:
         value: staging
       - key: JAVA_OPTS
         value: -XX:MaxRAMPercentage=75.0
+      - key: SPRING_MAIN_LAZY_INITIALIZATION
+        value: "false"
       - key: DB_MAX_POOL_SIZE
         value: "3"
       - key: DB_MIN_IDLE
