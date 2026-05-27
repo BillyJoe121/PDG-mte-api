@@ -96,13 +96,13 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
 
     private ExternalUserContext demoUserContext(String token) {
         return switch (token.toLowerCase(java.util.Locale.ROOT)) {
-            case "ha" -> demoUser(
+            case "ha", "ar" -> demoUser(
                     9001L,
-                    "ha",
-                    "hugo.arboleda@icesi.edu.co",
+                    "ar",
+                    "ana.rojas@icesi.edu.co",
                     List.of(AccessControlService.DIRECTOR_ESCUELA),
-                    "Hugo Arboleda",
-                    "Direcci\u00f3n TDI"
+                    "Ana Maria Rojas",
+                    "Departamento de Computaci\u00f3n y Sistemas inteligentes."
             );
             case "rs" -> demoUser(
                     9002L,
@@ -123,10 +123,10 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
             case "ad" -> demoUser(
                     9004L,
                     "ad",
-                    "sistemas.mte@icesi.edu.co",
+                    "demo.profesor@icesi.edu.co",
                     List.of(AccessControlService.ADMIN),
-                    "Sistemas MTE",
-                    "TI Institucional"
+                    "Profesor Demo",
+                    "Departamento de Computaci\u00f3n y Sistemas inteligentes."
             );
             default -> null;
         };
