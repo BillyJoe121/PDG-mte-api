@@ -86,9 +86,9 @@ class MteAuthenticationFilterTest {
                 .extracting(Object::toString)
                 .containsExactly("ROLE_DIRECTOR_ESCUELA");
         ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
-        assertThat(context.username()).isEqualTo("ar");
-        assertThat(context.professorName()).isEqualTo("Ana Maria Rojas");
-        assertThat(context.departmentName()).isEqualTo("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
+        assertThat(context.username()).isEqualTo("ha");
+        assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
+        assertThat(context.departmentName()).isEqualTo("Direcci\u00f3n TDI");
     }
 
     @Test
