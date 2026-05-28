@@ -56,6 +56,14 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void objectiveCompletionUsesCurrentKeyResultProgressOverStoredSnapshot() {
+        objective.setCompletionPercentage(BigDecimal.ZERO);
+        objective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(100));
+
+        assertThat(objective.completionPercentage()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void strategicSummaryCountsCompletedObjectivesAndKeyResultsWithBlankPeriodFilter() {
         objective.getKeyResults().get(0).setProgressPercentage(BigDecimal.valueOf(100));
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));

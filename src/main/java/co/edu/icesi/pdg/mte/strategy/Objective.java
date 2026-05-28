@@ -61,18 +61,15 @@ public class Objective {
     private List<KeyResult> keyResults = new ArrayList<>();
 
     public BigDecimal completionPercentage() {
-        if (completionPercentage != null) {
-            return completionPercentage;
-        }
         List<BigDecimal> progressValues = keyResults.stream()
                 .map(KeyResult::getProgressPercentage)
                 .filter(value -> value != null)
                 .toList();
-        if (progressValues.isEmpty()) {
-            return BigDecimal.ZERO;
+        if (!progressValues.isEmpty()) {
+            BigDecimal total = progressValues.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            return total.divide(BigDecimal.valueOf(progressValues.size()), 2, java.math.RoundingMode.HALF_UP);
         }
-        BigDecimal total = progressValues.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.divide(BigDecimal.valueOf(progressValues.size()), 2, java.math.RoundingMode.HALF_UP);
+        return completionPercentage == null ? BigDecimal.ZERO : completionPercentage;
     }
 
     public void addKeyResult(KeyResult keyResult) {
