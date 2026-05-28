@@ -92,6 +92,27 @@ class MteAuthenticationFilterTest {
     }
 
     @Test
+    void mockModeKeepsLegacyDirectorAliasMappedToHugo() throws Exception {
+        MteAuthenticationFilter filter = new MteAuthenticationFilter(
+                new AuthProperties("mock", "http://localhost", "/auth/me"),
+                mock(ExternalAuthClient.class),
+                accessControlService
+        );
+        MockHttpServletRequest request = request("GET", "/api/v1/dashboard/summary");
+        request.addHeader("Authorization", "Bearer mock-token-ar");
+
+        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(authentication.getAuthorities())
+                .extracting(Object::toString)
+                .containsExactly("ROLE_DIRECTOR_ESCUELA");
+        ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
+        assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
+        assertThat(context.email()).isEqualTo("hugo.arboleda@icesi.edu.co");
+    }
+
+    @Test
     void externalModeAuthenticatesWithBearerToken() throws Exception {
         ExternalAuthClient client = mock(ExternalAuthClient.class);
         when(client.introspect("Bearer token")).thenReturn(new ExternalUserContext(

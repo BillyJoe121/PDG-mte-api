@@ -96,7 +96,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
 
     private ExternalUserContext demoUserContext(String token) {
         return switch (token.toLowerCase(java.util.Locale.ROOT)) {
-            case "ha" -> demoUser(
+            case "ha", "ar" -> demoUser(
                     9001L,
                     "ha",
                     "hugo.arboleda@icesi.edu.co",
