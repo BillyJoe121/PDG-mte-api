@@ -190,16 +190,18 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
-    void keyResultProgressSumsCompletedProjectWeightsOnly() {
+    void keyResultProgressSumsProjectWeightsByTheirProgress() {
         KeyResult keyResult = TestFixtures.keyResult(1L, unit);
         Project completed = project(1L, ProjectStatus.FINALIZADO);
+        completed.setGlobalProgress(BigDecimal.valueOf(100));
         Project active = project(2L, ProjectStatus.ACTIVO);
+        active.setGlobalProgress(BigDecimal.valueOf(20));
         ProjectKeyResultLink completedLink = link(keyResult, completed, 45);
         ProjectKeyResultLink activeLink = link(keyResult, active, 35);
 
         keyResult.recalculateProgress(List.of(completedLink, activeLink));
 
-        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("45.00");
+        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("52.00");
     }
 
 }

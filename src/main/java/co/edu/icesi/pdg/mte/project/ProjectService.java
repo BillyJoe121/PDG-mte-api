@@ -201,6 +201,7 @@ public class ProjectService {
 
         project.setGlobalProgress(request.progressPercent());
         projectRepository.save(project);
+        keyResultProgressService.recalculateKeyResultsForProject(project.getId());
         ProjectDtos.ProjectProgressResponse response = Mapper.toResponse(progressRepository.save(entry));
         auditService.record(AuditAction.PROGRESS_REGISTERED, "PROJECT", id, "Avance de proyecto registrado: " + response.progressPercent() + "%", before, Mapper.toResponse(project));
         return response;

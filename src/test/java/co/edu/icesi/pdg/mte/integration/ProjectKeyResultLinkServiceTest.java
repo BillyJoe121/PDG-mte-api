@@ -124,8 +124,10 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
-    void returnsImpactChainUsingOnlyCompletedProjectsAsAppliedContribution() {
+    void returnsImpactChainUsingProjectProgressAsAppliedContribution() {
         Project completed = project(2L, ProjectStatus.FINALIZADO, "2026-Q2", null);
+        completed.setGlobalProgress(BigDecimal.valueOf(100));
+        project.setGlobalProgress(BigDecimal.valueOf(20));
         ProjectKeyResultLink activeLink = link(project, keyResult, 35);
         ProjectKeyResultLink completedLink = link(completed, keyResult, 65);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
@@ -134,7 +136,7 @@ class ProjectKeyResultLinkServiceTest {
         var response = service.impactChain(1L);
 
         assertThat(response.impacts()).hasSize(2);
-        assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("0.00");
+        assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("7.00");
         assertThat(response.impacts().get(1).appliedContribution()).isEqualByComparingTo("65.00");
         assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q2");
     }
@@ -154,6 +156,7 @@ class ProjectKeyResultLinkServiceTest {
         assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("0.00");
         assertThat(response.impacts().get(0).period()).isNull();
         assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q1");
+        assertThat(response.impacts().get(1).appliedContribution()).isEqualByComparingTo("0.00");
     }
 
     @Test

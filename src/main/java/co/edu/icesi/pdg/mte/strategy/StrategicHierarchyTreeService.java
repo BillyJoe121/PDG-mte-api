@@ -3,7 +3,6 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
-import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -163,7 +162,7 @@ class StrategicHierarchyTreeService {
                     project.getId().toString(),
                     project.getName(),
                     project.getDescription(),
-                    project.getStatus() == ProjectStatus.FINALIZADO ? BigDecimal.valueOf(100) : BigDecimal.ZERO,
+                    project.getGlobalProgress() == null ? BigDecimal.ZERO : project.getGlobalProgress(),
                     null,
                     "Peso: " + link.getContributionWeight() + "%",
                     List.of()

@@ -196,7 +196,7 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
     }
 
     @Test
-    void happyPathLinksProjectToKeyResultAndStatusDrivesStrategicExecution() throws Exception {
+    void happyPathLinksProjectToKeyResultAndProgressDrivesStrategicExecution() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
         Long departmentId = firstId("/api/v1/departments");
@@ -226,6 +226,12 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         JsonNode linkAudit = doGet("/api/v1/audit-logs?entityType=PROJECT_KEY_RESULT_LINK&entityId=" + link.get("id").asLong());
         assertThat(linkAudit.findValues("action").stream().map(JsonNode::asText)).contains("LINK_CREATED");
 
+        doPost("/api/v1/projects/" + projectId + "/progress", """
+                {
+                  "progressPercent": 100,
+                  "comment": "Avance suficiente para aportar al KR"
+                }
+                """, 201);
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);

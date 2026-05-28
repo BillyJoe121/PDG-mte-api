@@ -24,6 +24,7 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
     void returnsCompleteProjectDetailWithHistoryLinksContributionChainAndKpis() {
         Project project = localProject();
         project.setStatus(ProjectStatus.FINALIZADO);
+        project.setGlobalProgress(BigDecimal.valueOf(100));
         ProjectProgressEntry entry = new ProjectProgressEntry();
         entry.setProject(project);
         entry.setProgressPercent(BigDecimal.valueOf(80));

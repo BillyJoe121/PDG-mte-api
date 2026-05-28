@@ -43,6 +43,12 @@ class DashboardE2ETest {
         doPost("/api/v1/project-key-result-links", """
                 {"projectId": %d, "keyResultId": %d, "contributionWeight": 100, "contributionType": "DIRECTA"}
                 """.formatted(projectId, keyResultId), 201);
+        doPost("/api/v1/projects/" + projectId + "/progress", """
+                {
+                  "progressPercent": 100,
+                  "comment": "Avance completo para dashboard"
+                }
+                """, 201);
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);
@@ -129,6 +135,12 @@ class DashboardE2ETest {
         doPost("/api/v1/project-key-result-links", """
                 {"projectId": %d, "keyResultId": %d, "contributionWeight": 75, "contributionType": "DIRECTA"}
                 """.formatted(projectId, keyResultId), 201);
+        doPost("/api/v1/projects/" + projectId + "/progress", """
+                {
+                  "progressPercent": 100,
+                  "comment": "Avance completo para reportes"
+                }
+                """, 201);
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);

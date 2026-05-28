@@ -5,6 +5,7 @@ import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 
 @Entity
@@ -85,6 +86,16 @@ public class ProjectKeyResultLink {
 
     public void setContributionWeight(BigDecimal contributionWeight) {
         this.contributionWeight = contributionWeight;
+    }
+
+    public BigDecimal appliedContribution() {
+        if (!active || project == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        BigDecimal weight = contributionWeight == null ? BigDecimal.ZERO : contributionWeight;
+        BigDecimal progress = project.getGlobalProgress() == null ? BigDecimal.ZERO : project.getGlobalProgress();
+        return weight.multiply(progress)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
     public ContributionType getContributionType() {

@@ -129,7 +129,6 @@ public class ProjectKeyResultLinkService {
     private ProjectDtos.ImpactChainItemResponse toImpactItem(ProjectKeyResultLink link) {
         KeyResult keyResult = link.getKeyResult();
         boolean completed = link.getProject() != null && link.getProject().getStatus() == ProjectStatus.FINALIZADO;
-        BigDecimal appliedContribution = completed ? link.getContributionWeight() : BigDecimal.ZERO;
         return new ProjectDtos.ImpactChainItemResponse(
                 link.getId(),
                 keyResult.getId(),
@@ -138,7 +137,7 @@ public class ProjectKeyResultLinkService {
                 keyResult.getObjective().getName(),
                 link.getContributionWeight(),
                 link.getContributionType(),
-                appliedContribution.setScale(2, RoundingMode.HALF_UP),
+                link.appliedContribution().setScale(2, RoundingMode.HALF_UP),
                 completed,
                 periodOf(link.getProject())
         );

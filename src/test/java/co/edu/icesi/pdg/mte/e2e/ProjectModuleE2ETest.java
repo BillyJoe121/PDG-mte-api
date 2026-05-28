@@ -191,6 +191,15 @@ class ProjectModuleE2ETest {
         assertThat(detail.get("linkedKeyResults")).hasSize(1);
         assertThat(chainBefore.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("0.00");
 
+        doPost("/api/v1/projects/" + projectId + "/progress", """
+                {
+                  "progressPercent": 100,
+                  "comment": "Proyecto listo para aportar al KR"
+                }
+                """, 201);
+        JsonNode chainWithProgress = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
+        assertThat(chainWithProgress.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("45.00");
+
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);

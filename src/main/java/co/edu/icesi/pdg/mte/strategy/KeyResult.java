@@ -3,7 +3,6 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
-import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -65,8 +64,7 @@ public class KeyResult {
         progressPercentage = activeLinks.stream()
                 .filter(ProjectKeyResultLink::isActive)
                 .filter(link -> link.getProject() != null)
-                .filter(link -> link.getProject().getStatus() == ProjectStatus.FINALIZADO)
-                .map(ProjectKeyResultLink::getContributionWeight)
+                .map(ProjectKeyResultLink::appliedContribution)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
