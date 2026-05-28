@@ -48,7 +48,7 @@ class DashboardE2ETest {
                 """, 200);
 
         JsonNode summary = doGet("/api/v1/dashboard/summary?period=2026-1", 200);
-        JsonNode activePeriodSummary = doGet("/api/v1/dashboard/summary", 200);
+        JsonNode globalSummary = doGet("/api/v1/dashboard/summary", 200);
         JsonNode statusChart = doGet("/api/v1/dashboard/projects/by-status?period=2026-1", 200);
         JsonNode krChart = doGet("/api/v1/dashboard/key-results/by-progress?period=2026-1", 200);
         JsonNode departments = doGet("/api/v1/dashboard/departments/summary?period=2026-1", 200);
@@ -64,7 +64,8 @@ class DashboardE2ETest {
         expectGet("/api/v1/reports/export.pdf?period=2026-1", 200);
 
         assertThat(summary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(1);
-        assertThat(activePeriodSummary.get("period").asText()).isEqualTo("2026-1");
+        assertThat(globalSummary.hasNonNull("period")).isFalse();
+        assertThat(globalSummary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(summary.get("completedProjects").asLong());
         assertThat(summary.get("completedKeyResults").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(statusChart.findValues("status").stream().map(JsonNode::asText))
                 .contains("BORRADOR", "ACTIVO", "FINALIZADO", "SUSPENDIDO", "ARCHIVADO");
