@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.api.dto;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public final class AuditDtos {
@@ -27,12 +28,20 @@ public final class AuditDtos {
     public record AuditSummaryResponse(
             long totalEvents,
             List<AuditCountResponse> byAction,
-            List<AuditCountResponse> byEntityType
+            List<AuditCountResponse> byEntityType,
+            List<AuditCountResponse> byActor,
+            List<AuditTrendPointResponse> trend
     ) {
     }
 
     public record AuditCountResponse(
             String key,
+            long count
+    ) {
+    }
+
+    public record AuditTrendPointResponse(
+            LocalDate date,
             long count
     ) {
     }

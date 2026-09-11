@@ -17,7 +17,7 @@ public class KeyResultController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     StrategyDtos.KeyResultResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
@@ -27,7 +27,7 @@ public class KeyResultController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     void delete(@PathVariable Long id) {
         strategyService.deleteKeyResult(id);
     }

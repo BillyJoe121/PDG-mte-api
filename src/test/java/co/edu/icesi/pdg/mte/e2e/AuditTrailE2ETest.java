@@ -45,6 +45,7 @@ class AuditTrailE2ETest {
         patch("/api/v1/measurement-units/" + unit.get("id").asLong() + "/active", """
                 {"active": false}
                 """, 200);
+        delete("/api/v1/measurement-units/" + unit.get("id").asLong(), 204);
 
         Long betId = post("/api/v1/strategic-bets", """
                 {
@@ -120,12 +121,16 @@ class AuditTrailE2ETest {
         JsonNode summary = getWithDates("/api/v1/audit-logs/summary", from, to, 200);
 
         assertThat(logs.findValues("action").stream().map(JsonNode::asText))
-                .contains("CREATE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED", "LINK_CREATED", "LINK_REMOVED", "EXTERNAL_SYNC");
+                .contains("CREATE", "DELETE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED", "LINK_CREATED", "LINK_REMOVED", "EXTERNAL_SYNC");
         assertThat(projectCreates).hasSize(1);
         assertThat(linkRemoved.findValues("action").stream().map(JsonNode::asText)).contains("LINK_REMOVED");
         assertThat(summary.get("totalEvents").asLong()).isGreaterThanOrEqualTo(8);
         assertThat(summary.get("byAction").findValues("key").stream().map(JsonNode::asText))
-                .contains("CREATE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED", "LINK_CREATED", "LINK_REMOVED", "EXTERNAL_SYNC");
+                .contains("CREATE", "DELETE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED", "LINK_CREATED", "LINK_REMOVED", "EXTERNAL_SYNC");
+        assertThat(summary.get("byActor")).isNotEmpty();
+        assertThat(summary.get("trend")).isNotEmpty();
+        assertThat(summary.get("trend").get(0).hasNonNull("date")).isTrue();
+        assertThat(summary.get("trend").get(0).hasNonNull("count")).isTrue();
         assertThat(detail.get("objective").get("id").asLong()).isEqualTo(objectiveId);
         assertThat(detail.get("coverageTrend").findValues("source").stream().map(JsonNode::asText))
                 .contains("OBJECTIVE_CREATED", "PROJECT_PROGRESS", "CURRENT");

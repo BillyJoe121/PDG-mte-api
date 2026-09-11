@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.catalog;
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.api.dto.CatalogDtos;
 import co.edu.icesi.pdg.mte.audit.AuditService;
+import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
@@ -140,6 +141,7 @@ class CatalogServiceTest {
         service.deleteUnit(1L);
 
         verify(unitRepository).delete(unit);
+        verify(auditService).record(eq(AuditAction.DELETE), eq("MEASUREMENT_UNIT"), eq(1L), anyString(), any(), isNull());
     }
 
     @Test
@@ -317,6 +319,7 @@ class CatalogServiceTest {
         service.deletePeriod(1L);
 
         verify(periodRepository).delete(period);
+        verify(auditService).record(eq(AuditAction.DELETE), eq("ACADEMIC_PERIOD"), eq(1L), anyString(), any(), isNull());
     }
 
     @Test

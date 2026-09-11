@@ -13,9 +13,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -41,7 +48,14 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public List<AuditDtos.AuditLogResponse> list(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
+    public List<AuditDtos.AuditLogResponse> list(
+            AuditAction action,
+            String entityType,
+            String entityId,
+            String actorUsername,
+            Instant from,
+            Instant to
+    ) {
         validateRange(from, to);
         Specification<AuditLog> specification = (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -53,6 +67,12 @@ public class AuditService {
             }
             if (entityId != null && !entityId.isBlank()) {
                 predicates.add(builder.equal(root.get("entityId"), entityId.trim()));
+            }
+            if (actorUsername != null && !actorUsername.isBlank()) {
+                predicates.add(builder.equal(
+                        builder.upper(root.get("actorUsername")),
+                        actorUsername.trim().toUpperCase()
+                ));
             }
             if (from != null) {
                 predicates.add(builder.greaterThanOrEqualTo(root.get("createdAt"), from));
@@ -69,29 +89,63 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public AuditDtos.AuditSummaryResponse summary(AuditAction action, String entityType, String entityId, Instant from, Instant to) {
-        List<AuditDtos.AuditLogResponse> logs = list(action, entityType, entityId, from, to);
-        List<AuditDtos.AuditCountResponse> byAction = logs.stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        log -> log.action().name(),
-                        java.util.LinkedHashMap::new,
-                        java.util.stream.Collectors.counting()
-                ))
-                .entrySet()
-                .stream()
+    public AuditDtos.AuditSummaryResponse summary(
+            AuditAction action,
+            String entityType,
+            String entityId,
+            String actorUsername,
+            Instant from,
+            Instant to
+    ) {
+        List<AuditDtos.AuditLogResponse> logs = list(action, entityType, entityId, actorUsername, from, to);
+        return new AuditDtos.AuditSummaryResponse(
+                logs.size(),
+                counts(logs, log -> log.action().name()),
+                counts(logs, AuditDtos.AuditLogResponse::entityType),
+                counts(logs, log -> log.actorUsername() == null || log.actorUsername().isBlank() ? "SISTEMA" : log.actorUsername()),
+                trend(logs, from, to)
+        );
+    }
+
+    private List<AuditDtos.AuditCountResponse> counts(
+            List<AuditDtos.AuditLogResponse> logs,
+            Function<AuditDtos.AuditLogResponse, String> classifier
+    ) {
+        return logs.stream()
+                .collect(Collectors.groupingBy(classifier, Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
                 .map(entry -> new AuditDtos.AuditCountResponse(entry.getKey(), entry.getValue()))
                 .toList();
-        List<AuditDtos.AuditCountResponse> byEntityType = logs.stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        AuditDtos.AuditLogResponse::entityType,
-                        java.util.LinkedHashMap::new,
-                        java.util.stream.Collectors.counting()
-                ))
-                .entrySet()
-                .stream()
-                .map(entry -> new AuditDtos.AuditCountResponse(entry.getKey(), entry.getValue()))
+    }
+
+    private List<AuditDtos.AuditTrendPointResponse> trend(
+            List<AuditDtos.AuditLogResponse> logs,
+            Instant from,
+            Instant to
+    ) {
+        if (logs.isEmpty() && (from == null || to == null)) {
+            return List.of();
+        }
+        Map<LocalDate, Long> countsByDay = logs.stream()
+                .filter(log -> log.createdAt() != null)
+                .collect(Collectors.groupingBy(
+                        log -> log.createdAt().atZone(ZoneOffset.UTC).toLocalDate(),
+                        LinkedHashMap::new,
+                        Collectors.counting()
+                ));
+        LocalDate first = from != null
+                ? from.atZone(ZoneOffset.UTC).toLocalDate()
+                : countsByDay.keySet().stream().min(Comparator.naturalOrder()).orElse(null);
+        LocalDate last = to != null
+                ? to.atZone(ZoneOffset.UTC).toLocalDate()
+                : countsByDay.keySet().stream().max(Comparator.naturalOrder()).orElse(null);
+        if (first == null || last == null) {
+            return List.of();
+        }
+        return first.datesUntil(last.plusDays(1))
+                .map(date -> new AuditDtos.AuditTrendPointResponse(date, countsByDay.getOrDefault(date, 0L)))
                 .toList();
-        return new AuditDtos.AuditSummaryResponse(logs.size(), byAction, byEntityType);
     }
 
     private void applyActor(AuditLog log) {

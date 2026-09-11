@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/consistency")
-@PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+@PreAuthorize("hasRole('ADMIN')")
 public class ConsistencyController {
     private final ConsistencyService consistencyService;
 

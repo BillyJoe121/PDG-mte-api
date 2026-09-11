@@ -14,38 +14,30 @@ import java.util.stream.Collectors;
 @Service
 public class AccessControlService {
     public static final String ADMIN = "ADMIN";
-    public static final String DECANO = "DECANO";
-    public static final String DIRECTOR_ESCUELA = "DIRECTOR_ESCUELA";
-    public static final String JEFE_DPTO = "JEFE_DPTO";
-    public static final String PROFESOR = "PROFESOR";
+    public static final String USER = "USER";
 
-    public static final List<String> SUPPORTED_ROLES = List.of(
-            ADMIN,
-            DECANO,
-            DIRECTOR_ESCUELA,
-            JEFE_DPTO,
-            PROFESOR
-    );
+    public static final List<String> SUPPORTED_ROLES = List.of(ADMIN, USER);
 
     public Map<String, Boolean> capabilities(Collection<String> roles) {
         Set<String> normalizedRoles = normalize(roles);
         Map<String, Boolean> capabilities = new LinkedHashMap<>();
-        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR));
-        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR));
-        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR));
+        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN));
         capabilities.put("manageCatalogs", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA));
-        capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA));
-        capabilities.put("manageObjectives", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO));
-        capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO));
-        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR));
-        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO));
-        capabilities.put("registerProjectProgress", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR));
-        capabilities.put("changeProjectStatus", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA));
-        capabilities.put("syncExternalProjects", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA));
-        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO));
-        capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO));
-        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA));
+        capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("manageObjectives", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("registerProjectProgress", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("changeProjectStatus", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("syncExternalProjects", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, USER));
+        capabilities.put("viewConsistency", hasAny(normalizedRoles, ADMIN));
         capabilities.put("viewAuditLogs", hasAny(normalizedRoles, ADMIN));
         return capabilities;
     }
@@ -59,27 +51,7 @@ public class AccessControlService {
         if (currentStatus == null || requestedStatus == null) {
             return false;
         }
-        if (currentStatus == requestedStatus) {
-            return hasAny(normalizedRoles, ADMIN, DECANO, DIRECTOR_ESCUELA);
-        }
-        if (normalizedRoles.contains(ADMIN)) {
-            return true;
-        }
-        if (!hasAny(normalizedRoles, DECANO, DIRECTOR_ESCUELA)) {
-            return false;
-        }
-        return switch (currentStatus) {
-            case BORRADOR -> requestedStatus == ProjectStatus.ACTIVO
-                    || requestedStatus == ProjectStatus.SUSPENDIDO
-                    || requestedStatus == ProjectStatus.ARCHIVADO;
-            case ACTIVO -> requestedStatus == ProjectStatus.FINALIZADO
-                    || requestedStatus == ProjectStatus.SUSPENDIDO
-                    || requestedStatus == ProjectStatus.ARCHIVADO;
-            case SUSPENDIDO -> requestedStatus == ProjectStatus.ACTIVO
-                    || requestedStatus == ProjectStatus.ARCHIVADO;
-            case FINALIZADO -> requestedStatus == ProjectStatus.ARCHIVADO;
-            case ARCHIVADO -> false;
-        };
+        return normalizedRoles.contains(ADMIN);
     }
 
     private Set<String> normalize(Collection<String> roles) {
@@ -97,9 +69,7 @@ public class AccessControlService {
     private String normalizeAlias(String role) {
         return switch (role) {
             case "ADMINISTRADOR" -> ADMIN;
-            case "DIRECTOR" -> DIRECTOR_ESCUELA;
-            case "JEFE" -> JEFE_DPTO;
-            case "TUTOR" -> PROFESOR;
+            case "USUARIO", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO", "TUTOR", "PROFESOR" -> USER;
             default -> role;
         };
     }

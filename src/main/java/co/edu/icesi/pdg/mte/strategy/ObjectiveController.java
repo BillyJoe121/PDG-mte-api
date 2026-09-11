@@ -40,7 +40,7 @@ public class ObjectiveController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     StrategyDtos.ObjectiveResponse create(@Valid @RequestBody StrategyDtos.ObjectiveRequest request) {
         return strategyService.createObjective(request);
     }
@@ -56,7 +56,7 @@ public class ObjectiveController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     StrategyDtos.ObjectiveResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.ObjectiveUpdateRequest request
@@ -71,7 +71,7 @@ public class ObjectiveController {
 
     @PostMapping("/{id}/key-results")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','DECANO','DIRECTOR_ESCUELA','JEFE_DPTO')")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     StrategyDtos.KeyResultResponse addKeyResult(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request

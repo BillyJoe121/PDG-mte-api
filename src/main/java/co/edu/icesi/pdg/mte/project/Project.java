@@ -11,13 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(
-        name = "project",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_project_external_source_id",
-                columnNames = {"external_source", "external_project_id"}
-        )
-)
+@Table(name = "project", uniqueConstraints = @UniqueConstraint(name = "uk_project_external_source_id", columnNames = {
+        "external_source", "external_project_id" }))
 public class Project {
 
     @Id

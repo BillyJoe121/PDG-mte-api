@@ -1,6 +1,7 @@
 target/
 node_modules/
 tmp/
+graphify-out/
 .idea/
 .vscode/
 *.iml

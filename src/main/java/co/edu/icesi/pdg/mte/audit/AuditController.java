@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/audit-logs")
@@ -26,10 +26,11 @@ public class AuditController {
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String actorUsername,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
-        return auditService.list(action, entityType, entityId, from, to);
+        return auditService.list(action, entityType, entityId, actorUsername, from, to);
     }
 
     @GetMapping("/summary")
@@ -38,9 +39,10 @@ public class AuditController {
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String actorUsername,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to
     ) {
-        return auditService.summary(action, entityType, entityId, from, to);
+        return auditService.summary(action, entityType, entityId, actorUsername, from, to);
     }
 }

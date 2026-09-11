@@ -17,6 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.Map;
 import java.time.Instant;
+import java.time.LocalDate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,8 +85,8 @@ class AuditServiceTest {
 
         Instant from = Instant.parse("2026-01-01T00:00:00Z");
         Instant to = Instant.parse("2026-12-31T23:59:59Z");
-        var logs = service.list(null, "project", "1", from, to);
-        var summary = service.summary(null, "project", "1", from, to);
+        var logs = service.list(null, "project", "1", null, from, to);
+        var summary = service.summary(null, "project", "1", null, from, to);
 
         assertThat(logs).hasSize(2);
         assertThat(summary.totalEvents()).isEqualTo(2);
@@ -93,10 +95,36 @@ class AuditServiceTest {
     }
 
     @Test
+    void summarizesActorsAndBuildsContinuousDailyTrend() {
+        AuditService service = new AuditService(repository, new ObjectMapper());
+        AuditLog first = log(AuditAction.CREATE, "OBJECTIVE", "1");
+        first.setActorUsername("admin");
+        ReflectionTestUtils.setField(first, "createdAt", Instant.parse("2026-04-01T10:00:00Z"));
+        AuditLog second = log(AuditAction.UPDATE, "OBJECTIVE", "1");
+        second.setActorUsername("admin");
+        ReflectionTestUtils.setField(second, "createdAt", Instant.parse("2026-04-03T10:00:00Z"));
+        when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(second, first));
+
+        var summary = service.summary(
+                null, "OBJECTIVE", null, "admin",
+                Instant.parse("2026-04-01T00:00:00Z"),
+                Instant.parse("2026-04-03T23:59:59Z")
+        );
+
+        assertThat(summary.byActor()).containsExactly(new co.edu.icesi.pdg.mte.api.dto.AuditDtos.AuditCountResponse("admin", 2));
+        assertThat(summary.trend()).containsExactly(
+                new co.edu.icesi.pdg.mte.api.dto.AuditDtos.AuditTrendPointResponse(LocalDate.parse("2026-04-01"), 1),
+                new co.edu.icesi.pdg.mte.api.dto.AuditDtos.AuditTrendPointResponse(LocalDate.parse("2026-04-02"), 0),
+                new co.edu.icesi.pdg.mte.api.dto.AuditDtos.AuditTrendPointResponse(LocalDate.parse("2026-04-03"), 1)
+        );
+    }
+
+    @Test
     void rejectsInvalidDateRange() {
         AuditService service = new AuditService(repository, new ObjectMapper());
 
         assertThatThrownBy(() -> service.list(
+                null,
                 null,
                 null,
                 null,

@@ -101,7 +101,9 @@ public class CatalogService {
         if (isUnitInUse(id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar una unidad de medida en uso; marquela como inactiva.");
         }
+        var before = Mapper.toResponse(unit);
         unitRepository.delete(unit);
+        auditService.record(AuditAction.DELETE, "MEASUREMENT_UNIT", id, "Unidad de medida eliminada: " + before.name(), before, null);
     }
 
     @Transactional(readOnly = true)
@@ -167,7 +169,9 @@ public class CatalogService {
         if (isPeriodInUse(period)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un periodo academico en uso; cambie su estado a cerrado.");
         }
+        var before = Mapper.toResponse(period);
         periodRepository.delete(period);
+        auditService.record(AuditAction.DELETE, "ACADEMIC_PERIOD", id, "Periodo academico eliminado: " + before.name(), before, null);
     }
 
     @Transactional(readOnly = true)

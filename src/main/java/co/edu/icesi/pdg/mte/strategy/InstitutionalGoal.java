@@ -48,12 +48,8 @@ public class InstitutionalGoal {
     private World world;
 
     @ManyToMany
-    @JoinTable(
-            name = "goal_period",
-            joinColumns = @JoinColumn(name = "goal_id"),
-            inverseJoinColumns = @JoinColumn(name = "period_id"),
-            uniqueConstraints = @UniqueConstraint(columnNames = {"goal_id", "period_id"})
-    )
+    @JoinTable(name = "goal_period", joinColumns = @JoinColumn(name = "goal_id"), inverseJoinColumns = @JoinColumn(name = "period_id"), uniqueConstraints = @UniqueConstraint(columnNames = {
+            "goal_id", "period_id" }))
     private Set<AcademicPeriod> periods = new LinkedHashSet<>();
 
     public Long getId() {

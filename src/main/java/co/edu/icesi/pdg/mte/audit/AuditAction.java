@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.audit;
 
 public enum AuditAction {
     CREATE,
+    DELETE,
     UPDATE,
     STATUS_CHANGE,
     PROGRESS_REGISTERED,

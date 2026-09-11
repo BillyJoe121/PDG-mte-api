@@ -16,13 +16,7 @@ class AuthContextControllerTest {
 
         assertThat(response.user().externalUserId()).isNull();
         assertThat(response.user().roles()).isEmpty();
-        assertThat(response.supportedRoles()).containsExactly(
-                "ADMIN",
-                "DECANO",
-                "DIRECTOR_ESCUELA",
-                "JEFE_DPTO",
-                "PROFESOR"
-        );
+        assertThat(response.supportedRoles()).containsExactly("ADMIN", "USER");
         assertThat(response.capabilities()).allSatisfy((key, value) -> assertThat(value).isFalse());
     }
 
@@ -54,12 +48,15 @@ class AuthContextControllerTest {
         var response = controller.me(authentication);
 
         assertThat(response.user().externalUserId()).isEqualTo(11L);
-        assertThat(response.user().roles()).containsExactly("JEFE_DPTO", "PROFESOR");
+        assertThat(response.user().roles()).containsExactly("USER");
         assertThat(response.user().permissions()).containsExactly("MTE_READ");
         assertThat(response.user().externalProfessorId()).isEqualTo(44L);
         assertThat(response.user().professorName()).isEqualTo("Jefe Dpto");
         assertThat(response.user().departmentName()).isEqualTo("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
-        assertThat(response.capabilities().get("linkProjectsToKeyResults")).isTrue();
+        assertThat(response.capabilities().get("manageObjectives")).isTrue();
+        assertThat(response.capabilities().get("manageKeyResults")).isTrue();
+        assertThat(response.capabilities().get("linkProjectsToKeyResults")).isFalse();
+        assertThat(response.capabilities().get("viewReports")).isTrue();
         assertThat(response.capabilities().get("viewAuditLogs")).isFalse();
     }
 }

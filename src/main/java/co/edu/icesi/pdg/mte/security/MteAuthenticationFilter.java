@@ -100,7 +100,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9001L,
                     "ha",
                     "hugo.arboleda@icesi.edu.co",
-                    List.of(AccessControlService.DIRECTOR_ESCUELA),
+                    List.of(AccessControlService.USER),
                     "Hugo Arboleda",
                     "Direcci\u00f3n TDI"
             );
@@ -108,7 +108,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9002L,
                     "rs",
                     "rocio.segovia@icesi.edu.co",
-                    List.of(AccessControlService.JEFE_DPTO),
+                    List.of(AccessControlService.USER),
                     "Roc\u00edo Segovia",
                     "DCSI"
             );
@@ -116,7 +116,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9003L,
                     "lb",
                     "leonardo.bustamante@icesi.edu.co",
-                    List.of(AccessControlService.PROFESOR),
+                    List.of(AccessControlService.USER),
                     "Leonardo Bustamante",
                     "DCSI"
             );

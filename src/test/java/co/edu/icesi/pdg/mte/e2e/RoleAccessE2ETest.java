@@ -26,275 +26,103 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class RoleAccessE2ETest {
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @MockitoBean
-    private ExternalAuthClient externalAuthClient;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @MockitoBean private ExternalAuthClient externalAuthClient;
 
     @BeforeEach
     void setUp() {
         when(externalAuthClient.introspect(anyString())).thenAnswer(invocation -> {
             String token = invocation.getArgument(0);
-            if (token.contains("prefixed-admin")) {
-                return user("ROLE_ADMIN");
-            }
-            if (token.contains("admin")) {
-                return user("ADMIN");
-            }
-            if (token.contains("decano")) {
-                return user("DECANO");
-            }
-            if (token.contains("director")) {
-                return user("DIRECTOR_ESCUELA");
-            }
-            if (token.contains("jefe")) {
-                return user("JEFE_DPTO");
-            }
-            if (token.contains("unknown")) {
-                return user("INVITADO");
-            }
-            return user("PROFESOR");
+            if (token.contains("admin")) return user("ADMIN");
+            if (token.contains("legacy")) return user("PROFESOR");
+            return user("USER");
         });
     }
 
     @Test
-    void professorCanSeeContextDashboardAndCreateProjectsButCannotAdministerOrReport() throws Exception {
-        Long departmentId = firstId("/api/v1/departments", "profesor-token");
-
-        JsonNode me = getJson("/api/v1/auth/me", "profesor-token", 200);
-        getJson("/api/v1/dashboard/summary", "profesor-token", 200);
-        JsonNode created = postJson("/api/v1/projects", projectPayload(departmentId), "profesor-token", 201);
-
-        assertThat(me.get("user").get("roles").toString()).contains("PROFESOR");
-        assertThat(me.get("capabilities").get("createProjects").asBoolean()).isTrue();
-        assertThat(me.get("capabilities").get("manageCatalogs").asBoolean()).isFalse();
-        assertThat(me.get("capabilities").get("viewReports").asBoolean()).isFalse();
-        assertThat(created.get("id").asLong()).isPositive();
-
-        postJson("/api/v1/measurement-units", """
-                {"name": "Unidad profesor %d", "type": "NUMERICA"}
-                """.formatted(SEQUENCE.incrementAndGet()), "profesor-token", 403);
-        getJson("/api/v1/reports/general", "profesor-token", 403);
-        getJson("/api/v1/presentation", "profesor-token", 403);
-    }
-
-    @Test
-    void professorCannotMutateStrategyOrCreateStrategicLinks() throws Exception {
-        Scenario scenario = createScenario("director-token");
-
-        postJson("/api/v1/strategic-bets", """
-                {
-                  "name": "Apuesta profesor bloqueada %d",
-                  "description": "No debe crearse"
-                }
-                """.formatted(SEQUENCE.incrementAndGet()), "profesor-token", 403);
-        postJson("/api/v1/goals", """
-                {
-                  "name": "Meta profesor bloqueada %d",
-                  "description": "No debe crearse",
-                  "expectedValue": 100,
-                  "measurementUnitId": %d
-                }
-                """.formatted(SEQUENCE.incrementAndGet(), firstId("/api/v1/measurement-units", "director-token")), "profesor-token", 403);
-        patchJson("/api/v1/objectives/" + scenario.objectiveId(), """
-                {"name": "Cambio profesor", "description": "No autorizado"}
-                """, "profesor-token", 403);
+    void userCanManageObjectivesAndKeyResultsAndViewReports() throws Exception {
+        Scenario scenario = createScenarioAsAdmin();
+        JsonNode me = getJson("/api/v1/auth/me", "user-token", 200);
+        patchJson("/api/v1/objectives/" + scenario.objectiveId(),
+                "{\"name\":\"Objetivo actualizado por user\",\"description\":\"Edición permitida\"}",
+                "user-token", 200);
         postJson("/api/v1/objectives/" + scenario.objectiveId() + "/key-results", """
-                {
-                  "name": "KR profesor bloqueado",
-                  "description": "No autorizado",
-                  "metric": "Cobertura",
-                  "baseValue": 0,
-                  "targetValue": 10,
-                  "measurementUnitId": %d
-                }
-                """.formatted(firstId("/api/v1/measurement-units", "director-token")), "profesor-token", 403);
-        postJson("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 40, "contributionType": "DIRECTA"}
-                """.formatted(scenario.projectId(), scenario.keyResultId()), "profesor-token", 403);
+                {"name":"KR creado por user","description":"Gestión permitida","metric":"Cobertura",
+                 "baseValue":0,"targetValue":10,"measurementUnitId":%d}
+                """.formatted(scenario.unitId()), "user-token", 201);
+        getJson("/api/v1/reports/general", "user-token", 200);
+        getJson("/api/v1/presentation", "user-token", 200);
+
+        assertThat(me.get("user").get("roles").toString()).contains("USER");
+        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isTrue();
+        assertThat(me.get("capabilities").get("manageKeyResults").asBoolean()).isTrue();
+        assertThat(me.get("capabilities").get("viewReports").asBoolean()).isTrue();
     }
 
     @Test
-    void jefeCanLinkProjectsToKeyResultsAndViewReportsButCannotChangeStatusOrPresent() throws Exception {
-        Scenario scenario = createScenario("director-token");
-
-        JsonNode link = postJson("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 40, "contributionType": "DIRECTA"}
-                """.formatted(scenario.projectId(), scenario.keyResultId()), "jefe-token", 201);
-        getJson("/api/v1/reports/general?period=2026-1", "jefe-token", 200);
-        patchJson("/api/v1/projects/" + scenario.projectId() + "/status", """
-                {"status": "FINALIZADO"}
-                """, "jefe-token", 403);
-        getJson("/api/v1/presentation", "jefe-token", 403);
-        postJson("/api/v1/goals", """
-                {
-                  "name": "Meta jefe bloqueada %d",
-                  "description": "No debe crearse",
-                  "expectedValue": 100,
-                  "measurementUnitId": %d
-                }
-                """.formatted(SEQUENCE.incrementAndGet(), firstId("/api/v1/measurement-units", "director-token")), "jefe-token", 403);
-
-        assertThat(link.get("contributionWeight").decimalValue()).isEqualByComparingTo("40");
-    }
-
-    @Test
-    void decanoCanUseExecutiveOperationsButCannotManageCatalogsOrAuditLogs() throws Exception {
-        Long departmentId = firstId("/api/v1/departments", "decano-token");
-        JsonNode bet = postJson("/api/v1/strategic-bets", """
-                {
-                  "name": "Apuesta decano %d",
-                  "description": "Decision directiva",
-                  "startDate": "2026-01-01",
-                  "endDate": "2026-12-31"
-                }
-                """.formatted(SEQUENCE.incrementAndGet()), "decano-token", 201);
-        Scenario scenario = createScenario("decano-token");
-
-        patchJson("/api/v1/projects/" + scenario.projectId() + "/status", """
-                {"status": "FINALIZADO"}
-                """, "decano-token", 200);
-        patchJson("/api/v1/projects/" + scenario.projectId() + "/status", """
-                {"status": "ACTIVO"}
-                """, "decano-token", 403);
-        getJson("/api/v1/reports/general", "decano-token", 200);
-        getJson("/api/v1/presentation", "decano-token", 200);
-        getJson("/api/v1/audit-logs", "decano-token", 403);
+    void userCannotManageAdminOnlyResources() throws Exception {
+        Long departmentId = firstId("/api/v1/departments", "admin-token");
         postJson("/api/v1/measurement-units", """
-                {"name": "Unidad decano %d", "type": "NUMERICA"}
-                """.formatted(SEQUENCE.incrementAndGet()), "decano-token", 403);
+                {"name":"Unidad bloqueada %d","type":"NUMERICA"}
+                """.formatted(SEQUENCE.incrementAndGet()), "user-token", 403);
+        postJson("/api/v1/strategic-bets", """
+                {"name":"Apuesta bloqueada %d","description":"No autorizada"}
+                """.formatted(SEQUENCE.incrementAndGet()), "user-token", 403);
+        postJson("/api/v1/projects", projectPayload(departmentId), "user-token", 403);
+        getJson("/api/v1/audit-logs", "user-token", 403);
+    }
 
+    @Test
+    void adminCanManageCatalogsProjectsStrategyAndAudit() throws Exception {
+        Long departmentId = firstId("/api/v1/departments", "admin-token");
+        JsonNode unit = postJson("/api/v1/measurement-units", """
+                {"name":"Unidad admin %d","type":"NUMERICA"}
+                """.formatted(SEQUENCE.incrementAndGet()), "admin-token", 201);
+        JsonNode period = postJson("/api/v1/academic-periods", """
+                {"name":"Periodo admin %d","startDate":"2030-01-01","endDate":"2030-06-30","status":"PLANIFICACION"}
+                """.formatted(SEQUENCE.incrementAndGet()), "admin-token", 201);
+        JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId), "admin-token", 201);
+        JsonNode bet = postJson("/api/v1/strategic-bets", """
+                {"name":"Apuesta admin %d","description":"Administrada"}
+                """.formatted(SEQUENCE.incrementAndGet()), "admin-token", 201);
+        getJson("/api/v1/audit-logs", "admin-token", 200);
+        assertThat(unit.get("id").asLong()).isPositive();
+        assertThat(period.get("id").asLong()).isPositive();
+        assertThat(project.get("id").asLong()).isPositive();
         assertThat(bet.get("id").asLong()).isPositive();
     }
 
     @Test
-    void directorCanUpdateStrategicBet() throws Exception {
+    void legacyInstitutionalRolesCollapseToUser() throws Exception {
+        JsonNode me = getJson("/api/v1/auth/me", "legacy-token", 200);
+        assertThat(me.get("user").get("roles").toString()).isEqualTo("[\"USER\"]");
+        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isTrue();
+        assertThat(me.get("capabilities").get("manageCatalogs").asBoolean()).isFalse();
+    }
+
+    private Scenario createScenarioAsAdmin() throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units", "admin-token");
+        Long periodId = firstId("/api/v1/academic-periods", "admin-token");
+        Long departmentId = firstId("/api/v1/departments", "admin-token");
         Long betId = postJson("/api/v1/strategic-bets", """
-                {
-                  "name": "Apuesta director editable %d",
-                  "description": "Decision directiva",
-                  "startDate": "2026-01-01",
-                  "endDate": "2026-12-31"
-                }
-                """.formatted(SEQUENCE.incrementAndGet()), "director-token", 201).get("id").asLong();
-
-        JsonNode updated = putJson("/api/v1/strategic-bets/" + betId, """
-                {
-                  "name": "Apuesta director editada %d",
-                  "description": "Decision directiva actualizada",
-                  "startDate": "2026-01-01",
-                  "endDate": "2026-12-31"
-                }
-                """.formatted(SEQUENCE.incrementAndGet()), "director-token", 200);
-
-        assertThat(updated.get("id").asLong()).isEqualTo(betId);
-        assertThat(updated.get("description").asText()).isEqualTo("Decision directiva actualizada");
-    }
-
-    @Test
-    void adminCanManageCatalogsAndAuditLogs() throws Exception {
-        JsonNode unit = postJson("/api/v1/measurement-units", """
-                {"name": "Unidad admin %d", "type": "NUMERICA", "description": "Administrada"}
-                """.formatted(SEQUENCE.incrementAndGet()), "admin-token", 201);
-        JsonNode auditLogs = getJson("/api/v1/audit-logs", "admin-token", 200);
-
-        assertThat(unit.get("id").asLong()).isPositive();
-        assertThat(auditLogs).isNotNull();
-    }
-
-    @Test
-    void prefixedAdminRoleIsAcceptedByMethodSecurityAndAuthContext() throws Exception {
-        JsonNode me = getJson("/api/v1/auth/me", "prefixed-admin-token", 200);
-        JsonNode unit = postJson("/api/v1/measurement-units", """
-                {"name": "Unidad admin prefijo %d", "type": "NUMERICA"}
-                """.formatted(SEQUENCE.incrementAndGet()), "prefixed-admin-token", 201);
-        getJson("/api/v1/audit-logs/summary", "prefixed-admin-token", 200);
-
-        assertThat(me.get("user").get("roles").toString()).contains("ADMIN");
-        assertThat(me.get("capabilities").get("manageCatalogs").asBoolean()).isTrue();
-        assertThat(unit.get("id").asLong()).isPositive();
-    }
-
-    @Test
-    void unknownAuthenticatedRoleReceivesNoCapabilitiesAndCannotUseProtectedOperations() throws Exception {
-        Long departmentId = firstId("/api/v1/departments", "director-token");
-
-        JsonNode me = getJson("/api/v1/auth/me", "unknown-token", 200);
-        getJson("/api/v1/dashboard/summary", "unknown-token", 403);
-        getJson("/api/v1/reports/general", "unknown-token", 403);
-        getJson("/api/v1/presentation", "unknown-token", 403);
-        getJson("/api/v1/audit-logs/summary", "unknown-token", 403);
-        postJson("/api/v1/projects", projectPayload(departmentId), "unknown-token", 403);
-        postJson("/api/v1/measurement-units", """
-                {"name": "Unidad desconocida %d", "type": "NUMERICA"}
-                """.formatted(SEQUENCE.incrementAndGet()), "unknown-token", 403);
-
-        assertThat(me.get("user").get("roles").toString()).contains("INVITADO");
-        me.get("capabilities").elements().forEachRemaining(capability -> assertThat(capability.asBoolean()).isFalse());
-    }
-
-    private Scenario createScenario(String token) throws Exception {
-        Long unitId = firstId("/api/v1/measurement-units", token);
-        Long periodId = firstId("/api/v1/academic-periods", token);
-        Long departmentId = firstId("/api/v1/departments", token);
-        Long betId = postJson("/api/v1/strategic-bets", """
-                {
-                  "name": "Apuesta rol %d",
-                  "description": "Apuesta para permisos",
-                  "startDate": "2026-01-01",
-                  "endDate": "2026-12-31"
-                }
-                """.formatted(SEQUENCE.incrementAndGet()), token, 201).get("id").asLong();
+                {"name":"Apuesta rol %d","description":"Base"}
+                """.formatted(SEQUENCE.incrementAndGet()), "admin-token", 201).get("id").asLong();
         Long goalId = postJson("/api/v1/goals", """
-                {
-                  "name": "Meta rol %d",
-                  "description": "Meta para permisos",
-                  "expectedValue": 100,
-                  "measurementUnitId": %d
-                }
-                """.formatted(SEQUENCE.incrementAndGet(), unitId), token, 201).get("id").asLong();
+                {"name":"Meta rol %d","description":"Base","expectedValue":100,"measurementUnitId":%d}
+                """.formatted(SEQUENCE.incrementAndGet(), unitId), "admin-token", 201).get("id").asLong();
         JsonNode objective = postJson("/api/v1/objectives", """
-                {
-                  "name": "Objetivo rol %d",
-                  "description": "Objetivo para permisos",
-                  "departmentId": %d,
-                  "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [{
-                    "name": "KR permisos",
-                    "description": "KR para permisos",
-                    "metric": "Cobertura",
-                    "baseValue": 0,
-                    "targetValue": 100,
-                    "measurementUnitId": %d
-                  }]
-                }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId), token, 201);
-        JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId), token, 201);
-        return new Scenario(
-                project.get("id").asLong(),
-                objective.get("id").asLong(),
-                objective.get("keyResults").get(0).get("id").asLong()
-        );
+                {"name":"Objetivo rol %d","description":"Base","departmentId":%d,"academicPeriodId":%d,
+                 "goalId":%d,"strategicBetId":%d,"keyResults":[{"name":"KR inicial","description":"Base",
+                 "metric":"Cobertura","baseValue":0,"targetValue":100,"measurementUnitId":%d}]}
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId), "admin-token", 201);
+        return new Scenario(objective.get("id").asLong(), unitId);
     }
 
     private String projectPayload(Long departmentId) {
         return """
-                {
-                  "name": "Proyecto rol %d",
-                  "description": "Proyecto para validar permisos",
-                  "type": "INVESTIGACION",
-                  "departmentId": %d,
-                  "status": "ACTIVO",
-                  "startPeriod": "2026-1",
-                  "endPeriod": "2026-1"
-                }
+                {"name":"Proyecto rol %d","description":"Permisos","type":"INVESTIGACION","departmentId":%d,
+                 "status":"ACTIVO","startPeriod":"2026-1","endPeriod":"2026-1"}
                 """.formatted(SEQUENCE.incrementAndGet(), departmentId);
     }
 
@@ -302,64 +130,31 @@ class RoleAccessE2ETest {
         return getJson(url, token, 200).get(0).get("id").asLong();
     }
 
-    private JsonNode getJson(String url, String token, int status) throws Exception {
+    private JsonNode getJson(String url, String token, int expectedStatus) throws Exception {
         String body = mockMvc.perform(get(url).header("Authorization", "Bearer " + token))
-                .andExpect(status().is(status))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
         return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
     }
 
-    private JsonNode postJson(String url, String payload, String token, int status) throws Exception {
-        String body = mockMvc.perform(post(url)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload))
-                .andExpect(status().is(status))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    private JsonNode postJson(String url, String payload, String token, int expectedStatus) throws Exception {
+        String body = mockMvc.perform(post(url).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
         return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
     }
 
-    private JsonNode patchJson(String url, String payload, String token, int status) throws Exception {
-        String body = mockMvc.perform(patch(url)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload))
-                .andExpect(status().is(status))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
-    }
-
-    private JsonNode putJson(String url, String payload, String token, int status) throws Exception {
-        String body = mockMvc.perform(put(url)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload))
-                .andExpect(status().is(status))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    private JsonNode patchJson(String url, String payload, String token, int expectedStatus) throws Exception {
+        String body = mockMvc.perform(patch(url).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
         return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
     }
 
     private ExternalUserContext user(String role) {
-        return new ExternalUserContext(
-                (long) Math.abs(role.hashCode()),
-                role.toLowerCase(),
-                role.toLowerCase() + "@icesi.edu.co",
-                List.of(role),
-                List.of("MTE_READ"),
-                99L,
-                "Usuario " + role,
-                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
-        );
+        return new ExternalUserContext((long) Math.abs(role.hashCode()), role.toLowerCase(),
+                role.toLowerCase() + "@icesi.edu.co", List.of(role), List.of("MTE_READ"),
+                99L, "Usuario " + role, "DCSI");
     }
 
-    private record Scenario(Long projectId, Long objectiveId, Long keyResultId) {
-    }
+    private record Scenario(Long objectiveId, Long unitId) {}
 }

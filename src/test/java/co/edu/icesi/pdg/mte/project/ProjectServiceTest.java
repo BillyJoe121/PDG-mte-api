@@ -178,7 +178,7 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
         archived.setStatus(ProjectStatus.ARCHIVADO);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(archived));
 
-        setRoles("DIRECTOR_ESCUELA");
+        setRoles("USER");
         assertThatThrownBy(() -> service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.ACTIVO)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).status())
