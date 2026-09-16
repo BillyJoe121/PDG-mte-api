@@ -25,6 +25,14 @@ public class ProjectKeyResultLinkController {
         return service.link(request);
     }
 
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProjectDtos.ProjectKeyResultLinkResponse update(
+            @PathVariable Long id,
+            @Valid @RequestBody ProjectDtos.ProjectKeyResultLinkUpdateRequest request) {
+        return service.update(id, request);
+    }
+
     @GetMapping
     public List<ProjectDtos.ProjectKeyResultLinkResponse> list(
             @RequestParam(required = false) Long projectId,

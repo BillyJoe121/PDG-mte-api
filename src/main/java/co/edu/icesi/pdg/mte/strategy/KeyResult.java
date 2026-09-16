@@ -40,6 +40,10 @@ public class KeyResult {
     @Column(precision = 10, scale = 2)
     private BigDecimal progressPercentage = BigDecimal.ZERO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private KeyResultStatus status = KeyResultStatus.BORRADOR;
+
     private Instant createdAt = Instant.now();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
@@ -57,16 +61,21 @@ public class KeyResult {
     private List<ProjectKeyResultLink> projectLinks = new ArrayList<>();
 
     public void recalculateProgress() {
-        recalculateProgress(projectLinks);
+        if (baseValue == null || targetValue == null || currentValue == null
+                || targetValue.compareTo(baseValue) == 0) {
+            progressPercentage = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            return;
+        }
+        BigDecimal rawProgress = currentValue.subtract(baseValue)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(targetValue.subtract(baseValue), 2, RoundingMode.HALF_UP);
+        progressPercentage = rawProgress.max(BigDecimal.ZERO)
+                .min(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     public void recalculateProgress(List<ProjectKeyResultLink> activeLinks) {
-        progressPercentage = activeLinks.stream()
-                .filter(ProjectKeyResultLink::isActive)
-                .filter(link -> link.getProject() != null)
-                .map(ProjectKeyResultLink::appliedContribution)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+        recalculateProgress();
     }
 
     @PrePersist
@@ -137,6 +146,14 @@ public class KeyResult {
 
     public void setProgressPercentage(BigDecimal progressPercentage) {
         this.progressPercentage = progressPercentage;
+    }
+
+    public KeyResultStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(KeyResultStatus status) {
+        this.status = status;
     }
 
     public Instant getCreatedAt() {

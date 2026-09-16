@@ -25,7 +25,10 @@ public class Objective {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private ObjectiveStatus status = ObjectiveStatus.ACTIVO;
+    private ObjectiveStatus status = ObjectiveStatus.BORRADOR;
+
+    @Enumerated(EnumType.STRING)
+    private ObjectiveStatus statusBeforeArchive;
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
@@ -107,6 +110,14 @@ public class Objective {
 
     public void setStatus(ObjectiveStatus status) {
         this.status = status;
+    }
+
+    public ObjectiveStatus getStatusBeforeArchive() {
+        return statusBeforeArchive;
+    }
+
+    public void setStatusBeforeArchive(ObjectiveStatus statusBeforeArchive) {
+        this.statusBeforeArchive = statusBeforeArchive;
     }
 
     public Instant getCreatedAt() {

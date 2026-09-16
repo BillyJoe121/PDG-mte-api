@@ -1,6 +1,7 @@
 package co.edu.icesi.pdg.mte.api.dto;
 
 import co.edu.icesi.pdg.mte.strategy.ObjectiveStatus;
+import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import co.edu.icesi.pdg.mte.strategy.StrategicStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -115,6 +116,9 @@ public final class StrategyDtos {
         }
     }
 
+    public record KeyResultCurrentValueRequest(@NotNull BigDecimal currentValue) {
+    }
+
     public record KeyResultResponse(
             Long id,
             String name,
@@ -128,8 +132,17 @@ public final class StrategyDtos {
             String measurementUnitName,
             Long academicPeriodId,
             String academicPeriodName,
+            Long objectiveId,
+            String objectiveName,
+            KeyResultStatus status,
             Instant createdAt
     ) {
+    }
+
+    public record ObjectiveStatusRequest(@NotNull ObjectiveStatus status) {
+    }
+
+    public record KeyResultStatusRequest(@NotNull KeyResultStatus status) {
     }
 
     public record ObjectiveRequest(
@@ -189,6 +202,16 @@ public final class StrategyDtos {
     public record ObjectiveUpdateRequest(
             @NotBlank String name,
             @NotBlank String description
+    ) {
+    }
+
+    public record ActiveStateRequest(
+            boolean active
+    ) {
+    }
+
+    public record ArchiveStateRequest(
+            boolean archived
     ) {
     }
 

@@ -61,6 +61,26 @@ public class ProjectKeyResultLinkService {
         return response;
     }
 
+    @Transactional
+    public ProjectDtos.ProjectKeyResultLinkResponse update(Long id, ProjectDtos.ProjectKeyResultLinkUpdateRequest request) {
+        ProjectKeyResultLink link = linkRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Vinculo Proyecto-KR no encontrado."));
+        if (!link.isActive()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede actualizar un vinculo Proyecto-KR inactivo.");
+        }
+
+        ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
+        link.setContributionWeight(request.contributionWeight());
+        link.setContributionType(request.contributionType());
+        ProjectKeyResultLink saved = linkRepository.save(link);
+        keyResultProgressService.recalculateKeyResult(saved.getKeyResult().getId());
+
+        ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
+        auditService.record(AuditAction.UPDATE, "PROJECT_KEY_RESULT_LINK", id,
+                "Peso de vinculacion Proyecto-KR actualizado.", before, response);
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public List<ProjectDtos.ProjectKeyResultLinkResponse> list(Long projectId, Long keyResultId) {
         if (projectId != null) {

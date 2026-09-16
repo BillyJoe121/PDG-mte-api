@@ -23,9 +23,10 @@ public class ObjectiveController {
             @RequestParam(required = false) Long strategicBetId,
             @RequestParam(required = false) Long goalId,
             @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long periodId
+            @RequestParam(required = false) Long periodId,
+            @RequestParam(defaultValue = "false") boolean includeArchived
     ) {
-        return strategyService.listObjectives(strategicBetId, goalId, departmentId, periodId);
+        return strategyService.listObjectives(strategicBetId, goalId, departmentId, periodId, includeArchived);
     }
 
     @GetMapping("/cards")
@@ -33,9 +34,10 @@ public class ObjectiveController {
             @RequestParam(required = false) Long strategicBetId,
             @RequestParam(required = false) Long goalId,
             @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long periodId
+            @RequestParam(required = false) Long periodId,
+            @RequestParam(defaultValue = "false") boolean includeArchived
     ) {
-        return strategyService.listObjectiveCards(strategicBetId, goalId, departmentId, periodId);
+        return strategyService.listObjectiveCards(strategicBetId, goalId, departmentId, periodId, includeArchived);
     }
 
     @PostMapping
@@ -62,6 +64,24 @@ public class ObjectiveController {
             @Valid @RequestBody StrategyDtos.ObjectiveUpdateRequest request
     ) {
         return strategyService.updateObjective(id, request);
+    }
+
+    @PatchMapping("/{id}/archived")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    StrategyDtos.ObjectiveResponse setArchived(
+            @PathVariable Long id,
+            @RequestBody StrategyDtos.ArchiveStateRequest request
+    ) {
+        return strategyService.setObjectiveArchived(id, request.archived());
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    StrategyDtos.ObjectiveResponse setStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody StrategyDtos.ObjectiveStatusRequest request
+    ) {
+        return strategyService.setObjectiveStatus(id, request.status());
     }
 
     @GetMapping("/{id}/key-results")

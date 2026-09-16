@@ -315,7 +315,10 @@ public class ProjectService {
     public void removeTeacher(Long projectId, Long teacherId, Long roleId) {
         ProjectTeacher projectTeacher = projectTeacherRepository.findById(new ProjectTeacherId(projectId, teacherId, roleId))
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Profesor de proyecto no encontrado."));
+        ProjectDtos.ProjectTeacherResponse before = Mapper.toResponse(projectTeacher);
         projectTeacherRepository.delete(projectTeacher);
+        auditService.record(AuditAction.DELETE, "PROJECT_TEACHER", projectId + ":" + teacherId + ":" + roleId,
+                "Profesor retirado de proyecto.", before, null);
     }
 
     private void applyDirectKeyResult(

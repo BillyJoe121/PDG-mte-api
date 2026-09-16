@@ -241,13 +241,13 @@ public class ConsistencyService {
 
     private String keyResultActionUrl(KeyResult keyResult) {
         if (keyResult.getObjective() == null || keyResult.getObjective().getId() == null) {
-            return "/key-results/" + keyResult.getId();
+            return "/krs?keyResultId=" + keyResult.getId();
         }
-        return "/objectives/" + keyResult.getObjective().getId() + "/key-results/" + keyResult.getId();
+        return "/krs?objectiveId=" + keyResult.getObjective().getId() + "&keyResultId=" + keyResult.getId();
     }
 
     private String projectActionUrl(Project project) {
-        return "/projects/" + project.getId();
+        return "/proyectos?projectId=" + project.getId();
     }
 
     private String projectCode(Project project) {

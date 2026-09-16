@@ -16,6 +16,11 @@ public class KeyResultController {
         this.strategyService = strategyService;
     }
 
+    @GetMapping("/{id}")
+    StrategyDtos.KeyResultResponse get(@PathVariable Long id) {
+        return strategyService.getKeyResult(id);
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','USER')")
     StrategyDtos.KeyResultResponse update(
@@ -23,6 +28,24 @@ public class KeyResultController {
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
     ) {
         return strategyService.updateKeyResult(id, request);
+    }
+
+    @PatchMapping("/{id}/current-value")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    StrategyDtos.KeyResultResponse updateCurrentValue(
+            @PathVariable Long id,
+            @Valid @RequestBody StrategyDtos.KeyResultCurrentValueRequest request
+    ) {
+        return strategyService.updateKeyResultCurrentValue(id, request.currentValue());
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    StrategyDtos.KeyResultResponse setStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody StrategyDtos.KeyResultStatusRequest request
+    ) {
+        return strategyService.setKeyResultStatus(id, request.status());
     }
 
     @DeleteMapping("/{id}")

@@ -1,6 +1,8 @@
 package co.edu.icesi.pdg.mte.strategy;
 
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ class StrategicHierarchyTreeService {
     private final StrategicBetRepository strategicBetRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final ObjectiveRepository objectiveRepository;
+    private final AcademicPeriodRepository periodRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final StrategyExecutionSummaryService executionSummaryService;
 
@@ -25,20 +28,32 @@ class StrategicHierarchyTreeService {
             StrategicBetRepository strategicBetRepository,
             InstitutionalGoalRepository goalRepository,
             ObjectiveRepository objectiveRepository,
+            AcademicPeriodRepository periodRepository,
             ProjectKeyResultLinkRepository linkRepository,
             StrategyExecutionSummaryService executionSummaryService
     ) {
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
         this.objectiveRepository = objectiveRepository;
+        this.periodRepository = periodRepository;
         this.linkRepository = linkRepository;
         this.executionSummaryService = executionSummaryService;
     }
 
     List<StrategyDtos.StrategicHierarchyNodeResponse> tree(String period) {
-        List<Objective> objectives = objectiveRepository.findAll();
-        List<StrategicBet> bets = strategicBetRepository.findAll();
-        List<InstitutionalGoal> goals = goalRepository.findAll();
+        AcademicPeriod selectedPeriod = StrategyPeriodScope.resolve(period, periodRepository);
+        List<Objective> objectives = objectiveRepository.findAll().stream()
+                .filter(objective -> objective.getStatus() != ObjectiveStatus.ARCHIVADO)
+                .filter(objective -> StrategyPeriodScope.matches(objective, selectedPeriod))
+                .toList();
+        List<StrategicBet> bets = strategicBetRepository.findAll().stream()
+                .filter(bet -> bet.getStatus() == StrategicStatus.ACTIVA)
+                .filter(bet -> StrategyPeriodScope.matches(bet, selectedPeriod))
+                .toList();
+        List<InstitutionalGoal> goals = goalRepository.findAll().stream()
+                .filter(goal -> goal.getStatus() == StrategicStatus.ACTIVA)
+                .filter(goal -> StrategyPeriodScope.matches(goal, selectedPeriod))
+                .toList();
         Map<Long, StrategyDtos.ExecutionSummaryResponse> betSummaries = executionSummaryService.forBets(
                 bets.stream().map(StrategicBet::getId).toList(),
                 period
@@ -107,9 +122,18 @@ class StrategicHierarchyTreeService {
                 goal.getDescription(),
                 null,
                 summaries.getOrDefault(goal.getId(), executionSummaryService.empty()),
-                goal.getMeasurementUnit().getName(),
+                goalBadge(goal),
                 children
         );
+    }
+
+    private String goalBadge(InstitutionalGoal goal) {
+        String valueAndUnit = goal.getExpectedValue().stripTrailingZeros().toPlainString()
+                + " " + goal.getMeasurementUnit().getName();
+        if (goal.getReferenceIndicator() == null || goal.getReferenceIndicator().isBlank()) {
+            return valueAndUnit;
+        }
+        return goal.getReferenceIndicator() + ": " + valueAndUnit;
     }
 
     private StrategyDtos.StrategicHierarchyNodeResponse objectiveNode(

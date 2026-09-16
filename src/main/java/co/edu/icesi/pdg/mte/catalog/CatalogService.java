@@ -69,7 +69,7 @@ public class CatalogService {
         MeasurementUnit unit = new MeasurementUnit();
         unit.setName(name);
         unit.setType(request.type());
-        unit.setDescription(request.description());
+        unit.setDescription(normalizeOptionalText(request.description()));
         CatalogDtos.MeasurementUnitResponse response = Mapper.toResponse(unitRepository.save(unit));
         auditService.record(AuditAction.CREATE, "MEASUREMENT_UNIT", response.id(), "Unidad de medida creada: " + response.name(), null, response);
         return response;
@@ -79,9 +79,12 @@ public class CatalogService {
         MeasurementUnit unit = findUnit(id);
         CatalogDtos.MeasurementUnitResponse before = Mapper.toResponse(unit);
         assertUnitNameIsAvailable(request.name(), id);
+        if (unit.getType() != request.type() && isUnitInUse(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede cambiar el tipo de una unidad de medida en uso.");
+        }
         unit.setName(request.name().trim());
         unit.setType(request.type());
-        unit.setDescription(request.description());
+        unit.setDescription(normalizeOptionalText(request.description()));
         CatalogDtos.MeasurementUnitResponse response = Mapper.toResponse(unitRepository.save(unit));
         auditService.record(AuditAction.UPDATE, "MEASUREMENT_UNIT", response.id(), "Unidad de medida actualizada: " + response.name(), before, response);
         return response;
@@ -306,6 +309,10 @@ public class CatalogService {
 
     private boolean isUnitInUse(Long id) {
         return goalRepository.existsByMeasurementUnitId(id) || keyResultRepository.existsByMeasurementUnitId(id);
+    }
+
+    private String normalizeOptionalText(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private boolean isPeriodInUse(AcademicPeriod period) {

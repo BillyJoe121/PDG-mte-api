@@ -42,7 +42,7 @@ class ProjectFieldMapper {
             LocalDate actualEndDate,
             List<String> tutors
     ) {
-        validateDateRange(startDate, endDate);
+        validateDateRange(startDate, endDate, actualEndDate);
         periodService.validateRange(startPeriod, endPeriod);
         project.setName(name.trim());
         project.setDescription(description.trim());
@@ -141,9 +141,12 @@ class ProjectFieldMapper {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+    private void validateDateRange(LocalDate startDate, LocalDate endDate, LocalDate actualEndDate) {
         if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "La fecha de fin debe ser posterior a la fecha de inicio.");
+        }
+        if (startDate != null && actualEndDate != null && actualEndDate.isBefore(startDate)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "La fecha de fin real no puede ser anterior a la fecha de inicio.");
         }
     }
 }

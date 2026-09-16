@@ -202,6 +202,12 @@ public final class ProjectDtos {
     ) {
     }
 
+    public record ProjectKeyResultLinkUpdateRequest(
+            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
+            @NotNull ContributionType contributionType
+    ) {
+    }
+
     public record ProjectKeyResultDraftRequest(
             @NotNull Long keyResultId,
             @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,

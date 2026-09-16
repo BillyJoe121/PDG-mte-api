@@ -165,6 +165,9 @@ public final class Mapper {
                 keyResult.getMeasurementUnit().getName(),
                 keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getId(),
                 keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
+                keyResult.getObjective() == null ? null : keyResult.getObjective().getId(),
+                keyResult.getObjective() == null ? null : keyResult.getObjective().getName(),
+                keyResult.getStatus(),
                 keyResult.getCreatedAt()
         );
     }

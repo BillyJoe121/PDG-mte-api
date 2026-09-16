@@ -19,8 +19,11 @@ public class StrategicBetController {
     }
 
     @GetMapping
-    List<StrategyDtos.StrategicBetResponse> list(@RequestParam(required = false) String period) {
-        return strategyService.listStrategicBets(period);
+    List<StrategyDtos.StrategicBetResponse> list(
+            @RequestParam(required = false) String period,
+            @RequestParam(defaultValue = "false") boolean includeInactive
+    ) {
+        return strategyService.listStrategicBets(period, includeInactive);
     }
 
     @PostMapping
@@ -42,5 +45,14 @@ public class StrategicBetController {
             @Valid @RequestBody StrategyDtos.StrategicBetRequest request
     ) {
         return strategyService.updateStrategicBet(id, request);
+    }
+
+    @PatchMapping("/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    StrategyDtos.StrategicBetResponse setActive(
+            @PathVariable Long id,
+            @RequestBody StrategyDtos.ActiveStateRequest request
+    ) {
+        return strategyService.setStrategicBetActive(id, request.active());
     }
 }

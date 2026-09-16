@@ -113,7 +113,16 @@ public class StrategyService {
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.StrategicBetResponse> listStrategicBets(String period) {
-        List<StrategicBet> bets = strategicBetRepository.findAll();
+        return listStrategicBets(period, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.StrategicBetResponse> listStrategicBets(String period, boolean includeInactive) {
+        AcademicPeriod selectedPeriod = StrategyPeriodScope.resolve(period, periodRepository);
+        List<StrategicBet> bets = strategicBetRepository.findAll().stream()
+                .filter(bet -> includeInactive || bet.getStatus() == StrategicStatus.ACTIVA)
+                .filter(bet -> StrategyPeriodScope.matches(bet, selectedPeriod))
+                .toList();
         var summaries = executionSummaryService.forBets(
                 bets.stream().map(StrategicBet::getId).toList(),
                 period
@@ -169,9 +178,31 @@ public class StrategyService {
         return response;
     }
 
+    public StrategyDtos.StrategicBetResponse setStrategicBetActive(Long id, boolean active) {
+        StrategicBet bet = findStrategicBet(id);
+        StrategyDtos.StrategicBetResponse before = Mapper.toResponse(bet, executionSummaryService.forBet(id, null));
+        bet.setStatus(active ? StrategicStatus.ACTIVA : StrategicStatus.INACTIVA);
+        StrategyDtos.StrategicBetResponse response = Mapper.toResponse(
+                strategicBetRepository.save(bet),
+                executionSummaryService.forBet(id, null)
+        );
+        auditService.record(AuditAction.STATUS_CHANGE, "STRATEGIC_BET", id,
+                active ? "Apuesta estrategica restaurada." : "Apuesta estrategica archivada.", before, response);
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public List<StrategyDtos.GoalResponse> listGoals(String period) {
-        List<InstitutionalGoal> goals = goalRepository.findAll();
+        return listGoals(period, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.GoalResponse> listGoals(String period, boolean includeInactive) {
+        AcademicPeriod selectedPeriod = StrategyPeriodScope.resolve(period, periodRepository);
+        List<InstitutionalGoal> goals = goalRepository.findAll().stream()
+                .filter(goal -> includeInactive || goal.getStatus() == StrategicStatus.ACTIVA)
+                .filter(goal -> StrategyPeriodScope.matches(goal, selectedPeriod))
+                .toList();
         var summaries = executionSummaryService.forGoals(
                 goals.stream().map(InstitutionalGoal::getId).toList(),
                 period
@@ -183,15 +214,18 @@ public class StrategyService {
 
     public StrategyDtos.GoalResponse createGoal(StrategyDtos.GoalRequest request) {
         validateDateRange(request.startDate(), request.endDate());
+        MeasurementUnit measurementUnit = findUnit(request.measurementUnitId());
+        MeasurementValuePolicy.requireActive(measurementUnit);
+        MeasurementValuePolicy.validateGoalValue(request.expectedValue(), measurementUnit);
         InstitutionalGoal goal = new InstitutionalGoal();
         goal.setName(request.name().trim());
         goal.setDescription(request.description().trim());
-        goal.setReferenceIndicator(request.referenceIndicator());
+        goal.setReferenceIndicator(normalizeOptionalText(request.referenceIndicator()));
         goal.setExpectedValue(request.expectedValue());
         goal.setStartDate(request.startDate() == null ? java.time.LocalDate.now() : request.startDate());
         goal.setEndDate(request.endDate() == null ? goal.getStartDate().plusYears(1) : request.endDate());
         goal.setWorld(request.worldId() == null ? goal.getWorld() : findWorld(request.worldId()));
-        goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
+        goal.setMeasurementUnit(measurementUnit);
         StrategyDtos.GoalResponse response = Mapper.toResponse(goalRepository.save(goal));
         auditService.record(AuditAction.CREATE, "GOAL", response.id(), "Meta institucional creada: " + response.name(), null, response);
         return response;
@@ -208,19 +242,35 @@ public class StrategyService {
         java.time.LocalDate startDate = request.startDate() == null ? goal.getStartDate() : request.startDate();
         java.time.LocalDate endDate = request.endDate() == null ? goal.getEndDate() : request.endDate();
         validateDateRange(startDate, endDate);
+        MeasurementUnit measurementUnit = findUnit(request.measurementUnitId());
+        MeasurementValuePolicy.requireActive(measurementUnit);
+        MeasurementValuePolicy.validateGoalValue(request.expectedValue(), measurementUnit);
         goal.setName(request.name().trim());
         goal.setDescription(request.description().trim());
-        goal.setReferenceIndicator(request.referenceIndicator());
+        goal.setReferenceIndicator(normalizeOptionalText(request.referenceIndicator()));
         goal.setExpectedValue(request.expectedValue());
         goal.setStartDate(startDate);
         goal.setEndDate(endDate);
         goal.setWorld(request.worldId() == null ? goal.getWorld() : findWorld(request.worldId()));
-        goal.setMeasurementUnit(findUnit(request.measurementUnitId()));
+        goal.setMeasurementUnit(measurementUnit);
         StrategyDtos.GoalResponse response = Mapper.toResponse(
                 goalRepository.save(goal),
                 executionSummaryService.forGoal(id, null)
         );
         auditService.record(AuditAction.UPDATE, "GOAL", response.id(), "Meta institucional actualizada: " + response.name(), before, response);
+        return response;
+    }
+
+    public StrategyDtos.GoalResponse setGoalActive(Long id, boolean active) {
+        InstitutionalGoal goal = findGoal(id);
+        StrategyDtos.GoalResponse before = Mapper.toResponse(goal, executionSummaryService.forGoal(id, null));
+        goal.setStatus(active ? StrategicStatus.ACTIVA : StrategicStatus.INACTIVA);
+        StrategyDtos.GoalResponse response = Mapper.toResponse(
+                goalRepository.save(goal),
+                executionSummaryService.forGoal(id, null)
+        );
+        auditService.record(AuditAction.STATUS_CHANGE, "GOAL", id,
+                active ? "Meta institucional restaurada." : "Meta institucional archivada.", before, response);
         return response;
     }
 
@@ -244,20 +294,33 @@ public class StrategyService {
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.ObjectiveResponse> listObjectives(Long strategicBetId, Long goalId, Long departmentId, Long periodId) {
-        return findObjectives(strategicBetId, goalId, departmentId, periodId).stream().map(Mapper::toResponse).toList();
+        return listObjectives(strategicBetId, goalId, departmentId, periodId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.ObjectiveResponse> listObjectives(Long strategicBetId, Long goalId, Long departmentId, Long periodId, boolean includeArchived) {
+        return findObjectives(strategicBetId, goalId, departmentId, periodId, includeArchived).stream().map(Mapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<StrategyDtos.ObjectiveCardResponse> listObjectiveCards(Long strategicBetId, Long goalId, Long departmentId, Long periodId) {
-        return findObjectives(strategicBetId, goalId, departmentId, periodId)
+        return listObjectiveCards(strategicBetId, goalId, departmentId, periodId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.ObjectiveCardResponse> listObjectiveCards(Long strategicBetId, Long goalId, Long departmentId, Long periodId, boolean includeArchived) {
+        return findObjectives(strategicBetId, goalId, departmentId, periodId, includeArchived)
                 .stream()
                 .map(this::toObjectiveCard)
                 .toList();
     }
 
-    private List<Objective> findObjectives(Long strategicBetId, Long goalId, Long departmentId, Long periodId) {
+    private List<Objective> findObjectives(Long strategicBetId, Long goalId, Long departmentId, Long periodId, boolean includeArchived) {
         Specification<Objective> specification = (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            if (!includeArchived) {
+                predicates.add(builder.notEqual(root.get("status"), ObjectiveStatus.ARCHIVADO));
+            }
             if (strategicBetId != null) {
                 predicates.add(builder.equal(root.get("strategicBet").get("id"), strategicBetId));
             }
@@ -291,7 +354,7 @@ public class StrategyService {
         objective.setCreatedByExternalUserId(currentExternalUserId());
 
         for (StrategyDtos.KeyResultRequest keyResultRequest : request.keyResults()) {
-            objective.addKeyResult(buildKeyResult(keyResultRequest));
+            objective.addKeyResult(buildKeyResult(keyResultRequest, objective.getAcademicPeriod()));
         }
         StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
         auditService.record(AuditAction.CREATE, "OBJECTIVE", response.id(), "Objetivo creado: " + response.name(), null, response);
@@ -310,11 +373,61 @@ public class StrategyService {
 
     public StrategyDtos.ObjectiveResponse updateObjective(Long id, StrategyDtos.ObjectiveUpdateRequest request) {
         Objective objective = findObjective(id);
+        requireObjectiveMutable(objective);
         StrategyDtos.ObjectiveResponse before = Mapper.toResponse(objective);
         objective.setName(request.name().trim());
         objective.setDescription(request.description().trim());
         StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
         auditService.record(AuditAction.UPDATE, "OBJECTIVE", response.id(), "Objetivo actualizado: " + response.name(), before, response);
+        return response;
+    }
+
+    public StrategyDtos.ObjectiveResponse setObjectiveArchived(Long id, boolean archived) {
+        Objective objective = findObjective(id);
+        StrategyDtos.ObjectiveResponse before = Mapper.toResponse(objective);
+        if (archived && objective.getStatus() != ObjectiveStatus.ARCHIVADO) {
+            objective.setStatusBeforeArchive(objective.getStatus());
+            objective.setStatus(ObjectiveStatus.ARCHIVADO);
+        } else if (!archived && objective.getStatus() == ObjectiveStatus.ARCHIVADO) {
+            objective.setStatus(objective.getStatusBeforeArchive() == null ? ObjectiveStatus.ACTIVO : objective.getStatusBeforeArchive());
+            objective.setStatusBeforeArchive(null);
+        }
+        StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
+        auditService.record(AuditAction.STATUS_CHANGE, "OBJECTIVE", id,
+                archived ? "Objetivo archivado." : "Objetivo restaurado.", before, response);
+        return response;
+    }
+
+    public StrategyDtos.ObjectiveResponse setObjectiveStatus(Long id, ObjectiveStatus targetStatus) {
+        Objective objective = findObjective(id);
+        if (objective.getStatus() == targetStatus) {
+            return Mapper.toResponse(objective);
+        }
+        if (objective.getStatus() == ObjectiveStatus.ARCHIVADO || targetStatus == ObjectiveStatus.ARCHIVADO) {
+            throw new BusinessException(HttpStatus.CONFLICT, "El archivado se gestiona mediante su acción específica.");
+        }
+
+        StrategyDtos.ObjectiveResponse before = Mapper.toResponse(objective);
+        if (objective.getStatus() == ObjectiveStatus.BORRADOR && targetStatus == ObjectiveStatus.ACTIVO) {
+            objective.getKeyResults().stream()
+                    .filter(keyResult -> keyResult.getStatus() == KeyResultStatus.BORRADOR)
+                    .forEach(keyResult -> keyResult.setStatus(KeyResultStatus.ACTIVO));
+        } else if (objective.getStatus() == ObjectiveStatus.ACTIVO && targetStatus == ObjectiveStatus.CERRADO) {
+            if (objective.getKeyResults().stream().anyMatch(keyResult -> keyResult.getStatus() == KeyResultStatus.BORRADOR)) {
+                throw new BusinessException(HttpStatus.CONFLICT, "No se puede cerrar un objetivo con KRs en borrador.");
+            }
+            objective.getKeyResults().stream()
+                    .filter(keyResult -> keyResult.getStatus() == KeyResultStatus.ACTIVO)
+                    .forEach(keyResult -> keyResult.setStatus(KeyResultStatus.CERRADO));
+        } else {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "Transición de objetivo no permitida: " + objective.getStatus() + " -> " + targetStatus + ".");
+        }
+
+        objective.setStatus(targetStatus);
+        StrategyDtos.ObjectiveResponse response = Mapper.toResponse(objectiveRepository.save(objective));
+        auditService.record(AuditAction.STATUS_CHANGE, "OBJECTIVE", id,
+                "Estado de objetivo actualizado: " + targetStatus + ".", before, response);
         return response;
     }
 
@@ -332,9 +445,15 @@ public class StrategyService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public StrategyDtos.KeyResultResponse getKeyResult(Long keyResultId) {
+        return Mapper.toResponse(findKeyResult(keyResultId));
+    }
+
     public StrategyDtos.KeyResultResponse addKeyResult(Long objectiveId, StrategyDtos.KeyResultRequest request) {
         Objective objective = findObjective(objectiveId);
-        KeyResult keyResult = buildKeyResult(request);
+        requireObjectiveMutable(objective);
+        KeyResult keyResult = buildKeyResult(request, objective.getAcademicPeriod());
         keyResult.setObjective(objective);
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
         auditService.record(AuditAction.CREATE, "KEY_RESULT", response.id(), "Key Result creado: " + response.name(), null, response);
@@ -343,22 +462,68 @@ public class StrategyService {
 
     public StrategyDtos.KeyResultResponse updateKeyResult(Long keyResultId, StrategyDtos.KeyResultRequest request) {
         KeyResult keyResult = findKeyResult(keyResultId);
+        requireKeyResultMutable(keyResult);
         StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
         keyResult.setName(request.name().trim());
         keyResult.setDescription(request.description().trim());
         keyResult.setMetric(request.metric().trim());
+        MeasurementUnit measurementUnit = findUnit(request.measurementUnitId());
+        MeasurementValuePolicy.requireActive(measurementUnit);
+        MeasurementValuePolicy.validateKeyResultValues(request.baseValue(), request.targetValue(), measurementUnit);
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
-        keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
-        keyResult.setAcademicPeriod(request.academicPeriodId() == null ? null : findPeriod(request.academicPeriodId()));
+        keyResult.setCurrentValue(request.baseValue());
+        keyResult.setMeasurementUnit(measurementUnit);
+        AcademicPeriod inheritedPeriod = keyResult.getAcademicPeriod();
+        if (inheritedPeriod == null && keyResult.getObjective() != null) {
+            inheritedPeriod = keyResult.getObjective().getAcademicPeriod();
+        }
+        keyResult.setAcademicPeriod(resolveKeyResultPeriod(request.academicPeriodId(), inheritedPeriod));
         keyResult.recalculateProgress();
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
         auditService.record(AuditAction.UPDATE, "KEY_RESULT", response.id(), "Key Result actualizado: " + response.name(), before, response);
         return response;
     }
 
+    public StrategyDtos.KeyResultResponse updateKeyResultCurrentValue(Long keyResultId, BigDecimal currentValue) {
+        KeyResult keyResult = findKeyResult(keyResultId);
+        requireKeyResultMutable(keyResult);
+        MeasurementValuePolicy.validateKeyResultCurrentValue(currentValue, keyResult.getMeasurementUnit());
+        StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
+        keyResult.setCurrentValue(currentValue);
+        keyResult.recalculateProgress();
+        StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        auditService.record(AuditAction.UPDATE, "KEY_RESULT", keyResultId,
+                "Valor actual de Key Result actualizado.", before, response);
+        return response;
+    }
+
+    public StrategyDtos.KeyResultResponse setKeyResultStatus(Long keyResultId, KeyResultStatus targetStatus) {
+        KeyResult keyResult = findKeyResult(keyResultId);
+        if (keyResult.getStatus() == targetStatus) {
+            return Mapper.toResponse(keyResult);
+        }
+        if (keyResult.getObjective().getStatus() != ObjectiveStatus.ACTIVO) {
+            throw new BusinessException(HttpStatus.CONFLICT, "El ciclo del Objetivo no permite cambiar el estado del KR.");
+        }
+        boolean allowed = keyResult.getStatus() == KeyResultStatus.BORRADOR && targetStatus == KeyResultStatus.ACTIVO
+                || keyResult.getStatus() == KeyResultStatus.ACTIVO && targetStatus == KeyResultStatus.CERRADO;
+        if (!allowed) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "Transición de KR no permitida: " + keyResult.getStatus() + " -> " + targetStatus + ".");
+        }
+
+        StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
+        keyResult.setStatus(targetStatus);
+        StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        auditService.record(AuditAction.STATUS_CHANGE, "KEY_RESULT", keyResultId,
+                "Estado de Key Result actualizado: " + targetStatus + ".", before, response);
+        return response;
+    }
+
     public void deleteKeyResult(Long keyResultId) {
         KeyResult keyResult = findKeyResult(keyResultId);
+        requireKeyResultMutable(keyResult);
         long activeLinks = linkRepository.countByKeyResultIdAndActiveTrue(keyResultId);
         if (activeLinks > 0) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un KR con proyectos vinculados.");
@@ -391,23 +556,49 @@ public class StrategyService {
         );
     }
 
-    private KeyResult buildKeyResult(StrategyDtos.KeyResultRequest request) {
+    private KeyResult buildKeyResult(StrategyDtos.KeyResultRequest request, AcademicPeriod inheritedPeriod) {
         KeyResult keyResult = new KeyResult();
+        MeasurementUnit measurementUnit = findUnit(request.measurementUnitId());
+        MeasurementValuePolicy.requireActive(measurementUnit);
+        MeasurementValuePolicy.validateKeyResultValues(request.baseValue(), request.targetValue(), measurementUnit);
         keyResult.setName(request.name().trim());
         keyResult.setDescription(request.description().trim());
         keyResult.setMetric(request.metric().trim());
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
-        keyResult.setMeasurementUnit(findUnit(request.measurementUnitId()));
-        keyResult.setAcademicPeriod(request.academicPeriodId() == null ? null : findPeriod(request.academicPeriodId()));
+        keyResult.setCurrentValue(request.baseValue());
+        keyResult.setMeasurementUnit(measurementUnit);
+        keyResult.setAcademicPeriod(resolveKeyResultPeriod(request.academicPeriodId(), inheritedPeriod));
         keyResult.recalculateProgress();
         return keyResult;
+    }
+
+    private AcademicPeriod resolveKeyResultPeriod(Long requestedPeriodId, AcademicPeriod inheritedPeriod) {
+        return requestedPeriodId == null ? inheritedPeriod : findPeriod(requestedPeriodId);
+    }
+
+    private void requireObjectiveMutable(Objective objective) {
+        if (objective.getStatus() == ObjectiveStatus.CERRADO || objective.getStatus() == ObjectiveStatus.ARCHIVADO) {
+            throw new BusinessException(HttpStatus.CONFLICT, "El objetivo está cerrado o archivado y no admite cambios ordinarios.");
+        }
+    }
+
+    private void requireKeyResultMutable(KeyResult keyResult) {
+        if (keyResult.getStatus() == KeyResultStatus.CERRADO
+                || keyResult.getObjective() != null && (keyResult.getObjective().getStatus() == ObjectiveStatus.CERRADO
+                || keyResult.getObjective().getStatus() == ObjectiveStatus.ARCHIVADO)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "El KR está cerrado o su Objetivo no admite cambios ordinarios.");
+        }
     }
 
     private void validateDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
         if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "La fecha de cierre debe ser posterior a la fecha de inicio.");
         }
+    }
+
+    private String normalizeOptionalText(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private MeasurementUnit findUnit(Long id) {

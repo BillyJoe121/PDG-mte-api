@@ -19,8 +19,11 @@ public class GoalController {
     }
 
     @GetMapping
-    List<StrategyDtos.GoalResponse> list(@RequestParam(required = false) String period) {
-        return strategyService.listGoals(period);
+    List<StrategyDtos.GoalResponse> list(
+            @RequestParam(required = false) String period,
+            @RequestParam(defaultValue = "false") boolean includeInactive
+    ) {
+        return strategyService.listGoals(period, includeInactive);
     }
 
     @PostMapping
@@ -42,6 +45,15 @@ public class GoalController {
             @Valid @RequestBody StrategyDtos.GoalRequest request
     ) {
         return strategyService.updateGoal(id, request);
+    }
+
+    @PatchMapping("/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    StrategyDtos.GoalResponse setActive(
+            @PathVariable Long id,
+            @RequestBody StrategyDtos.ActiveStateRequest request
+    ) {
+        return strategyService.setGoalActive(id, request.active());
     }
 
     @PostMapping("/{id}/periods/{periodId}")
