@@ -178,20 +178,23 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
-    void keyResultProgressIgnoresManualValuesWhenThereAreNoCompletedProjects() {
+    void keyResultProgressUsesTheDeclaredMetricValueInsteadOfProjectProgress() {
         KeyResult keyResult = TestFixtures.keyResult(1L, unit);
         keyResult.setBaseValue(BigDecimal.TEN);
-        keyResult.setTargetValue(BigDecimal.TEN);
+        keyResult.setTargetValue(BigDecimal.valueOf(30));
         keyResult.setCurrentValue(BigDecimal.valueOf(20));
 
         keyResult.recalculateProgress();
 
-        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("0");
+        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("50.00");
     }
 
     @Test
-    void keyResultProgressSumsProjectWeightsByTheirProgress() {
+    void keyResultProgressDoesNotSumProjectWeightsByTheirOperationalProgress() {
         KeyResult keyResult = TestFixtures.keyResult(1L, unit);
+        keyResult.setBaseValue(BigDecimal.ZERO);
+        keyResult.setTargetValue(BigDecimal.valueOf(100));
+        keyResult.setCurrentValue(BigDecimal.valueOf(25));
         Project completed = project(1L, ProjectStatus.FINALIZADO);
         completed.setGlobalProgress(BigDecimal.valueOf(100));
         Project active = project(2L, ProjectStatus.ACTIVO);
@@ -201,7 +204,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
 
         keyResult.recalculateProgress(List.of(completedLink, activeLink));
 
-        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("52.00");
+        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("25.00");
     }
 
 }

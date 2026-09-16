@@ -123,6 +123,43 @@ class CatalogServiceTest {
     }
 
     @Test
+    void rejectsChangingTypeOfMeasurementUnitUsedByGoals() {
+        MeasurementUnit unit = TestFixtures.unit(1L);
+        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
+        when(unitRepository.findByNameIgnoreCase("Porcentaje")).thenReturn(Optional.of(unit));
+        when(goalRepository.existsByMeasurementUnitId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateUnit(1L, new CatalogDtos.MeasurementUnitRequest(
+                "Porcentaje",
+                MeasurementUnitType.BOOLEANA,
+                "Nueva regla"
+        ))).isInstanceOf(BusinessException.class)
+                .hasMessageContaining("tipo")
+                .hasMessageContaining("en uso");
+
+        verify(unitRepository, never()).save(any());
+    }
+
+    @Test
+    void normalizesOptionalMeasurementUnitDescription() {
+        when(unitRepository.existsByNameIgnoreCase("Horas")).thenReturn(false);
+        when(unitRepository.save(any(MeasurementUnit.class))).thenAnswer(invocation -> {
+            MeasurementUnit saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        var response = service.createUnit(new CatalogDtos.MeasurementUnitRequest(
+                "  Horas  ",
+                MeasurementUnitType.NUMERICA,
+                "   "
+        ));
+
+        assertThat(response.name()).isEqualTo("Horas");
+        assertThat(response.description()).isNull();
+    }
+
+    @Test
     void togglesMeasurementUnitActiveFlag() {
         MeasurementUnit unit = TestFixtures.unit(1L);
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));

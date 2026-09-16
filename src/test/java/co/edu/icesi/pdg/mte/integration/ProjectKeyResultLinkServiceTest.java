@@ -84,6 +84,45 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
+    void linksTheSameProjectToDifferentKeyResultsWhileStillCheckingEachPairForDuplicates() {
+        KeyResult secondKeyResult = TestFixtures.keyResult(2L, TestFixtures.unit(1L));
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
+        when(keyResultRepository.findById(2L)).thenReturn(Optional.of(secondKeyResult));
+        when(linkRepository.save(any(ProjectKeyResultLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(2L)).thenReturn(List.of());
+
+        var first = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(40), ContributionType.DIRECTA));
+        var second = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 2L, BigDecimal.valueOf(30), ContributionType.INDIRECTA));
+
+        assertThat(first.keyResultId()).isEqualTo(1L);
+        assertThat(second.keyResultId()).isEqualTo(2L);
+        verify(linkRepository).existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L);
+        verify(linkRepository).existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 2L);
+        verify(progressService).recalculateKeyResult(1L);
+        verify(progressService).recalculateKeyResult(2L);
+    }
+
+    @Test
+    void updatesTheDeclaredWeightOfAnExistingProjectKeyResultLink() {
+        ProjectKeyResultLink existing = link(project, keyResult, 30);
+        when(linkRepository.findById(9L)).thenReturn(Optional.of(existing));
+        when(linkRepository.save(existing)).thenReturn(existing);
+        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(existing));
+
+        var response = service.update(9L, new ProjectDtos.ProjectKeyResultLinkUpdateRequest(
+                BigDecimal.valueOf(55), ContributionType.INDIRECTA
+        ));
+
+        assertThat(response.contributionWeight()).isEqualByComparingTo("55");
+        assertThat(response.contributionType()).isEqualTo(ContributionType.INDIRECTA);
+        assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("55.00");
+        verify(progressService).recalculateKeyResult(1L);
+        verify(auditService).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE), eq("PROJECT_KEY_RESULT_LINK"), eq(9L), anyString(), any(), any());
+    }
+
+    @Test
     void listsLinksByProjectByKeyResultAndWithoutFilters() {
         ProjectKeyResultLink link = link(project, keyResult, 35);
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));

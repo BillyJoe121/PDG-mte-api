@@ -6,7 +6,9 @@ import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
+import co.edu.icesi.pdg.mte.catalog.MeasurementUnitType;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
@@ -30,6 +32,77 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
+    @Test
+    void filtersStrategicBetsByAcademicPeriodDateRange() {
+        StrategicBet outsidePeriod = TestFixtures.strategicBet(2L);
+        outsidePeriod.setName("Apuesta futura");
+        outsidePeriod.setStartDate(LocalDate.of(2027, 1, 1));
+        outsidePeriod.setEndDate(LocalDate.of(2027, 12, 31));
+        when(periodRepository.findByNameIgnoreCase("2026-1")).thenReturn(Optional.of(period));
+        when(strategicBetRepository.findAll()).thenReturn(List.of(bet, outsidePeriod));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        var response = service.listStrategicBets("2026-1");
+
+        assertThat(response).extracting(StrategyDtos.StrategicBetResponse::id).containsExactly(1L);
+    }
+
+    @Test
+    void filtersGoalsByExplicitPeriodAndUsesDatesForLegacyGoals() {
+        AcademicPeriod otherPeriod = TestFixtures.period(2L);
+        otherPeriod.setName("2027-1");
+        otherPeriod.setStartDate(LocalDate.of(2027, 1, 1));
+        otherPeriod.setEndDate(LocalDate.of(2027, 6, 30));
+
+        InstitutionalGoal explicitlyIncluded = TestFixtures.goal(2L, unit);
+        explicitlyIncluded.getPeriods().add(period);
+        InstitutionalGoal explicitlyExcluded = TestFixtures.goal(3L, unit);
+        explicitlyExcluded.getPeriods().add(otherPeriod);
+        InstitutionalGoal legacyGoal = TestFixtures.goal(4L, unit);
+
+        when(periodRepository.findByNameIgnoreCase("2026-1")).thenReturn(Optional.of(period));
+        when(goalRepository.findAll()).thenReturn(List.of(explicitlyIncluded, explicitlyExcluded, legacyGoal));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        var response = service.listGoals("2026-1");
+
+        assertThat(response).extracting(StrategyDtos.GoalResponse::id).containsExactly(2L, 4L);
+    }
+
+    @Test
+    void hidesInactiveStrategicItemsByDefaultAndIncludesThemForRecovery() {
+        StrategicBet inactiveBet = TestFixtures.strategicBet(2L);
+        inactiveBet.setStatus(StrategicStatus.INACTIVA);
+        InstitutionalGoal inactiveGoal = TestFixtures.goal(2L, unit);
+        inactiveGoal.setStatus(StrategicStatus.INACTIVA);
+        when(strategicBetRepository.findAll()).thenReturn(List.of(bet, inactiveBet));
+        when(goalRepository.findAll()).thenReturn(List.of(goal, inactiveGoal));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        assertThat(service.listStrategicBets(null)).extracting(StrategyDtos.StrategicBetResponse::id).containsExactly(1L);
+        assertThat(service.listStrategicBets(null, true)).hasSize(2);
+        assertThat(service.listGoals(null)).extracting(StrategyDtos.GoalResponse::id).containsExactly(1L);
+        assertThat(service.listGoals(null, true)).hasSize(2);
+    }
+
+    @Test
+    void archivesAndRestoresStrategicItemsWithoutDeletingThem() {
+        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
+        when(strategicBetRepository.save(bet)).thenReturn(bet);
+        when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
+        when(goalRepository.save(goal)).thenReturn(goal);
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+
+        assertThat(service.setStrategicBetActive(1L, false).status()).isEqualTo(StrategicStatus.INACTIVA);
+        assertThat(service.setStrategicBetActive(1L, true).status()).isEqualTo(StrategicStatus.ACTIVA);
+        assertThat(service.setGoalActive(1L, false).status()).isEqualTo(StrategicStatus.INACTIVA);
+        assertThat(service.setGoalActive(1L, true).status()).isEqualTo(StrategicStatus.ACTIVA);
+
+        verify(strategicBetRepository, never()).delete(any());
+        verify(goalRepository, never()).delete(any());
+        verify(auditService, times(4)).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.STATUS_CHANGE), anyString(), eq(1L), anyString(), any(), any());
+    }
+
     @Test
     void createsStrategicBetWhenValid() {
         when(strategicBetRepository.existsByNameIgnoreCase("Apuesta nueva")).thenReturn(false);
@@ -123,6 +196,62 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void trimsGoalReferenceIndicatorWhenCreating() {
+        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
+        when(goalRepository.save(any(InstitutionalGoal.class))).thenAnswer(invocation -> {
+            InstitutionalGoal saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        var created = service.createGoal(new StrategyDtos.GoalRequest(
+                "Meta",
+                "Descripcion",
+                "  Tasa de permanencia  ",
+                BigDecimal.valueOf(90),
+                1L,
+                null,
+                null
+        ));
+
+        assertThat(created.referenceIndicator()).isEqualTo("Tasa de permanencia");
+    }
+
+    @Test
+    void rejectsPercentageGoalOutsideAllowedRange() {
+        unit.setType(MeasurementUnitType.PORCENTAJE);
+        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
+
+        assertThatThrownBy(() -> service.createGoal(new StrategyDtos.GoalRequest(
+                "Meta",
+                "Descripcion",
+                "Cobertura",
+                BigDecimal.valueOf(101),
+                1L,
+                null,
+                null
+        ))).isInstanceOf(BusinessException.class)
+                .hasMessageContaining("porcentaje");
+    }
+
+    @Test
+    void rejectsBooleanGoalWithValueDifferentFromZeroOrOne() {
+        unit.setType(MeasurementUnitType.BOOLEANA);
+        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
+
+        assertThatThrownBy(() -> service.createGoal(new StrategyDtos.GoalRequest(
+                "Meta",
+                "Descripcion",
+                "Politica aprobada",
+                BigDecimal.valueOf(7),
+                1L,
+                null,
+                null
+        ))).isInstanceOf(BusinessException.class)
+                .hasMessageContaining("booleano");
+    }
+
+    @Test
     void updatesGoalWhenValid() {
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
@@ -207,6 +336,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
     @Test
     void updatesKeyResultAndRecalculatesProgress() {
         KeyResult keyResult = TestFixtures.keyResult(1L, unit);
+        unit.setType(MeasurementUnitType.NUMERICA);
         when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
         when(keyResultRepository.save(any(KeyResult.class))).thenAnswer(invocation -> invocation.getArgument(0));

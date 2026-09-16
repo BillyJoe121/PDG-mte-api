@@ -92,7 +92,7 @@ class StrategicHierarchyValidationE2ETest extends StrategicHierarchyE2ETestSuppo
                 """, 404);
         doPatch("/api/v1/key-results/1/current-value", """
                 {"currentValue": null}
-                """, 404);
+                """, 400);
         mockMvc.perform(delete("/api/v1/key-results/{id}", 99999L))
                 .andExpect(status().isNotFound());
     }

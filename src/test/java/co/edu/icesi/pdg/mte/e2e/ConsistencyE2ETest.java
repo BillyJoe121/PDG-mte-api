@@ -56,6 +56,12 @@ class ConsistencyE2ETest {
                 .contains("KR_WITHOUT_ACTIVE_PROJECTS", "ACTIVE_PROJECT_WITHOUT_RECENT_PROGRESS");
         assertThat(check.findValues("entityCode").stream().map(JsonNode::asText))
                 .contains("KR-" + unlinkedObjective.get("keyResults").get(0).get("id").asLong(), "PRJ-" + projectId);
+        assertThat(check.findValues("actionUrl").stream().map(JsonNode::asText))
+                .contains(
+                        "/krs?objectiveId=" + unlinkedObjective.get("id").asLong()
+                                + "&keyResultId=" + unlinkedObjective.get("keyResults").get(0).get("id").asLong(),
+                        "/proyectos?projectId=" + projectId
+                );
         assertThat(highOnly.findValues("severity").stream().map(JsonNode::asText))
                 .allMatch("ALTA"::equals);
         assertThat(projectsOnly.findValues("module").stream().map(JsonNode::asText))

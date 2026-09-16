@@ -4,6 +4,8 @@ import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
+import co.edu.icesi.pdg.mte.people.Professor;
+import co.edu.icesi.pdg.mte.people.Role;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -136,6 +138,10 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
         assertThatThrownBy(() -> service.create(new ProjectDtos.ProjectRequest("Proyecto", "Descripcion", ProjectType.GRADO,
                 1L, ProjectStatus.ACTIVO, "2026-2", "2026-1", null, null, List.of(), List.of())))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("periodo de fin");
+        assertThatThrownBy(() -> service.update(1L, new ProjectDtos.ProjectUpdateRequest("Proyecto", "Descripcion", ProjectType.GRADO,
+                1L, "2026-1", "2026-1", LocalDate.of(2026, 6, 10), LocalDate.of(2026, 6, 11),
+                LocalDate.of(2026, 6, 9), List.of("Tutora"))))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("fin real");
         assertThatThrownBy(() -> service.get(404L)).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> service.updateStatus(404L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.ACTIVO))).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> service.registerProgress(404L, new ProjectDtos.ProjectProgressRequest(BigDecimal.TEN, "x", null))).isInstanceOf(BusinessException.class);
@@ -214,6 +220,48 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
 
         assertThat(project.getTutors()).isEmpty();
         assertThat(project.getUpdatedAt()).isAfterOrEqualTo(before);
+    }
+
+    @Test
+    void assignsListsAndRemovesProjectResponsiblesWithAnAuditTrail() {
+        Project project = localProject();
+        Professor professor = new Professor();
+        professor.setId(7L);
+        professor.setName("Profesora Responsable");
+        Role role = new Role();
+        role.setId(3L);
+        role.setName("Lider");
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(professorRepository.findById(7L)).thenReturn(Optional.of(professor));
+        when(roleRepository.findById(3L)).thenReturn(Optional.of(role));
+        when(projectTeacherRepository.findById(any(ProjectTeacherId.class))).thenReturn(Optional.empty());
+        when(projectTeacherRepository.save(any(ProjectTeacher.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var assigned = service.assignTeacher(1L, new ProjectDtos.ProjectTeacherRequest(7L, 3L,
+                LocalDate.of(2026, 9, 16), null));
+
+        assertThat(assigned.teacherName()).isEqualTo("Profesora Responsable");
+        assertThat(assigned.roleName()).isEqualTo("Lider");
+        verify(auditService).record(org.mockito.ArgumentMatchers.eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE),
+                org.mockito.ArgumentMatchers.eq("PROJECT_TEACHER"), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.eq(assigned));
+
+        ProjectTeacher assignment = new ProjectTeacher();
+        assignment.setProject(project);
+        assignment.setTeacher(professor);
+        assignment.setRole(role);
+        assignment.setJoinedAt(LocalDate.of(2026, 9, 16));
+        when(projectTeacherRepository.findAll()).thenReturn(List.of(assignment));
+        when(projectTeacherRepository.findById(any(ProjectTeacherId.class))).thenReturn(Optional.of(assignment));
+
+        assertThat(service.listTeachers(1L)).containsExactly(assigned);
+        service.removeTeacher(1L, 7L, 3L);
+
+        verify(projectTeacherRepository).delete(assignment);
+        verify(auditService).record(org.mockito.ArgumentMatchers.eq(co.edu.icesi.pdg.mte.audit.AuditAction.DELETE),
+                org.mockito.ArgumentMatchers.eq("PROJECT_TEACHER"), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(assigned), org.mockito.ArgumentMatchers.isNull());
     }
 
     @Test

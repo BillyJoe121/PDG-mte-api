@@ -91,6 +91,7 @@ public final class TestFixtures {
         objective.setId(id);
         objective.setName("Objetivo");
         objective.setDescription("Descripcion de objetivo");
+        objective.setStatus(ObjectiveStatus.ACTIVO);
         objective.setAcademicPeriod(period);
         objective.setDepartment(department);
         objective.setGoal(goal);
@@ -108,6 +109,7 @@ public final class TestFixtures {
         keyResult.setBaseValue(BigDecimal.ZERO);
         keyResult.setTargetValue(BigDecimal.valueOf(100));
         keyResult.setCurrentValue(BigDecimal.valueOf(25));
+        keyResult.setStatus(KeyResultStatus.ACTIVO);
         keyResult.setMeasurementUnit(unit);
         keyResult.recalculateProgress();
         return keyResult;

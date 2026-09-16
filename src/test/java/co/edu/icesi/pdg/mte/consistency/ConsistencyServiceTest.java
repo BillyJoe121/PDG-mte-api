@@ -144,6 +144,20 @@ class ConsistencyServiceTest {
                 .hasMessageContaining("staleDays");
     }
 
+    @Test
+    void emitsClientRoutesForCorrectiveActions() {
+        when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
+        when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(projectWithoutKr));
+        when(linkRepository.existsByProjectIdAndActiveTrue(2L)).thenReturn(false);
+        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(2L)).thenReturn(Optional.empty());
+
+        var findings = service.check(null, null, 15).findings();
+
+        assertThat(findings)
+                .extracting(finding -> finding.actionUrl())
+                .contains("/krs?objectiveId=1&keyResultId=2", "/proyectos?projectId=2");
+    }
+
     private Project project(Long id, String name, ProjectStatus status, KeyResult keyResult) {
         Project project = new Project();
         project.setId(id);

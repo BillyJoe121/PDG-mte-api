@@ -71,6 +71,7 @@ abstract class StrategyServiceTestSupport {
                 strategicBetRepository,
                 goalRepository,
                 objectiveRepository,
+                periodRepository,
                 linkRepository,
                 executionSummaryService
         );
