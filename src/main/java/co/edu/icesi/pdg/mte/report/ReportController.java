@@ -16,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/reports")
-@PreAuthorize("hasAnyRole('ADMIN','USER')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 public class ReportController {
     private final ReportService reportService;
 

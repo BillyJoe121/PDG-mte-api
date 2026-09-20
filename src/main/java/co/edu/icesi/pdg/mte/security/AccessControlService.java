@@ -14,30 +14,31 @@ import java.util.stream.Collectors;
 @Service
 public class AccessControlService {
     public static final String ADMIN = "ADMIN";
-    public static final String USER = "USER";
+    public static final String MANAGER = "MANAGER";
+    public static final String CONTRIBUTOR = "CONTRIBUTOR";
 
-    public static final List<String> SUPPORTED_ROLES = List.of(ADMIN, USER);
+    public static final List<String> SUPPORTED_ROLES = List.of(ADMIN, MANAGER, CONTRIBUTOR);
 
     public Map<String, Boolean> capabilities(Collection<String> roles) {
         Set<String> normalizedRoles = normalize(roles);
         Map<String, Boolean> capabilities = new LinkedHashMap<>();
-        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
         capabilities.put("manageCatalogs", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("manageObjectives", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("registerProjectProgress", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("changeProjectStatus", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("manageObjectives", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("registerProjectProgress", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("changeProjectStatus", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("syncExternalProjects", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, USER));
-        capabilities.put("viewConsistency", hasAny(normalizedRoles, ADMIN));
+        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("viewConsistency", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("viewAuditLogs", hasAny(normalizedRoles, ADMIN));
         return capabilities;
     }
@@ -51,7 +52,18 @@ public class AccessControlService {
         if (currentStatus == null || requestedStatus == null) {
             return false;
         }
-        return normalizedRoles.contains(ADMIN);
+        if (normalizedRoles.contains(ADMIN)) {
+            return true;
+        }
+        if (!normalizedRoles.contains(MANAGER)) {
+            return false;
+        }
+        return switch (currentStatus) {
+            case BORRADOR -> requestedStatus == ProjectStatus.ACTIVO || requestedStatus == ProjectStatus.SUSPENDIDO;
+            case ACTIVO -> requestedStatus == ProjectStatus.FINALIZADO || requestedStatus == ProjectStatus.SUSPENDIDO;
+            case SUSPENDIDO -> requestedStatus == ProjectStatus.ACTIVO;
+            case FINALIZADO, ARCHIVADO -> false;
+        };
     }
 
     private Set<String> normalize(Collection<String> roles) {
@@ -69,7 +81,8 @@ public class AccessControlService {
     private String normalizeAlias(String role) {
         return switch (role) {
             case "ADMINISTRADOR" -> ADMIN;
-            case "USUARIO", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO", "TUTOR", "PROFESOR" -> USER;
+            case "USUARIO", "USER", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO" -> MANAGER;
+            case "TUTOR", "PROFESOR" -> CONTRIBUTOR;
             default -> role;
         };
     }

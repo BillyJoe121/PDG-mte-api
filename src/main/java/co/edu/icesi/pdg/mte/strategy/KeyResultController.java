@@ -22,7 +22,7 @@ public class KeyResultController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
@@ -31,7 +31,7 @@ public class KeyResultController {
     }
 
     @PatchMapping("/{id}/current-value")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse updateCurrentValue(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultCurrentValueRequest request
@@ -40,7 +40,7 @@ public class KeyResultController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse setStatus(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultStatusRequest request
@@ -50,7 +50,7 @@ public class KeyResultController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     void delete(@PathVariable Long id) {
         strategyService.deleteKeyResult(id);
     }

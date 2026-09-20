@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Instant;
+
 public final class PeopleDtos {
     private PeopleDtos() {
     }
@@ -47,6 +49,32 @@ public final class PeopleDtos {
             String email,
             Long departmentId,
             String departmentName
+    ) {
+    }
+
+    public record DirectoryUserRequest(
+            @NotBlank String name,
+            @NotBlank @Email String email,
+            @NotNull Long departmentId,
+            @NotBlank String accessRole,
+            Boolean active
+    ) {
+    }
+
+    public record DirectoryUserActiveRequest(
+            @NotNull Boolean active
+    ) {
+    }
+
+    public record DirectoryUserResponse(
+            Long id,
+            String name,
+            String email,
+            Long departmentId,
+            String departmentName,
+            String accessRole,
+            Boolean active,
+            Instant lastAccessAt
     ) {
     }
 

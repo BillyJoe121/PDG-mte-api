@@ -26,7 +26,7 @@ class MockDemoRoleAccessE2ETest {
     private ObjectMapper objectMapper;
 
     @Test
-    void hugoDemoTokenIsUserAndCannotManageStrategicBets() throws Exception {
+    void hugoDemoTokenIsManagerAndCanManageStrategicBets() throws Exception {
         postJson("/api/v1/strategic-bets", """
                 {
                   "name": "Apuesta Hugo editable %d",
@@ -34,7 +34,7 @@ class MockDemoRoleAccessE2ETest {
                   "startDate": "2026-01-01",
                   "endDate": "2026-12-31"
                 }
-                """.formatted(SEQUENCE.incrementAndGet()), "mock-token-ha", 403);
+                """.formatted(SEQUENCE.incrementAndGet()), "mock-token-ha", 201);
     }
 
     private JsonNode postJson(String url, String payload, String token, int expectedStatus) throws Exception {

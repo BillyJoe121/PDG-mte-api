@@ -47,6 +47,15 @@ mte:
     mode: ${MTE_AUTH_MODE:mock}
     external-base-url: ${TRAYECTORIA_BASE_URL:http://localhost:8080/api/v1}
     introspection-path: ${TRAYECTORIA_ME_PATH:/auth/me}
+    sso:
+      enabled: ${MTE_SSO_ENABLED:false}
+      provider-name: ${MTE_SSO_PROVIDER_NAME:ICESI}
+      authorization-uri: ${MTE_SSO_AUTHORIZATION_URI:}
+      token-uri: ${MTE_SSO_TOKEN_URI:}
+      client-id: ${MTE_SSO_CLIENT_ID:}
+      client-secret: ${MTE_SSO_CLIENT_SECRET:}
+      redirect-uri: ${MTE_SSO_REDIRECT_URI:http://localhost:5173/auth/callback}
+      scopes: ${MTE_SSO_SCOPES:openid,profile,email}
   seed:
     enabled: ${MTE_SEED_ENABLED:true}
   integration:

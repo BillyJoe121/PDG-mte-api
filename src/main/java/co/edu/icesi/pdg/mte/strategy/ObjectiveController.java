@@ -42,7 +42,7 @@ public class ObjectiveController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.ObjectiveResponse create(@Valid @RequestBody StrategyDtos.ObjectiveRequest request) {
         return strategyService.createObjective(request);
     }
@@ -58,7 +58,7 @@ public class ObjectiveController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.ObjectiveResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.ObjectiveUpdateRequest request
@@ -67,7 +67,7 @@ public class ObjectiveController {
     }
 
     @PatchMapping("/{id}/archived")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.ObjectiveResponse setArchived(
             @PathVariable Long id,
             @RequestBody StrategyDtos.ArchiveStateRequest request
@@ -76,7 +76,7 @@ public class ObjectiveController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.ObjectiveResponse setStatus(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.ObjectiveStatusRequest request
@@ -91,7 +91,7 @@ public class ObjectiveController {
 
     @PostMapping("/{id}/key-results")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse addKeyResult(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request

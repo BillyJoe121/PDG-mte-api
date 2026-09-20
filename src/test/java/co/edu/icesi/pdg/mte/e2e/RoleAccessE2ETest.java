@@ -36,41 +36,61 @@ class RoleAccessE2ETest {
             String token = invocation.getArgument(0);
             if (token.contains("admin")) return user("ADMIN");
             if (token.contains("legacy")) return user("PROFESOR");
-            return user("USER");
+            if (token.contains("contributor")) return user("CONTRIBUTOR");
+            return user("MANAGER");
         });
     }
 
     @Test
-    void userCanManageObjectivesAndKeyResultsAndViewReports() throws Exception {
+    void managerCanManageStrategyProjectsAndViewReports() throws Exception {
         Scenario scenario = createScenarioAsAdmin();
-        JsonNode me = getJson("/api/v1/auth/me", "user-token", 200);
+        JsonNode me = getJson("/api/v1/auth/me", "manager-token", 200);
         patchJson("/api/v1/objectives/" + scenario.objectiveId(),
-                "{\"name\":\"Objetivo actualizado por user\",\"description\":\"Edición permitida\"}",
-                "user-token", 200);
+                "{\"name\":\"Objetivo actualizado por manager\",\"description\":\"Edición permitida\"}",
+                "manager-token", 200);
         postJson("/api/v1/objectives/" + scenario.objectiveId() + "/key-results", """
                 {"name":"KR creado por user","description":"Gestión permitida","metric":"Cobertura",
                  "baseValue":0,"targetValue":10,"measurementUnitId":%d}
-                """.formatted(scenario.unitId()), "user-token", 201);
-        getJson("/api/v1/reports/general", "user-token", 200);
-        getJson("/api/v1/presentation", "user-token", 200);
+                """.formatted(scenario.unitId()), "manager-token", 201);
+        getJson("/api/v1/reports/general", "manager-token", 200);
+        getJson("/api/v1/presentation", "manager-token", 200);
 
-        assertThat(me.get("user").get("roles").toString()).contains("USER");
+        assertThat(me.get("user").get("roles").toString()).contains("MANAGER");
         assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isTrue();
         assertThat(me.get("capabilities").get("manageKeyResults").asBoolean()).isTrue();
         assertThat(me.get("capabilities").get("viewReports").asBoolean()).isTrue();
     }
 
     @Test
-    void userCannotManageAdminOnlyResources() throws Exception {
+    void managerCannotManagePlatformAdministration() throws Exception {
         Long departmentId = firstId("/api/v1/departments", "admin-token");
         postJson("/api/v1/measurement-units", """
                 {"name":"Unidad bloqueada %d","type":"NUMERICA"}
-                """.formatted(SEQUENCE.incrementAndGet()), "user-token", 403);
+                """.formatted(SEQUENCE.incrementAndGet()), "manager-token", 403);
         postJson("/api/v1/strategic-bets", """
-                {"name":"Apuesta bloqueada %d","description":"No autorizada"}
-                """.formatted(SEQUENCE.incrementAndGet()), "user-token", 403);
-        postJson("/api/v1/projects", projectPayload(departmentId), "user-token", 403);
-        getJson("/api/v1/audit-logs", "user-token", 403);
+                {"name":"Apuesta manager %d","description":"Autorizada"}
+                """.formatted(SEQUENCE.incrementAndGet()), "manager-token", 201);
+        postJson("/api/v1/projects", projectPayload(departmentId), "manager-token", 201);
+        getJson("/api/v1/audit-logs", "manager-token", 403);
+    }
+
+    @Test
+    void contributorCanConsultAndRegisterProgressButCannotManage() throws Exception {
+        Scenario scenario = createScenarioAsAdmin();
+        JsonNode me = getJson("/api/v1/auth/me", "contributor-token", 200);
+
+        getJson("/api/v1/projects", "contributor-token", 200);
+        postJson("/api/v1/projects/" + scenario.projectId() + "/progress", """
+                {"progressPercent":25,"comment":"Avance con evidencia","milestones":"Evidencia cargada"}
+                """, "contributor-token", 201);
+        patchJson("/api/v1/objectives/" + scenario.objectiveId(),
+                "{\"name\":\"Cambio bloqueado\",\"description\":\"No autorizado\"}",
+                "contributor-token", 403);
+        getJson("/api/v1/reports/general", "contributor-token", 403);
+
+        assertThat(me.get("user").get("roles").toString()).contains("CONTRIBUTOR");
+        assertThat(me.get("capabilities").get("registerProjectProgress").asBoolean()).isTrue();
+        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isFalse();
     }
 
     @Test
@@ -94,10 +114,11 @@ class RoleAccessE2ETest {
     }
 
     @Test
-    void legacyInstitutionalRolesCollapseToUser() throws Exception {
+    void legacyInstitutionalRolesMapToContributor() throws Exception {
         JsonNode me = getJson("/api/v1/auth/me", "legacy-token", 200);
-        assertThat(me.get("user").get("roles").toString()).isEqualTo("[\"USER\"]");
-        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isTrue();
+        assertThat(me.get("user").get("roles").toString()).isEqualTo("[\"CONTRIBUTOR\"]");
+        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isFalse();
+        assertThat(me.get("capabilities").get("registerProjectProgress").asBoolean()).isTrue();
         assertThat(me.get("capabilities").get("manageCatalogs").asBoolean()).isFalse();
     }
 
@@ -116,7 +137,8 @@ class RoleAccessE2ETest {
                  "goalId":%d,"strategicBetId":%d,"keyResults":[{"name":"KR inicial","description":"Base",
                  "metric":"Cobertura","baseValue":0,"targetValue":100,"measurementUnitId":%d}]}
                 """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId), "admin-token", 201);
-        return new Scenario(objective.get("id").asLong(), unitId);
+        Long projectId = postJson("/api/v1/projects", projectPayload(departmentId), "admin-token", 201).get("id").asLong();
+        return new Scenario(objective.get("id").asLong(), unitId, projectId);
     }
 
     private String projectPayload(Long departmentId) {
@@ -156,5 +178,5 @@ class RoleAccessE2ETest {
                 99L, "Usuario " + role, "DCSI");
     }
 
-    private record Scenario(Long objectiveId, Long unitId) {}
+    private record Scenario(Long objectiveId, Long unitId, Long projectId) {}
 }

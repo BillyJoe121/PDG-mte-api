@@ -8,12 +8,14 @@ import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.ProjectTeacherRepository;
+import co.edu.icesi.pdg.mte.security.AccessControlService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -176,6 +178,94 @@ public class PeopleService {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un profesor en uso.");
         }
         professorRepository.delete(professor);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PeopleDtos.DirectoryUserResponse> listDirectoryUsers(
+            String search,
+            Long departmentId,
+            String accessRole,
+            Boolean active
+    ) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedRole = accessRole == null || accessRole.isBlank() ? null : normalizeAccessRole(accessRole);
+        return professorRepository.findAll().stream()
+                .filter(professor -> normalizedSearch.isEmpty()
+                        || professor.getName().toLowerCase(Locale.ROOT).contains(normalizedSearch)
+                        || professor.getEmail().toLowerCase(Locale.ROOT).contains(normalizedSearch))
+                .filter(professor -> departmentId == null || professor.getDepartment().getId().equals(departmentId))
+                .filter(professor -> normalizedRole == null || professor.getAccessRole().equals(normalizedRole))
+                .filter(professor -> active == null || professor.isActive() == active)
+                .sorted(Comparator.comparing(Professor::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(Mapper::toDirectoryUserResponse)
+                .toList();
+    }
+
+    public PeopleDtos.DirectoryUserResponse createDirectoryUser(PeopleDtos.DirectoryUserRequest request) {
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (professorRepository.existsByEmailIgnoreCase(email)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese correo.");
+        }
+        Professor professor = new Professor();
+        applyDirectoryUser(professor, request, email);
+        PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
+        auditService.record(AuditAction.CREATE, "DIRECTORY_USER", response.id(), "Usuario creado: " + response.email(), null, response);
+        return response;
+    }
+
+    public PeopleDtos.DirectoryUserResponse updateDirectoryUser(Long id, PeopleDtos.DirectoryUserRequest request) {
+        Professor professor = findProfessor(id);
+        PeopleDtos.DirectoryUserResponse before = Mapper.toDirectoryUserResponse(professor);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        professorRepository.findByEmailIgnoreCase(email)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese correo.");
+                });
+        applyDirectoryUser(professor, request, email);
+        PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
+        auditService.record(AuditAction.UPDATE, "DIRECTORY_USER", response.id(), "Usuario actualizado: " + response.email(), before, response);
+        return response;
+    }
+
+    public PeopleDtos.DirectoryUserResponse updateDirectoryUserActive(Long id, boolean active) {
+        Professor professor = findProfessor(id);
+        PeopleDtos.DirectoryUserResponse before = Mapper.toDirectoryUserResponse(professor);
+        professor.setActive(active);
+        PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
+        auditService.record(AuditAction.STATUS_CHANGE, "DIRECTORY_USER", response.id(),
+                "Usuario " + (active ? "activado" : "desactivado") + ": " + response.email(), before, response);
+        return response;
+    }
+
+    public void deleteDirectoryUser(Long id) {
+        Professor professor = findProfessor(id);
+        PeopleDtos.DirectoryUserResponse before = Mapper.toDirectoryUserResponse(professor);
+        if (teacherPositionRepository.existsByTeacher_Id(id) || projectTeacherRepository.existsByTeacher_Id(id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un usuario con responsabilidades asignadas.");
+        }
+        professorRepository.delete(professor);
+        auditService.record(AuditAction.DELETE, "DIRECTORY_USER", id, "Usuario eliminado: " + before.email(), before, null);
+    }
+
+    private void applyDirectoryUser(Professor professor, PeopleDtos.DirectoryUserRequest request, String email) {
+        professor.setName(request.name().trim());
+        professor.setEmail(email);
+        professor.setDepartment(findDepartment(request.departmentId()));
+        professor.setAccessRole(normalizeAccessRole(request.accessRole()));
+        if (request.active() != null) {
+            professor.setActive(request.active());
+        }
+    }
+
+    private String normalizeAccessRole(String role) {
+        String normalized = role.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case AccessControlService.ADMIN, "ADMINISTRADOR" -> AccessControlService.ADMIN;
+            case AccessControlService.MANAGER, "GESTOR", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO", "USER", "USUARIO" -> AccessControlService.MANAGER;
+            case AccessControlService.CONTRIBUTOR, "COLABORADOR", "PROFESOR", "TUTOR" -> AccessControlService.CONTRIBUTOR;
+            default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "El rol de acceso no es valido.");
+        };
     }
 
     @Transactional(readOnly = true)

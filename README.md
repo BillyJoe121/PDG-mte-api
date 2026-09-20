@@ -319,6 +319,31 @@ TRAYECTORIA_BASE_URL=https://<url-auth>/api/v1
 TRAYECTORIA_ME_PATH=/auth/me
 ```
 
+SSO institucional (OAuth 2.0 / OpenID Connect con Authorization Code + PKCE):
+
+```text
+MTE_AUTH_MODE=external
+MTE_SSO_ENABLED=true
+MTE_SSO_PROVIDER_NAME=ICESI
+MTE_SSO_AUTHORIZATION_URI=https://<proveedor>/authorize
+MTE_SSO_TOKEN_URI=https://<proveedor>/token
+MTE_SSO_CLIENT_ID=<client-id-registrado>
+MTE_SSO_CLIENT_SECRET=<opcional-solo-en-backend>
+MTE_SSO_REDIRECT_URI=https://<frontend>/auth/callback
+MTE_SSO_SCOPES=openid,profile,email
+```
+
+El `redirect URI` debe registrarse de forma exacta en el proveedor. El frontend genera `state` y PKCE S256; el backend intercambia el código usando exclusivamente el redirect configurado y nunca publica el `token URI` ni el secreto. Después del intercambio, `/api/v1/auth/me` vuelve a validar el bearer contra `TRAYECTORIA_BASE_URL` antes de crear la sesión local.
+
+Endpoints públicos mínimos del handshake:
+
+```text
+GET  /api/v1/auth/sso/config
+POST /api/v1/auth/sso/exchange
+```
+
+El SSO solo se anuncia cuando `MTE_AUTH_MODE=external`, `MTE_SSO_ENABLED=true` y están presentes las URLs, client ID y redirect. No se guardan contraseñas ni refresh tokens en MTE.
+
 Cada request protegido debe incluir:
 
 ```http
@@ -440,6 +465,14 @@ FLYWAY_ENABLED=true
 MTE_SEED_ENABLED=false
 MTE_AUTH_MODE=external
 MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
+MTE_SSO_ENABLED=true
+MTE_SSO_PROVIDER_NAME=ICESI
+MTE_SSO_AUTHORIZATION_URI=<url-authorize-del-proveedor>
+MTE_SSO_TOKEN_URI=<url-token-del-proveedor>
+MTE_SSO_CLIENT_ID=<client-id>
+MTE_SSO_CLIENT_SECRET=<secreto-opcional>
+MTE_SSO_REDIRECT_URI=<url-frontend>/auth/callback
+MTE_SSO_SCOPES=openid,profile,email
 ```
 
 No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.example` no contiene secretos y sirve como plantilla.

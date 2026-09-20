@@ -3,6 +3,8 @@ package co.edu.icesi.pdg.mte.people;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import jakarta.persistence.*;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "professor", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 public class Professor {
@@ -19,6 +21,14 @@ public class Professor {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Department department;
+
+    @Column(nullable = false, length = 32)
+    private String accessRole = "CONTRIBUTOR";
+
+    @Column(nullable = false)
+    private boolean active = true;
+
+    private Instant lastAccessAt;
 
     public Long getId() {
         return id;
@@ -50,5 +60,29 @@ public class Professor {
 
     public void setDepartment(Department department) {
         this.department = department;
+    }
+
+    public String getAccessRole() {
+        return accessRole;
+    }
+
+    public void setAccessRole(String accessRole) {
+        this.accessRole = accessRole;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public Instant getLastAccessAt() {
+        return lastAccessAt;
+    }
+
+    public void setLastAccessAt(Instant lastAccessAt) {
+        this.lastAccessAt = lastAccessAt;
     }
 }

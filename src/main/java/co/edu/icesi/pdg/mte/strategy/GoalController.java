@@ -28,7 +28,7 @@ public class GoalController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse create(@Valid @RequestBody StrategyDtos.GoalRequest request) {
         return strategyService.createGoal(request);
     }
@@ -39,7 +39,7 @@ public class GoalController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.GoalRequest request
@@ -48,7 +48,7 @@ public class GoalController {
     }
 
     @PatchMapping("/{id}/active")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse setActive(
             @PathVariable Long id,
             @RequestBody StrategyDtos.ActiveStateRequest request
@@ -57,13 +57,13 @@ public class GoalController {
     }
 
     @PostMapping("/{id}/periods/{periodId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse attachPeriod(@PathVariable Long id, @PathVariable Long periodId) {
         return strategyService.attachGoalPeriod(id, periodId);
     }
 
     @DeleteMapping("/{id}/periods/{periodId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse detachPeriod(@PathVariable Long id, @PathVariable Long periodId) {
         return strategyService.detachGoalPeriod(id, periodId);
     }

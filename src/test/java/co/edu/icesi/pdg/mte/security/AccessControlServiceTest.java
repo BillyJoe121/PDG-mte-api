@@ -12,8 +12,8 @@ class AccessControlServiceTest {
     private final AccessControlService service = new AccessControlService();
 
     @Test
-    void exposesOnlyAdminAndUserRoles() {
-        assertThat(AccessControlService.SUPPORTED_ROLES).containsExactly("ADMIN", "USER");
+    void exposesExactlyThreeSupportedRoles() {
+        assertThat(AccessControlService.SUPPORTED_ROLES).containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR");
     }
 
     @Test
@@ -25,36 +25,49 @@ class AccessControlServiceTest {
     }
 
     @Test
-    void userCanManageObjectivesAndKeyResultsAndReadReportsOnly() {
-        var capabilities = service.capabilities(List.of("ROLE_USER"));
+    void managerCanManageStrategyAndProjectsButNotPlatformAdministration() {
+        var capabilities = service.capabilities(List.of("ROLE_MANAGER"));
 
         assertThat(capabilities.get("viewDashboard")).isTrue();
-        assertThat(capabilities.get("viewStrategy")).isTrue();
+        assertThat(capabilities.get("manageStrategicBets")).isTrue();
         assertThat(capabilities.get("manageObjectives")).isTrue();
-        assertThat(capabilities.get("manageKeyResults")).isTrue();
+        assertThat(capabilities.get("createProjects")).isTrue();
+        assertThat(capabilities.get("changeProjectStatus")).isTrue();
         assertThat(capabilities.get("viewReports")).isTrue();
-        assertThat(capabilities.get("viewPresentation")).isTrue();
         assertThat(capabilities.get("manageCatalogs")).isFalse();
-        assertThat(capabilities.get("manageStrategicBets")).isFalse();
-        assertThat(capabilities.get("manageGoals")).isFalse();
-        assertThat(capabilities.get("viewProjects")).isFalse();
-        assertThat(capabilities.get("createProjects")).isFalse();
-        assertThat(capabilities.get("viewConsistency")).isFalse();
+        assertThat(capabilities.get("syncExternalProjects")).isFalse();
         assertThat(capabilities.get("viewAuditLogs")).isFalse();
     }
 
     @Test
-    void legacyInstitutionalRolesCollapseIntoUser() {
-        assertThat(service.normalizeToList(List.of("DECANO", "DIRECTOR_ESCUELA", "JEFE_DPTO", "PROFESOR")))
-                .containsExactly("USER");
-        assertThat(service.normalizeToList(List.of("director", "jefe", "tutor", "usuario")))
-                .containsExactly("USER");
+    void contributorCanConsultAndRegisterProgressOnly() {
+        var capabilities = service.capabilities(List.of("ROLE_CONTRIBUTOR"));
+
+        assertThat(capabilities.get("viewDashboard")).isTrue();
+        assertThat(capabilities.get("viewStrategy")).isTrue();
+        assertThat(capabilities.get("viewProjects")).isTrue();
+        assertThat(capabilities.get("registerProjectProgress")).isTrue();
+        assertThat(capabilities.get("viewPresentation")).isTrue();
+        assertThat(capabilities.get("manageObjectives")).isFalse();
+        assertThat(capabilities.get("createProjects")).isFalse();
+        assertThat(capabilities.get("updateProjects")).isFalse();
+        assertThat(capabilities.get("linkProjectsToKeyResults")).isFalse();
+        assertThat(capabilities.get("viewReports")).isFalse();
+    }
+
+    @Test
+    void legacyInstitutionalRolesMapToCanonicalLevels() {
+        assertThat(service.normalizeToList(List.of("ADMINISTRADOR"))).containsExactly("ADMIN");
+        assertThat(service.normalizeToList(List.of("DECANO", "DIRECTOR_ESCUELA", "JEFE_DPTO", "USER")))
+                .containsExactly("MANAGER");
+        assertThat(service.normalizeToList(List.of("PROFESOR", "TUTOR")))
+                .containsExactly("CONTRIBUTOR");
     }
 
     @Test
     void normalizesRolesByTrimmingUppercasingRemovingPrefixAndDeduplicating() {
-        assertThat(service.normalizeToList(Arrays.asList(" role_admin ", "ADMIN", "", " user ", null)))
-                .containsExactly("ADMIN", "USER");
+        assertThat(service.normalizeToList(Arrays.asList(" role_admin ", "ADMIN", "", " manager ", "ROLE_CONTRIBUTOR", null)))
+                .containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR");
     }
 
     @Test
@@ -67,10 +80,11 @@ class AccessControlServiceTest {
     }
 
     @Test
-    void onlyAdminCanChangeProjectStatus() {
-        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, List.of("ADMIN"))).isTrue();
+    void projectStatusTransitionsRespectRoleBoundaries() {
         assertThat(service.canChangeProjectStatus(ProjectStatus.ARCHIVADO, ProjectStatus.ACTIVO, List.of("ADMIN"))).isTrue();
-        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, List.of("USER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, List.of("MANAGER"))).isTrue();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.FINALIZADO, ProjectStatus.ARCHIVADO, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, List.of("CONTRIBUTOR"))).isFalse();
         assertThat(service.canChangeProjectStatus(null, ProjectStatus.ACTIVO, List.of("ADMIN"))).isFalse();
     }
 }

@@ -28,7 +28,7 @@ public class StrategicBetController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.StrategicBetResponse create(@Valid @RequestBody StrategyDtos.StrategicBetRequest request) {
         return strategyService.createStrategicBet(request);
     }
@@ -39,7 +39,7 @@ public class StrategicBetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.StrategicBetResponse update(
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.StrategicBetRequest request
@@ -48,7 +48,7 @@ public class StrategicBetController {
     }
 
     @PatchMapping("/{id}/active")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.StrategicBetResponse setActive(
             @PathVariable Long id,
             @RequestBody StrategyDtos.ActiveStateRequest request

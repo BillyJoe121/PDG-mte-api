@@ -36,6 +36,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return "OPTIONS".equalsIgnoreCase(request.getMethod())
                 || path.equals("/api/v1/health")
+                || path.startsWith("/api/v1/auth/sso/")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/h2-console");
@@ -100,7 +101,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9001L,
                     "ha",
                     "hugo.arboleda@icesi.edu.co",
-                    List.of(AccessControlService.USER),
+                    List.of(AccessControlService.MANAGER),
                     "Hugo Arboleda",
                     "Direcci\u00f3n TDI"
             );
@@ -108,7 +109,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9002L,
                     "rs",
                     "rocio.segovia@icesi.edu.co",
-                    List.of(AccessControlService.USER),
+                    List.of(AccessControlService.CONTRIBUTOR),
                     "Roc\u00edo Segovia",
                     "DCSI"
             );
@@ -116,7 +117,7 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
                     9003L,
                     "lb",
                     "leonardo.bustamante@icesi.edu.co",
-                    List.of(AccessControlService.USER),
+                    List.of(AccessControlService.CONTRIBUTOR),
                     "Leonardo Bustamante",
                     "DCSI"
             );

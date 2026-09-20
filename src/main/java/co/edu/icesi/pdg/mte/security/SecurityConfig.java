@@ -23,7 +23,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class, SsoProperties.class})
 public class SecurityConfig {
     private final CorsProperties corsProperties;
 
@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/sso/config").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/sso/exchange").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)

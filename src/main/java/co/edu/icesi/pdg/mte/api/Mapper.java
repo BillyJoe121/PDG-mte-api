@@ -87,6 +87,19 @@ public final class Mapper {
         );
     }
 
+    public static PeopleDtos.DirectoryUserResponse toDirectoryUserResponse(Professor professor) {
+        return new PeopleDtos.DirectoryUserResponse(
+                professor.getId(),
+                professor.getName(),
+                professor.getEmail(),
+                professor.getDepartment().getId(),
+                professor.getDepartment().getName(),
+                professor.getAccessRole(),
+                professor.isActive(),
+                professor.getLastAccessAt()
+        );
+    }
+
     public static PeopleDtos.TeacherPositionResponse toResponse(TeacherPosition teacherPosition) {
         return new PeopleDtos.TeacherPositionResponse(
                 teacherPosition.getPosition().getId(),

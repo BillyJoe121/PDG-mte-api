@@ -17,6 +17,49 @@ public class PeopleController {
         this.peopleService = peopleService;
     }
 
+    @GetMapping("/directory-users")
+    @PreAuthorize("hasRole('ADMIN')")
+    List<PeopleDtos.DirectoryUserResponse> listDirectoryUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) String accessRole,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return peopleService.listDirectoryUsers(search, departmentId, accessRole, active);
+    }
+
+    @PostMapping("/directory-users")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    PeopleDtos.DirectoryUserResponse createDirectoryUser(@Valid @RequestBody PeopleDtos.DirectoryUserRequest request) {
+        return peopleService.createDirectoryUser(request);
+    }
+
+    @PutMapping("/directory-users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    PeopleDtos.DirectoryUserResponse updateDirectoryUser(
+            @PathVariable Long id,
+            @Valid @RequestBody PeopleDtos.DirectoryUserRequest request
+    ) {
+        return peopleService.updateDirectoryUser(id, request);
+    }
+
+    @PatchMapping("/directory-users/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    PeopleDtos.DirectoryUserResponse updateDirectoryUserActive(
+            @PathVariable Long id,
+            @Valid @RequestBody PeopleDtos.DirectoryUserActiveRequest request
+    ) {
+        return peopleService.updateDirectoryUserActive(id, request.active());
+    }
+
+    @DeleteMapping("/directory-users/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    void deleteDirectoryUser(@PathVariable Long id) {
+        peopleService.deleteDirectoryUser(id);
+    }
+
     @GetMapping("/roles")
     List<PeopleDtos.RoleResponse> listRoles() {
         return peopleService.listRoles();

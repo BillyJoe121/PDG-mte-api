@@ -66,7 +66,7 @@ class MteAuthenticationFilterTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting(Object::toString)
-                .containsExactly("ROLE_USER");
+                .containsExactly("ROLE_MANAGER");
     }
 
     @Test
@@ -84,7 +84,7 @@ class MteAuthenticationFilterTest {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         assertThat(authentication.getAuthorities())
                 .extracting(Object::toString)
-                .containsExactly("ROLE_USER");
+                .containsExactly("ROLE_MANAGER");
         ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
         assertThat(context.username()).isEqualTo("ha");
         assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
@@ -106,7 +106,7 @@ class MteAuthenticationFilterTest {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         assertThat(authentication.getAuthorities())
                 .extracting(Object::toString)
-                .containsExactly("ROLE_USER");
+                .containsExactly("ROLE_MANAGER");
         ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
         assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
         assertThat(context.email()).isEqualTo("hugo.arboleda@icesi.edu.co");
