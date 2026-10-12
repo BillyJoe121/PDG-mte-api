@@ -33,6 +33,64 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
     @Test
+    void managesWorldsAndProtectsWorldsInUse() {
+        World world = TestFixtures.world(1L);
+        World other = TestFixtures.world(2L); other.setName("Otro");
+        when(worldRepository.save(any(World.class))).thenAnswer(invocation -> {
+            World saved = invocation.getArgument(0); if (saved.getId() == null) saved.setId(1L); return saved;
+        });
+        assertThat(service.listWorlds()).hasSize(1);
+        assertThat(service.createWorld(new StrategyDtos.WorldRequest(" Mundo ", "Desc")).name()).isEqualTo("Mundo");
+        when(worldRepository.existsByNameIgnoreCase("Mundo")).thenReturn(true);
+        assertThatThrownBy(() -> service.createWorld(new StrategyDtos.WorldRequest("Mundo", null))).isInstanceOf(BusinessException.class);
+
+        when(worldRepository.findById(1L)).thenReturn(Optional.of(world));
+        when(worldRepository.findByNameIgnoreCase("Otro")).thenReturn(Optional.of(other));
+        assertThatThrownBy(() -> service.updateWorld(1L, new StrategyDtos.WorldRequest("Otro", null))).isInstanceOf(BusinessException.class);
+        when(worldRepository.findByNameIgnoreCase(world.getName())).thenReturn(Optional.of(world));
+        assertThat(service.updateWorld(1L, new StrategyDtos.WorldRequest(world.getName(), "Nueva")).description()).isEqualTo("Nueva");
+
+        when(strategicBetRepository.existsByWorldId(1L)).thenReturn(true, false, false);
+        when(goalRepository.existsByWorldId(1L)).thenReturn(true, false);
+        assertThatThrownBy(() -> service.deleteWorld(1L)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.deleteWorld(1L)).isInstanceOf(BusinessException.class);
+        service.deleteWorld(1L);
+        verify(worldRepository).delete(world);
+    }
+
+    @Test
+    void appliesDefaultBetDatesAndRequiresAnAvailableWorld() {
+        when(strategicBetRepository.save(any(StrategicBet.class))).thenAnswer(invocation -> {
+            StrategicBet saved = invocation.getArgument(0); saved.setId(7L); return saved;
+        });
+        var response = service.createStrategicBet(new StrategyDtos.StrategicBetRequest("Nueva", " Desc ", null, null));
+        assertThat(response.endDate()).isEqualTo(response.startDate().plusYears(1));
+
+        when(worldRepository.findAll()).thenReturn(List.of());
+        assertThatThrownBy(() -> service.createStrategicBet(new StrategyDtos.StrategicBetRequest("Sin mundo", "Desc", null, null)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("mundo");
+    }
+
+    @Test
+    void updatesBetWithExistingDatesWorldAndDuplicateProtection() {
+        World world = TestFixtures.world(2L);
+        StrategicBet other = TestFixtures.strategicBet(2L); other.setName("Duplicada");
+        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
+        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(strategicBetRepository.findByNameIgnoreCase("Duplicada")).thenReturn(Optional.of(other));
+        assertThatThrownBy(() -> service.updateStrategicBet(1L,
+                new StrategyDtos.StrategicBetRequest("Duplicada", "Desc", null, null)))
+                .isInstanceOf(BusinessException.class);
+
+        when(strategicBetRepository.findByNameIgnoreCase("Misma")).thenReturn(Optional.of(bet));
+        when(worldRepository.findById(2L)).thenReturn(Optional.of(world));
+        when(strategicBetRepository.save(bet)).thenReturn(bet);
+        var response = service.updateStrategicBet(1L,
+                new StrategyDtos.StrategicBetRequest("Misma", "Desc", 2L, null, null));
+        assertThat(response.worldId()).isEqualTo(2L);
+        assertThat(response.startDate()).isEqualTo(bet.getStartDate());
+    }
+    @Test
     void filtersStrategicBetsByAcademicPeriodDateRange() {
         StrategicBet outsidePeriod = TestFixtures.strategicBet(2L);
         outsidePeriod.setName("Apuesta futura");
