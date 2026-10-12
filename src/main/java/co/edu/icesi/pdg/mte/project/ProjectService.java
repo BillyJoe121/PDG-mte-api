@@ -271,6 +271,7 @@ public class ProjectService {
         for (ProjectDtos.ProjectKeyResultDraftRequest request : links) {
             KeyResult keyResult = keyResultRepository.findById(request.keyResultId())
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
+            co.edu.icesi.pdg.mte.strategy.LegacyKrMutationPolicy.requireMutableLink(keyResult);
             if (linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(project.getId(), keyResult.getId())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "El proyecto ya esta vinculado a este Key Result.");
             }

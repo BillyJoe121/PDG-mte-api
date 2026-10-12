@@ -87,4 +87,18 @@ class AccessControlServiceTest {
         assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, List.of("CONTRIBUTOR"))).isFalse();
         assertThat(service.canChangeProjectStatus(null, ProjectStatus.ACTIVO, List.of("ADMIN"))).isFalse();
     }
+
+    @Test
+    void managerStatusTransitionMatrixIsExplicitAndNullSafe() {
+        assertThat(service.canChangeProjectStatus(ProjectStatus.BORRADOR, null, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.BORRADOR, ProjectStatus.ACTIVO, List.of("MANAGER"))).isTrue();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.BORRADOR, ProjectStatus.SUSPENDIDO, List.of("MANAGER"))).isTrue();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.BORRADOR, ProjectStatus.FINALIZADO, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.SUSPENDIDO, List.of("MANAGER"))).isTrue();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.ACTIVO, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.SUSPENDIDO, ProjectStatus.ACTIVO, List.of("MANAGER"))).isTrue();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.SUSPENDIDO, ProjectStatus.FINALIZADO, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ARCHIVADO, ProjectStatus.ACTIVO, List.of("MANAGER"))).isFalse();
+        assertThat(service.canChangeProjectStatus(ProjectStatus.ACTIVO, ProjectStatus.FINALIZADO, null)).isFalse();
+    }
 }

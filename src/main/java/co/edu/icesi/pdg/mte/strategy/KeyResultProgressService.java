@@ -24,6 +24,8 @@ public class KeyResultProgressService {
     public KeyResult recalculateKeyResult(Long keyResultId) {
         KeyResult keyResult = keyResultRepository.findById(keyResultId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
+        // Governed KR progress is declared through V2, independently of project progress.
+        if(keyResult.getStrategicCycleId()!=null||keyResult.getStatus()==KeyResultStatus.CERRADO||!Boolean.TRUE.equals(keyResult.getActive()))return keyResult;
         keyResult.recalculateProgress(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId));
         return keyResultRepository.save(keyResult);
     }

@@ -13,6 +13,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 
 import java.util.List;
 import java.util.Map;
@@ -132,6 +135,53 @@ class AuditServiceTest {
                 Instant.parse("2026-01-01T00:00:00Z")
         )).isInstanceOf(co.edu.icesi.pdg.mte.common.BusinessException.class)
                 .hasMessageContaining("rango");
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void appliesEveryRepositoryFilterAndSkipsBlankFilters() {
+        AuditService service = new AuditService(repository, new ObjectMapper());
+        ArgumentCaptor<Specification<AuditLog>> specifications = ArgumentCaptor.forClass(Specification.class);
+        when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
+        Instant from = Instant.parse("2026-01-01T00:00:00Z");
+        Instant to = Instant.parse("2026-01-02T00:00:00Z");
+
+        service.list(AuditAction.UPDATE, " project ", " 7 ", " admin ", from, to);
+        service.list(null, " ", "", " ", null, null);
+        verify(repository, times(2)).findAll(specifications.capture(), any(Sort.class));
+
+        Root root = mock(Root.class);
+        CriteriaQuery query = mock(CriteriaQuery.class);
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        specifications.getAllValues().forEach(specification -> specification.toPredicate(root, query, builder));
+
+        verify(builder, times(4)).equal(
+                org.mockito.ArgumentMatchers.<jakarta.persistence.criteria.Expression<?>>isNull(),
+                any(Object.class)
+        );
+        verify(builder).greaterThanOrEqualTo(any(), eq(from));
+        verify(builder).lessThanOrEqualTo(any(), eq(to));
+        verify(builder, times(2)).and(any(jakarta.persistence.criteria.Predicate[].class));
+    }
+
+    @Test
+    void handlesEmptyAndImplicitAuditTrendBounds() {
+        AuditService service = new AuditService(repository, new ObjectMapper());
+        when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
+        assertThat(service.summary(null, null, null, null, null, null).trend()).isEmpty();
+
+        var bounded = service.summary(null, null, null, null,
+                Instant.parse("2026-04-01T00:00:00Z"), Instant.parse("2026-04-02T00:00:00Z"));
+        assertThat(bounded.trend()).hasSize(2).allSatisfy(point -> assertThat(point.count()).isZero());
+
+        AuditLog first = log(AuditAction.CREATE, "PROJECT", "1");
+        ReflectionTestUtils.setField(first, "createdAt", Instant.parse("2026-04-03T10:00:00Z"));
+        AuditLog withoutTimestamp = log(AuditAction.UPDATE, "PROJECT", "1");
+        ReflectionTestUtils.setField(withoutTimestamp, "createdAt", null);
+        when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(withoutTimestamp, first));
+        var implicit = service.summary(null, null, null, null, null, null);
+        assertThat(implicit.trend()).containsExactly(
+                new co.edu.icesi.pdg.mte.api.dto.AuditDtos.AuditTrendPointResponse(LocalDate.parse("2026-04-03"), 1));
     }
 
     private AuditLog log(AuditAction action, String entityType, String entityId) {

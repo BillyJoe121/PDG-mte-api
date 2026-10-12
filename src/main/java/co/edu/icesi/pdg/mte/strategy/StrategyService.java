@@ -409,10 +409,12 @@ public class StrategyService {
 
         StrategyDtos.ObjectiveResponse before = Mapper.toResponse(objective);
         if (objective.getStatus() == ObjectiveStatus.BORRADOR && targetStatus == ObjectiveStatus.ACTIVO) {
+            objective.getKeyResults().stream().filter(k->k.getStatus()==KeyResultStatus.BORRADOR).forEach(this::requireLegacyKeyResult);
             objective.getKeyResults().stream()
                     .filter(keyResult -> keyResult.getStatus() == KeyResultStatus.BORRADOR)
                     .forEach(keyResult -> keyResult.setStatus(KeyResultStatus.ACTIVO));
         } else if (objective.getStatus() == ObjectiveStatus.ACTIVO && targetStatus == ObjectiveStatus.CERRADO) {
+            objective.getKeyResults().stream().filter(k->k.getStatus()==KeyResultStatus.ACTIVO).forEach(this::requireLegacyKeyResult);
             if (objective.getKeyResults().stream().anyMatch(keyResult -> keyResult.getStatus() == KeyResultStatus.BORRADOR)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "No se puede cerrar un objetivo con KRs en borrador.");
             }
@@ -500,6 +502,7 @@ public class StrategyService {
 
     public StrategyDtos.KeyResultResponse setKeyResultStatus(Long keyResultId, KeyResultStatus targetStatus) {
         KeyResult keyResult = findKeyResult(keyResultId);
+        requireLegacyKeyResult(keyResult);
         if (keyResult.getStatus() == targetStatus) {
             return Mapper.toResponse(keyResult);
         }
@@ -584,11 +587,16 @@ public class StrategyService {
     }
 
     private void requireKeyResultMutable(KeyResult keyResult) {
+        requireLegacyKeyResult(keyResult);
         if (keyResult.getStatus() == KeyResultStatus.CERRADO
                 || keyResult.getObjective() != null && (keyResult.getObjective().getStatus() == ObjectiveStatus.CERRADO
                 || keyResult.getObjective().getStatus() == ObjectiveStatus.ARCHIVADO)) {
             throw new BusinessException(HttpStatus.CONFLICT, "El KR está cerrado o su Objetivo no admite cambios ordinarios.");
         }
+    }
+
+    private void requireLegacyKeyResult(KeyResult keyResult){
+        LegacyKrMutationPolicy.requireUngoverned(keyResult);
     }
 
     private void validateDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {

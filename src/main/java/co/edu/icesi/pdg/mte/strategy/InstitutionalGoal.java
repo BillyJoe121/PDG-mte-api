@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.strategy;
 
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
+import co.edu.icesi.pdg.mte.people.Professor;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -37,6 +38,17 @@ public class InstitutionalGoal {
 
     @Enumerated(EnumType.STRING)
     private StrategicStatus status = StrategicStatus.ACTIVA;
+
+    @Column(nullable = false)
+    private Boolean active = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responsible_id")
+    private Professor responsible;
 
     private Instant createdAt = Instant.now();
 
@@ -114,6 +126,30 @@ public class InstitutionalGoal {
 
     public void setStatus(StrategicStatus status) {
         this.status = status;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public Professor getResponsible() {
+        return responsible;
+    }
+
+    public void setResponsible(Professor responsible) {
+        this.responsible = responsible;
     }
 
     public Instant getCreatedAt() {

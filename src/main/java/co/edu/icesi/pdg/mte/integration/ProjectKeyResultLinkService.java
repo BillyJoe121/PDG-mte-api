@@ -10,6 +10,7 @@ import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
+import co.edu.icesi.pdg.mte.strategy.LegacyKrMutationPolicy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ public class ProjectKeyResultLinkService {
     public ProjectDtos.ProjectKeyResultLinkResponse link(ProjectDtos.ProjectKeyResultLinkRequest request) {
         Project project = findProject(request.projectId());
         KeyResult keyResult = findKeyResult(request.keyResultId());
+        LegacyKrMutationPolicy.requireMutableLink(keyResult);
         if (linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(project.getId(), keyResult.getId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "El proyecto ya esta vinculado a este Key Result.");
         }
@@ -68,6 +70,7 @@ public class ProjectKeyResultLinkService {
         if (!link.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede actualizar un vinculo Proyecto-KR inactivo.");
         }
+        LegacyKrMutationPolicy.requireMutableLink(link.getKeyResult());
 
         ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
         link.setContributionWeight(request.contributionWeight());
@@ -106,6 +109,7 @@ public class ProjectKeyResultLinkService {
     public void unlink(Long id) {
         ProjectKeyResultLink link = linkRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Vinculo Proyecto-KR no encontrado."));
+        LegacyKrMutationPolicy.requireMutableLink(link.getKeyResult());
         ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
         link.setActive(false);
         linkRepository.save(link);

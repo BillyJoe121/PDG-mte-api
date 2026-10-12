@@ -32,6 +32,20 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class StrategyServiceObjectiveTest extends StrategyServiceTestSupport {
 
+    @Test void legacyRoutesCannotBypassGovernedKr(){
+        var kr=objective.getKeyResults().get(0);kr.setStrategicCycleId(55L);when(keyResultRepository.findById(kr.getId())).thenReturn(Optional.of(kr));
+        assertThatThrownBy(()->service.updateKeyResultCurrentValue(kr.getId(),BigDecimal.TEN)).isInstanceOf(BusinessException.class).hasMessageContaining("V2");
+        assertThatThrownBy(()->service.setKeyResultStatus(kr.getId(),KeyResultStatus.CERRADO)).isInstanceOf(BusinessException.class).hasMessageContaining("V2");
+        assertThatThrownBy(()->service.deleteKeyResult(kr.getId())).isInstanceOf(BusinessException.class).hasMessageContaining("V2");
+        verify(keyResultRepository,never()).save(any());verify(keyResultRepository,never()).delete(any());
+    }
+
+    @Test void legacyObjectiveCannotCloseGovernedChild(){
+        objective.setStatus(ObjectiveStatus.ACTIVO);var kr=objective.getKeyResults().get(0);kr.setStatus(KeyResultStatus.ACTIVO);kr.setStrategicCycleId(55L);when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objective));
+        assertThatThrownBy(()->service.setObjectiveStatus(1L,ObjectiveStatus.CERRADO)).isInstanceOf(BusinessException.class).hasMessageContaining("V2");
+        assertThat(kr.getStatus()).isEqualTo(KeyResultStatus.ACTIVO);verify(objectiveRepository,never()).save(any());
+    }
+
     @Test
     void activatesDraftObjectiveAndItsKeyResults() {
         objective.setStatus(ObjectiveStatus.BORRADOR);

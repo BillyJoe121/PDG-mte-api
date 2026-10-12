@@ -44,6 +44,23 @@ public class KeyResult {
     @Column(nullable = false)
     private KeyResultStatus status = KeyResultStatus.BORRADOR;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private KrType type = KrType.COMMITTED;
+
+    @Column(name = "metric_definition_id")
+    private Long metricDefinitionId;
+
+    @Column(name = "strategic_cycle_id")
+    private Long strategicCycleId;
+
+    @Column(nullable = false)
+    private Boolean active = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     private Instant createdAt = Instant.now();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
@@ -54,7 +71,8 @@ public class KeyResult {
     @JoinColumn(name = "academic_period_id")
     private AcademicPeriod academicPeriod;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    // AD-8: Objective is optional for direct strategy linkage
+    @ManyToOne(fetch = FetchType.LAZY)
     private Objective objective;
 
     @OneToMany(mappedBy = "keyResult")
@@ -81,7 +99,7 @@ public class KeyResult {
     @PrePersist
     @PreUpdate
     void beforeSave() {
-        recalculateProgress();
+        if(strategicCycleId==null)recalculateProgress();
     }
 
     public Long getId() {
@@ -154,6 +172,46 @@ public class KeyResult {
 
     public void setStatus(KeyResultStatus status) {
         this.status = status;
+    }
+
+    public KrType getType() {
+        return type;
+    }
+
+    public void setType(KrType type) {
+        this.type = type;
+    }
+
+    public Long getMetricDefinitionId() {
+        return metricDefinitionId;
+    }
+
+    public void setMetricDefinitionId(Long metricDefinitionId) {
+        this.metricDefinitionId = metricDefinitionId;
+    }
+
+    public Long getStrategicCycleId() {
+        return strategicCycleId;
+    }
+
+    public void setStrategicCycleId(Long strategicCycleId) {
+        this.strategicCycleId = strategicCycleId;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public Instant getCreatedAt() {

@@ -28,6 +28,13 @@ public class StrategicBet {
     @Enumerated(EnumType.STRING)
     private StrategicStatus status = StrategicStatus.ACTIVA;
 
+    @Column(nullable = false)
+    private Boolean active = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     private Instant createdAt = Instant.now();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
@@ -79,6 +86,22 @@ public class StrategicBet {
 
     public void setStatus(StrategicStatus status) {
         this.status = status;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public Instant getCreatedAt() {
