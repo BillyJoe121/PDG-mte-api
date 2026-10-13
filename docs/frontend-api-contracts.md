@@ -89,7 +89,7 @@ ProjectType: GRADO, INVESTIGACION, EXTENSION, MACROPROYECTO
 ProjectOrigin: LOCAL, SYNCED
 ProjectSyncStatus: LOCAL_ONLY, SYNCED, SYNC_FAILED
 ContributionType: DIRECTA, INDIRECTA, SOPORTE
-ObjectiveStatus: BORRADOR, ACTIVO, CERRADO
+KeyResultStatus: BORRADOR, ACTIVO, CERRADO
 StrategicStatus: ACTIVA, INACTIVA
 AuditAction: CREATE, UPDATE, STATUS_CHANGE, PROGRESS_REGISTERED, LINK_CREATED, LINK_REMOVED, EXTERNAL_SYNC
 ConsistencySeverity: ALTA, MEDIA, BAJA
@@ -126,7 +126,6 @@ ConsistencyEntityType: KEY_RESULT, PROJECT
     "manageCatalogs": true,
     "manageStrategicBets": true,
     "manageGoals": true,
-    "manageObjectives": true,
     "manageKeyResults": true,
     "createProjects": true,
     "updateProjects": true,
@@ -174,13 +173,12 @@ ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
   "draftProjects": 0,
   "suspendedProjects": 0,
   "archivedProjects": 0,
-  "objectivesInFollowUp": 0,
-  "lowCompletionObjectives": 0,
-  "completedObjectives": 0,
-  "objectivesAbove50": 0,
-  "objectivesBetween0And50": 0,
-  "objectivesAtZero": 0,
+  "keyResultsInFollowUp": 0,
+  "lowCompletionKeyResults": 0,
   "completedKeyResults": 0,
+  "keyResultsAbove50": 0,
+  "keyResultsBetween0And50": 0,
+  "keyResultsAtZero": 0,
   "inProgressKeyResults": 0,
   "averageKeyResultCoverage": 0.00
 }
@@ -206,12 +204,11 @@ COMPLETED, ON_TRACK, AT_RISK, LOW
   "departmentName": "DCSI",
   "activeProjects": 0,
   "completedProjects": 0,
-  "objectives": 0,
-  "completedObjectives": 0,
-  "objectivesAbove50": 0,
-  "objectivesBetween0And50": 0,
-  "objectivesAtZero": 0,
+  "keyResults": 0,
   "completedKeyResults": 0,
+  "keyResultsAbove50": 0,
+  "keyResultsBetween0And50": 0,
+  "keyResultsAtZero": 0,
   "inProgressKeyResults": 0
 }
 ```
@@ -222,12 +219,11 @@ COMPLETED, ON_TRACK, AT_RISK, LOW
 {
   "strategicBetId": 1,
   "strategicBetName": "Apuesta",
-  "objectives": 0,
-  "completedObjectives": 0,
-  "objectivesAbove50": 0,
-  "objectivesBetween0And50": 0,
-  "objectivesAtZero": 0,
   "keyResults": 0,
+  "completedKeyResults": 0,
+  "keyResultsAbove50": 0,
+  "keyResultsBetween0And50": 0,
+  "keyResultsAtZero": 0,
   "completedProjects": 0,
   "inProgressProjects": 0
 }
@@ -343,24 +339,13 @@ TeacherPositionResponse: {"positionId": 1, "positionName": "Tutor", "teacherId":
 | POST | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
 | DELETE | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
 
-### Objetivos
-
-| Metodo | Endpoint | Query | Body | Respuesta | Acceso |
-|---|---|---|---|---|---|
-| GET | `/api/v1/objectives` | `strategicBetId?`, `goalId?`, `departmentId?`, `periodId?` | - | `ObjectiveResponse[]` | autenticado |
-| GET | `/api/v1/objectives/cards` | `strategicBetId?`, `goalId?`, `departmentId?`, `periodId?` | - | `ObjectiveCardResponse[]` | autenticado |
-| POST | `/api/v1/objectives` | - | `ObjectiveRequest` | `ObjectiveResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| GET | `/api/v1/objectives/{id}` | - | - | `ObjectiveResponse` | autenticado |
-| GET | `/api/v1/objectives/{id}/detail` | - | - | `ObjectiveDetailResponse` | autenticado |
-| PATCH | `/api/v1/objectives/{id}` | - | `ObjectiveUpdateRequest` | `ObjectiveResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| GET | `/api/v1/objectives/{id}/key-results` | - | - | `KeyResultResponse[]` | autenticado |
-| POST | `/api/v1/objectives/{id}/key-results` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| GET | `/api/v1/objectives/{id}/coverage-trend` | - | - | `CoverageTrendPointResponse[]` | autenticado |
-
 ### Key results
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
+| GET | `/api/v1/key-results` | `goalId?`, `strategicBetId?`, `periodId?` | - | `KeyResultResponse[]` | autenticado |
+| POST | `/api/v1/key-results` | - | `KeyResultRequest` | `KeyResultResponse` (201) | ADMIN, MANAGER |
+| GET | `/api/v1/key-results/{id}` | - | - | `KeyResultResponse` | autenticado |
 | PUT | `/api/v1/key-results/{id}` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
 | DELETE | `/api/v1/key-results/{id}` | - | - | 204 | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
 
@@ -409,7 +394,7 @@ GoalResponse: {
   "executionSummary": {}
 }
 
-KeyResultRequest: {"name": "KR", "description": "...", "metric": "...", "baseValue": 0, "targetValue": 100, "measurementUnitId": 1, "academicPeriodId": 1}
+KeyResultRequest: {"name": "KR", "description": "...", "metric": "...", "baseValue": 0, "targetValue": 100, "measurementUnitId": 1, "academicPeriodId": 1, "goalIds": [1], "strategicBetIds": [1]}
 KeyResultResponse: {
   "id": 1,
   "name": "KR",
@@ -423,31 +408,20 @@ KeyResultResponse: {
   "measurementUnitName": "Porcentaje",
   "academicPeriodId": 1,
   "academicPeriodName": "2026-1",
+  "goals": [{"id": 1, "name": "Meta"}],
+  "strategicBets": [{"id": 1, "name": "Apuesta"}],
+  "status": "ACTIVO",
   "createdAt": "2026-05-26T00:00:00Z"
 }
 
-ObjectiveRequest: {
-  "name": "Objetivo",
-  "description": "...",
-  "departmentId": 1,
-  "academicPeriodId": 1,
-  "goalId": 1,
-  "strategicBetId": 1,
-  "estimatedWeight": 25,
-  "quarter": 1,
-  "createdByProfessorId": 1,
-  "keyResults": []
-}
-ObjectiveUpdateRequest: {"name": "Objetivo", "description": "..."}
+`KeyResultRequest` exige al menos un id en `goalIds` o `strategicBetIds` (400 si ambos van vacíos).
 ```
 
 `ExecutionSummaryResponse`:
 
 ```json
 {
-  "summaryText": "0 objetivos completos, 0 en desarrollo...",
-  "completedObjectives": 0,
-  "inProgressObjectives": 0,
+  "summaryText": "0 KRs completos, 0 en desarrollo...",
   "completedKeyResults": 0,
   "inProgressKeyResults": 0,
   "completedProjects": 0,
@@ -589,13 +563,13 @@ ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO
 
 | Metodo | Endpoint | Query | Body | Respuesta |
 |---|---|---|---|---|
-| GET | `/api/v1/reports/general` | `period?`, `departmentId?`, `objectiveId?` | - | `GeneralReportResponse` |
+| GET | `/api/v1/reports/general` | `period?`, `departmentId?` | - | `GeneralReportResponse` |
 | GET | `/api/v1/reports/departments` | `period?` | - | `DepartmentReportResponse[]` |
-| GET | `/api/v1/reports/objectives/ranking` | `period?`, `departmentId?` | - | `ObjectiveRankingResponse[]` |
-| GET | `/api/v1/reports/period-comparison` | `basePeriod`, `comparePeriod`, `departmentId?`, `objectiveId?` | - | `PeriodComparisonResponse` |
-| GET | `/api/v1/reports` | `period?`, `departmentId?`, `objectiveId?` | - | `ConsolidatedReportResponse` |
-| GET | `/api/v1/reports/export.csv` | `period?`, `departmentId?`, `objectiveId?` | - | `text/csv`, attachment `msp-report.csv` |
-| GET | `/api/v1/reports/export.pdf` | `period?`, `departmentId?`, `objectiveId?` | - | `application/pdf`, attachment `msp-report.pdf` |
+| GET | `/api/v1/reports/key-results/ranking` | `period?`, `departmentId?` | - | `KeyResultRankingResponse[]` |
+| GET | `/api/v1/reports/period-comparison` | `basePeriod`, `comparePeriod`, `departmentId?` | - | `PeriodComparisonResponse` |
+| GET | `/api/v1/reports` | `period?`, `departmentId?` | - | `ConsolidatedReportResponse` |
+| GET | `/api/v1/reports/export.csv` | `period?`, `departmentId?` | - | `text/csv`, attachment `msp-report.csv` |
+| GET | `/api/v1/reports/export.pdf` | `period?`, `departmentId?` | - | `application/pdf`, attachment `msp-report.pdf` |
 
 `basePeriod` y `comparePeriod` son obligatorios en `/period-comparison`.
 
@@ -605,19 +579,16 @@ Schemas:
 GeneralReportResponse: {
   "period": "2026-1",
   "departmentId": 1,
-  "objectiveId": 1,
   "totalProjects": 0,
   "activeProjects": 0,
   "completedProjects": 0,
-  "totalObjectives": 0,
   "totalKeyResults": 0,
-  "averageObjectiveCoverage": 0.00,
   "averageKeyResultCoverage": 0.00
 }
 
-DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "objectives": 0, "keyResults": 0, "averageObjectiveCoverage": 0.00}
-ObjectiveRankingResponse: {"objectiveId": 1, "objectiveName": "Objetivo", "departmentName": "DCSI", "period": "2026-1", "coveragePercentage": 0.00, "keyResults": 0}
-ConsolidatedReportResponse: {"general": {}, "departments": [], "objectiveRanking": []}
+DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "keyResults": 0, "averageKeyResultCoverage": 0.00}
+KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "coveragePercentage": 0.00, "linkedProjects": 0}
+ConsolidatedReportResponse: {"general": {}, "departments": [], "keyResultRanking": []}
 ```
 
 ## Presentacion
@@ -696,7 +667,7 @@ staleDays: entero >= 1; default 15
       "description": "...",
       "recommendedAction": "...",
       "actionLabel": "Abrir KR",
-      "actionUrl": "/objectives/1/key-results/1",
+      "actionUrl": "/krs?keyResultId=1",
       "detectedAt": "2026-05-26T00:00:00Z"
     }
   ]

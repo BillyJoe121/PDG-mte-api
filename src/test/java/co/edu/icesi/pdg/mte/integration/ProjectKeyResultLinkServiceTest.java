@@ -13,7 +13,6 @@ import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
-import co.edu.icesi.pdg.mte.strategy.Objective;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,15 +51,13 @@ class ProjectKeyResultLinkServiceTest {
         service = new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, progressService, auditService);
         MeasurementUnit unit = TestFixtures.unit(1L);
         Department department = TestFixtures.department(1L);
-        Objective objective = TestFixtures.objective(
+        keyResult = TestFixtures.keyResult(
                 1L,
                 unit,
                 TestFixtures.period(1L),
-                department,
                 TestFixtures.goal(1L, unit),
                 TestFixtures.strategicBet(1L)
         );
-        keyResult = objective.getKeyResults().get(0);
         project = project(1L, ProjectStatus.ACTIVO, "2026-Q1", "2026-Q2");
     }
 

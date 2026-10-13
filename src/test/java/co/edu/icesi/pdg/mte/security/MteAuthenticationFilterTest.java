@@ -33,8 +33,8 @@ class MteAuthenticationFilterTest {
         assertThat(filter.shouldNotFilter(request("GET", "/swagger-ui/index.html"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/v3/api-docs"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/h2-console"))).isTrue();
-        assertThat(filter.shouldNotFilter(request("OPTIONS", "/api/v1/objectives"))).isTrue();
-        assertThat(filter.shouldNotFilter(request("GET", "/api/v1/objectives"))).isFalse();
+        assertThat(filter.shouldNotFilter(request("OPTIONS", "/api/v1/key-results"))).isTrue();
+        assertThat(filter.shouldNotFilter(request("GET", "/api/v1/key-results"))).isFalse();
     }
 
     @Test
@@ -46,7 +46,7 @@ class MteAuthenticationFilterTest {
         );
         FilterChain chain = mock(FilterChain.class);
 
-        filter.doFilterInternal(request("GET", "/api/v1/objectives"), new MockHttpServletResponse(), chain);
+        filter.doFilterInternal(request("GET", "/api/v1/key-results"), new MockHttpServletResponse(), chain);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
         verify(chain).doFilter(any(), any());
@@ -59,7 +59,7 @@ class MteAuthenticationFilterTest {
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
-        MockHttpServletRequest request = request("PATCH", "/api/v1/objectives/1");
+        MockHttpServletRequest request = request("PATCH", "/api/v1/key-results/1");
         request.addHeader("Authorization", "Bearer mock-token-jefe");
 
         filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
@@ -130,7 +130,7 @@ class MteAuthenticationFilterTest {
                 client,
                 accessControlService
         );
-        MockHttpServletRequest request = request("GET", "/api/v1/objectives");
+        MockHttpServletRequest request = request("GET", "/api/v1/key-results");
         request.addHeader("Authorization", "Bearer token");
 
         filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
@@ -148,7 +148,7 @@ class MteAuthenticationFilterTest {
         );
 
         assertThatThrownBy(() -> filter.doFilterInternal(
-                request("GET", "/api/v1/objectives"),
+                request("GET", "/api/v1/key-results"),
                 new MockHttpServletResponse(),
                 mock(FilterChain.class)
         )).isInstanceOf(BadCredentialsException.class);
@@ -161,7 +161,7 @@ class MteAuthenticationFilterTest {
                 mock(ExternalAuthClient.class),
                 accessControlService
         );
-        MockHttpServletRequest request = request("GET", "/api/v1/objectives");
+        MockHttpServletRequest request = request("GET", "/api/v1/key-results");
         request.addHeader("Authorization", "Token nope");
 
         assertThatThrownBy(() -> filter.doFilterInternal(

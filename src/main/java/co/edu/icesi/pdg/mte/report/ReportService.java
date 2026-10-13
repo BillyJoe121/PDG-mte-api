@@ -1,16 +1,17 @@
 package co.edu.icesi.pdg.mte.report;
 
+import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.ReportDtos;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.Objective;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
+import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,187 +35,200 @@ public class ReportService {
     private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d{4}-(Q[1-4]|[1-2])$");
 
     private final ProjectRepository projectRepository;
-    private final ObjectiveRepository objectiveRepository;
+    private final KeyResultRepository keyResultRepository;
     private final DepartmentRepository departmentRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
 
     public ReportService(
             ProjectRepository projectRepository,
-            ObjectiveRepository objectiveRepository,
+            KeyResultRepository keyResultRepository,
             DepartmentRepository departmentRepository,
             ProjectKeyResultLinkRepository linkRepository
     ) {
         this.projectRepository = projectRepository;
-        this.objectiveRepository = objectiveRepository;
+        this.keyResultRepository = keyResultRepository;
         this.departmentRepository = departmentRepository;
         this.linkRepository = linkRepository;
     }
 
-    public ReportDtos.GeneralReportResponse general(String period, Long departmentId, Long objectiveId) {
-        String normalizedPeriod = normalizePeriod(period);
-        List<Project> projects = filteredProjects(normalizedPeriod, departmentId, objectiveId);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod, departmentId, objectiveId);
-        List<KeyResult> keyResults = keyResultsFrom(objectives);
-        return new ReportDtos.GeneralReportResponse(
-                normalizedPeriod,
-                departmentId,
-                objectiveId,
-                projects.size(),
-                projects.stream().filter(project -> project.getStatus() == ProjectStatus.ACTIVO).count(),
-                projects.stream().filter(project -> project.getStatus() == ProjectStatus.FINALIZADO).count(),
-                objectives.size(),
-                keyResults.size(),
-                averageObjectiveCoverage(objectives),
-                averageKeyResultCoverage(keyResults)
-        );
+    public ReportDtos.GeneralReportResponse general(String period, Long departmentId) {
+        return general(snapshot(normalizePeriod(period)), departmentId);
     }
 
     public List<ReportDtos.DepartmentReportResponse> departments(String period) {
-        return departments(period, null, null);
+        return departments(snapshot(normalizePeriod(period)), null);
     }
 
-    private List<ReportDtos.DepartmentReportResponse> departments(String period, Long departmentId, Long objectiveId) {
-        String normalizedPeriod = normalizePeriod(period);
-        List<Project> projects = filteredProjects(normalizedPeriod, departmentId, objectiveId);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod, departmentId, objectiveId);
-        return departmentRepository.findAll()
-                .stream()
-                .filter(department -> departmentId == null || departmentId.equals(department.getId()))
-                .sorted(Comparator.comparing(Department::getName))
-                .map(department -> departmentReport(department, projects, objectives))
-                .toList();
-    }
-
-    public List<ReportDtos.ObjectiveRankingResponse> objectiveRanking(String period, Long departmentId) {
-        return objectiveRanking(period, departmentId, null);
-    }
-
-    private List<ReportDtos.ObjectiveRankingResponse> objectiveRanking(String period, Long departmentId, Long objectiveId) {
-        String normalizedPeriod = normalizePeriod(period);
-        return filteredObjectives(normalizedPeriod, departmentId, objectiveId)
-                .stream()
-                .sorted(Comparator.comparing(Objective::completionPercentage).reversed())
-                .map(objective -> new ReportDtos.ObjectiveRankingResponse(
-                        objective.getId(),
-                        objective.getName(),
-                        objective.getDepartment().getName(),
-                        objective.getAcademicPeriod().getName(),
-                        objective.completionPercentage(),
-                        objective.getKeyResults().size()
-                ))
-                .toList();
+    public List<ReportDtos.KeyResultRankingResponse> keyResultRanking(String period, Long departmentId) {
+        return keyResultRanking(snapshot(normalizePeriod(period)), departmentId);
     }
 
     public ReportDtos.PeriodComparisonResponse periodComparison(String basePeriod, String comparePeriod, Long departmentId) {
-        return periodComparison(basePeriod, comparePeriod, departmentId, null);
-    }
-
-    public ReportDtos.PeriodComparisonResponse periodComparison(String basePeriod, String comparePeriod, Long departmentId, Long objectiveId) {
         String normalizedBase = requirePeriod(basePeriod, "basePeriod");
         String normalizedCompare = requirePeriod(comparePeriod, "comparePeriod");
-        ReportDtos.GeneralReportResponse base = general(normalizedBase, departmentId, objectiveId);
-        ReportDtos.GeneralReportResponse compare = general(normalizedCompare, departmentId, objectiveId);
+        ReportDtos.GeneralReportResponse base = general(normalizedBase, departmentId);
+        ReportDtos.GeneralReportResponse compare = general(normalizedCompare, departmentId);
         return new ReportDtos.PeriodComparisonResponse(
                 normalizedBase,
                 normalizedCompare,
                 base,
                 compare,
-                compare.averageObjectiveCoverage().subtract(base.averageObjectiveCoverage()).setScale(2, RoundingMode.HALF_UP),
                 compare.averageKeyResultCoverage().subtract(base.averageKeyResultCoverage()).setScale(2, RoundingMode.HALF_UP)
         );
     }
 
-    public ReportDtos.ConsolidatedReportResponse consolidated(String period, Long departmentId, Long objectiveId) {
+    public ReportDtos.ConsolidatedReportResponse consolidated(String period, Long departmentId) {
+        Snapshot snapshot = snapshot(normalizePeriod(period));
         return new ReportDtos.ConsolidatedReportResponse(
-                general(period, departmentId, objectiveId),
-                departments(period, departmentId, objectiveId),
-                objectiveRanking(period, departmentId, objectiveId)
+                general(snapshot, departmentId),
+                departments(snapshot, departmentId),
+                keyResultRanking(snapshot, departmentId)
         );
     }
 
-    public String csv(String period, Long departmentId, Long objectiveId) {
-        ReportDtos.ConsolidatedReportResponse report = consolidated(period, departmentId, objectiveId);
+    public String csv(String period, Long departmentId) {
+        ReportDtos.ConsolidatedReportResponse report = consolidated(period, departmentId);
         StringBuilder csv = new StringBuilder();
-        csv.append("section,name,value\n");
-        csv.append("filter,period,").append(report.general().period() == null ? "" : report.general().period()).append('\n');
-        csv.append("filter,departmentId,").append(report.general().departmentId() == null ? "" : report.general().departmentId()).append('\n');
-        csv.append("filter,objectiveId,").append(report.general().objectiveId() == null ? "" : report.general().objectiveId()).append('\n');
-        csv.append("general,totalProjects,").append(report.general().totalProjects()).append('\n');
-        csv.append("general,totalObjectives,").append(report.general().totalObjectives()).append('\n');
-        csv.append("general,totalKeyResults,").append(report.general().totalKeyResults()).append('\n');
-        csv.append("general,averageObjectiveCoverage,").append(report.general().averageObjectiveCoverage()).append('\n');
+        csv.append("seccion,nombre,valor\n");
+        csv.append("filtro,periodo,").append(report.general().period() == null ? "" : report.general().period()).append('\n');
+        csv.append("filtro,departamentoId,").append(report.general().departmentId() == null ? "" : report.general().departmentId()).append('\n');
+        csv.append("general,totalProyectos,").append(report.general().totalProjects()).append('\n');
+        csv.append("general,proyectosActivos,").append(report.general().activeProjects()).append('\n');
+        csv.append("general,proyectosFinalizados,").append(report.general().completedProjects()).append('\n');
+        csv.append("general,totalKRs,").append(report.general().totalKeyResults()).append('\n');
+        csv.append("general,coberturaPromedioKRs,").append(report.general().averageKeyResultCoverage()).append('\n');
         for (ReportDtos.DepartmentReportResponse department : report.departments()) {
-            csv.append("department,").append(escapeCsv(department.departmentName())).append(',')
-                    .append(department.averageObjectiveCoverage()).append('\n');
+            csv.append("departamento,").append(escapeCsv(department.departmentName())).append(',')
+                    .append(department.averageKeyResultCoverage()).append('\n');
         }
-        for (ReportDtos.ObjectiveRankingResponse objective : report.objectiveRanking()) {
-            csv.append("objective,").append(escapeCsv(objective.objectiveName())).append(',')
-                    .append(objective.coveragePercentage()).append('\n');
+        for (ReportDtos.KeyResultRankingResponse keyResult : report.keyResultRanking()) {
+            csv.append("kr,").append(escapeCsv(keyResult.keyResultName())).append(',')
+                    .append(keyResult.coveragePercentage()).append('\n');
         }
         return csv.toString();
     }
 
-    public byte[] pdf(String period, Long departmentId, Long objectiveId) {
-        String text = csv(period, departmentId, objectiveId)
-                .replace("section,name,value", "Reporte consolidado MSP")
+    public byte[] pdf(String period, Long departmentId) {
+        String text = csv(period, departmentId)
+                .replace("seccion,nombre,valor", "Reporte consolidado MSP")
                 .replace(",", "  ");
         return minimalPdf(text);
     }
 
-    private ReportDtos.DepartmentReportResponse departmentReport(
-            Department department,
-            List<Project> projects,
-            List<Objective> objectives
-    ) {
-        List<Project> departmentProjects = projects.stream()
-                .filter(project -> project.getDepartment() != null)
-                .filter(project -> department.getId().equals(project.getDepartment().getId()))
-                .toList();
-        List<Objective> departmentObjectives = objectives.stream()
-                .filter(objective -> department.getId().equals(objective.getDepartment().getId()))
-                .toList();
-        return new ReportDtos.DepartmentReportResponse(
-                department.getId(),
-                department.getName(),
-                departmentProjects.size(),
-                departmentObjectives.size(),
-                keyResultsFrom(departmentObjectives).size(),
-                averageObjectiveCoverage(departmentObjectives)
+    private ReportDtos.GeneralReportResponse general(Snapshot snapshot, Long departmentId) {
+        List<Project> projects = projectsOf(snapshot, departmentId);
+        List<KeyResult> keyResults = keyResultsOf(snapshot, departmentId);
+        return new ReportDtos.GeneralReportResponse(
+                snapshot.period(),
+                departmentId,
+                projects.size(),
+                projects.stream().filter(project -> project.getStatus() == ProjectStatus.ACTIVO).count(),
+                projects.stream().filter(project -> project.getStatus() == ProjectStatus.FINALIZADO).count(),
+                keyResults.size(),
+                averageKeyResultCoverage(keyResults)
         );
     }
 
-    private List<Project> filteredProjects(String period, Long departmentId, Long objectiveId) {
-        Set<Long> projectIdsForObjective = projectIdsForObjective(objectiveId);
-        return projectRepository.findAll()
+    private List<ReportDtos.DepartmentReportResponse> departments(Snapshot snapshot, Long departmentId) {
+        return departmentRepository.findAll()
                 .stream()
+                .filter(department -> departmentId == null || departmentId.equals(department.getId()))
+                .sorted(Comparator.comparing(Department::getName))
+                .map(department -> {
+                    List<KeyResult> keyResults = keyResultsOf(snapshot, department.getId());
+                    return new ReportDtos.DepartmentReportResponse(
+                            department.getId(),
+                            department.getName(),
+                            projectsOf(snapshot, department.getId()).size(),
+                            keyResults.size(),
+                            averageKeyResultCoverage(keyResults)
+                    );
+                })
+                .toList();
+    }
+
+    private List<ReportDtos.KeyResultRankingResponse> keyResultRanking(Snapshot snapshot, Long departmentId) {
+        return keyResultsOf(snapshot, departmentId)
+                .stream()
+                .sorted(Comparator.comparing(this::progressOf).reversed().thenComparing(KeyResult::getId))
+                .map(keyResult -> new ReportDtos.KeyResultRankingResponse(
+                        keyResult.getId(),
+                        keyResult.getName(),
+                        Mapper.goalNames(keyResult),
+                        Mapper.strategicBetNames(keyResult),
+                        keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
+                        progressOf(keyResult),
+                        snapshot.linksByKeyResult().getOrDefault(keyResult.getId(), List.of()).size()
+                ))
+                .toList();
+    }
+
+    private Snapshot snapshot(String period) {
+        List<Project> allProjects = projectRepository.findAll();
+        List<Project> projects = allProjects.stream()
                 .filter(project -> periodMatches(project, period))
-                .filter(project -> departmentId == null || project.getDepartment() != null && departmentId.equals(project.getDepartment().getId()))
-                .filter(project -> projectIdsForObjective == null || project.getId() != null && projectIdsForObjective.contains(project.getId()))
                 .toList();
-    }
-
-    private List<Objective> filteredObjectives(String period, Long departmentId, Long objectiveId) {
-        return objectiveRepository.findAll()
+        List<KeyResult> keyResults = keyResultRepository.findAll()
                 .stream()
-                .filter(objective -> periodMatches(objective, period))
-                .filter(objective -> departmentId == null || departmentId.equals(objective.getDepartment().getId()))
-                .filter(objective -> objectiveId == null || objectiveId.equals(objective.getId()))
+                .filter(keyResult -> periodMatches(keyResult, period))
+                .toList();
+        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(keyResults);
+        return new Snapshot(period, projects, keyResults, linksByKeyResult, departmentsByKeyResult(allProjects, linksByKeyResult));
+    }
+
+    private List<Project> projectsOf(Snapshot snapshot, Long departmentId) {
+        return snapshot.projects()
+                .stream()
+                .filter(project -> departmentId == null
+                        || project.getDepartment() != null && departmentId.equals(project.getDepartment().getId()))
                 .toList();
     }
 
-    private Set<Long> projectIdsForObjective(Long objectiveId) {
-        if (objectiveId == null) {
-            return null;
+    private List<KeyResult> keyResultsOf(Snapshot snapshot, Long departmentId) {
+        return snapshot.keyResults()
+                .stream()
+                .filter(keyResult -> departmentId == null
+                        || snapshot.departmentsByKeyResult().getOrDefault(keyResult.getId(), Set.of()).contains(departmentId))
+                .toList();
+    }
+
+    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<KeyResult> keyResults) {
+        List<Long> keyResultIds = keyResults.stream()
+                .map(KeyResult::getId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (keyResultIds.isEmpty()) {
+            return Map.of();
         }
-        Set<Long> projectIds = new LinkedHashSet<>();
-        objectiveRepository.findAll()
-                .stream()
-                .filter(objective -> objectiveId.equals(objective.getId()))
-                .flatMap(objective -> objective.getKeyResults().stream())
-                .flatMap(keyResult -> linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId()).stream())
-                .filter(link -> link.getProject() != null && link.getProject().getId() != null)
-                .forEach(link -> projectIds.add(link.getProject().getId()));
-        return projectIds;
+        Map<Long, List<ProjectKeyResultLink>> links = new LinkedHashMap<>();
+        for (ProjectKeyResultLink link : linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(keyResultIds)) {
+            links.computeIfAbsent(link.getKeyResult().getId(), ignored -> new ArrayList<>()).add(link);
+        }
+        return links;
+    }
+
+    /**
+     * Un KR pertenece a un departamento cuando un proyecto de ese departamento lo referencia,
+     * ya sea mediante un vinculo activo o como KR principal del proyecto.
+     */
+    private Map<Long, Set<Long>> departmentsByKeyResult(
+            List<Project> projects,
+            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
+    ) {
+        Map<Long, Set<Long>> departments = new LinkedHashMap<>();
+        for (Project project : projects) {
+            if (project.getKeyResult() != null && project.getDepartment() != null) {
+                departments.computeIfAbsent(project.getKeyResult().getId(), ignored -> new LinkedHashSet<>())
+                        .add(project.getDepartment().getId());
+            }
+        }
+        linksByKeyResult.forEach((keyResultId, links) -> links.stream()
+                .map(ProjectKeyResultLink::getProject)
+                .filter(project -> project != null && project.getDepartment() != null)
+                .forEach(project -> departments.computeIfAbsent(keyResultId, ignored -> new LinkedHashSet<>())
+                        .add(project.getDepartment().getId())));
+        return departments;
     }
 
     private boolean periodMatches(Project project, String period) {
@@ -229,26 +246,18 @@ public class ReportService {
         );
     }
 
-    private boolean periodMatches(Objective objective, String period) {
+    private boolean periodMatches(KeyResult keyResult, String period) {
         if (period == null) {
             return true;
         }
-        if (objective.getAcademicPeriod() == null || objective.getAcademicPeriod().getName() == null) {
+        if (keyResult.getAcademicPeriod() == null || keyResult.getAcademicPeriod().getName() == null) {
             return false;
         }
-        return overlaps(parsePeriod(objective.getAcademicPeriod().getName()), parsePeriod(period));
+        return overlaps(parsePeriod(keyResult.getAcademicPeriod().getName()), parsePeriod(period));
     }
 
-    private List<KeyResult> keyResultsFrom(List<Objective> objectives) {
-        return objectives.stream().flatMap(objective -> objective.getKeyResults().stream()).toList();
-    }
-
-    private BigDecimal averageObjectiveCoverage(List<Objective> objectives) {
-        if (objectives.isEmpty()) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        BigDecimal total = objectives.stream().map(Objective::completionPercentage).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.divide(BigDecimal.valueOf(objectives.size()), 2, RoundingMode.HALF_UP);
+    private BigDecimal progressOf(KeyResult keyResult) {
+        return keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
     }
 
     private BigDecimal averageKeyResultCoverage(List<KeyResult> keyResults) {
@@ -256,7 +265,7 @@ public class ReportService {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         BigDecimal total = keyResults.stream()
-                .map(keyResult -> keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage())
+                .map(this::progressOf)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return total.divide(BigDecimal.valueOf(keyResults.size()), 2, RoundingMode.HALF_UP);
     }
@@ -350,5 +359,14 @@ public class ReportService {
     }
 
     private record PeriodRange(int startIndex, int endIndex) {
+    }
+
+    private record Snapshot(
+            String period,
+            List<Project> projects,
+            List<KeyResult> keyResults,
+            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult,
+            Map<Long, Set<Long>> departmentsByKeyResult
+    ) {
     }
 }

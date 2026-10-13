@@ -8,7 +8,6 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +26,6 @@ public class CatalogService {
     private final DepartmentRepository departmentRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final KeyResultRepository keyResultRepository;
-    private final ObjectiveRepository objectiveRepository;
     private final ProjectRepository projectRepository;
     private final AuditService auditService;
 
@@ -38,7 +36,6 @@ public class CatalogService {
             DepartmentRepository departmentRepository,
             InstitutionalGoalRepository goalRepository,
             KeyResultRepository keyResultRepository,
-            ObjectiveRepository objectiveRepository,
             ProjectRepository projectRepository,
             AuditService auditService
     ) {
@@ -48,7 +45,6 @@ public class CatalogService {
         this.departmentRepository = departmentRepository;
         this.goalRepository = goalRepository;
         this.keyResultRepository = keyResultRepository;
-        this.objectiveRepository = objectiveRepository;
         this.projectRepository = projectRepository;
         this.auditService = auditService;
     }
@@ -261,7 +257,7 @@ public class CatalogService {
 
     public void deleteDepartment(Long id) {
         Department department = findDepartment(id);
-        if (objectiveRepository.existsByDepartmentId(id) || projectRepository.existsByDepartmentId(id)) {
+        if (projectRepository.existsByDepartmentId(id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un departamento en uso.");
         }
         departmentRepository.delete(department);
@@ -319,7 +315,7 @@ public class CatalogService {
         Long id = period.getId();
         String name = period.getName();
         return goalRepository.existsByPeriodsId(id)
-                || objectiveRepository.existsByAcademicPeriodId(id)
+                || keyResultRepository.existsByAcademicPeriodId(id)
                 || projectRepository.existsByStartPeriodOrEndPeriod(name, name);
     }
 }

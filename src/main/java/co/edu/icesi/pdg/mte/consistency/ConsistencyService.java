@@ -240,10 +240,7 @@ public class ConsistencyService {
     }
 
     private String keyResultActionUrl(KeyResult keyResult) {
-        if (keyResult.getObjective() == null || keyResult.getObjective().getId() == null) {
-            return "/krs?keyResultId=" + keyResult.getId();
-        }
-        return "/krs?objectiveId=" + keyResult.getObjective().getId() + "&keyResultId=" + keyResult.getId();
+        return "/krs?keyResultId=" + keyResult.getId();
     }
 
     private String projectActionUrl(Project project) {

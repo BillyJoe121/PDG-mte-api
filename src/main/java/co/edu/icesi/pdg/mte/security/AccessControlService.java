@@ -28,7 +28,6 @@ public class AccessControlService {
         capabilities.put("manageCatalogs", hasAny(normalizedRoles, ADMIN));
         capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN, MANAGER));
-        capabilities.put("manageObjectives", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN, MANAGER));

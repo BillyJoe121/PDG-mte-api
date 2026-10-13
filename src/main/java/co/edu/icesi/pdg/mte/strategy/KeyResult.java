@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "key_result")
@@ -54,8 +56,21 @@ public class KeyResult {
     @JoinColumn(name = "academic_period_id")
     private AcademicPeriod academicPeriod;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    private Objective objective;
+    @ManyToMany
+    @JoinTable(
+            name = "key_result_goal",
+            joinColumns = @JoinColumn(name = "key_result_id"),
+            inverseJoinColumns = @JoinColumn(name = "goal_id")
+    )
+    private Set<InstitutionalGoal> goals = new LinkedHashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "key_result_strategic_bet",
+            joinColumns = @JoinColumn(name = "key_result_id"),
+            inverseJoinColumns = @JoinColumn(name = "strategic_bet_id")
+    )
+    private Set<StrategicBet> strategicBets = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "keyResult")
     private List<ProjectKeyResultLink> projectLinks = new ArrayList<>();
@@ -180,12 +195,20 @@ public class KeyResult {
         this.academicPeriod = academicPeriod;
     }
 
-    public Objective getObjective() {
-        return objective;
+    public Set<InstitutionalGoal> getGoals() {
+        return goals;
     }
 
-    public void setObjective(Objective objective) {
-        this.objective = objective;
+    public void setGoals(Set<InstitutionalGoal> goals) {
+        this.goals = goals;
+    }
+
+    public Set<StrategicBet> getStrategicBets() {
+        return strategicBets;
+    }
+
+    public void setStrategicBets(Set<StrategicBet> strategicBets) {
+        this.strategicBets = strategicBets;
     }
 
     public List<ProjectKeyResultLink> getProjectLinks() {

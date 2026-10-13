@@ -102,8 +102,6 @@ public class PresentationService {
         content.put("period", period);
         content.put("generatedAt", Instant.now());
         content.put("strategicBets", strategicBets);
-        content.put("completedObjectives", total.completedObjectives());
-        content.put("inProgressObjectives", total.inProgressObjectives());
         content.put("completedKeyResults", total.completedKeyResults());
         content.put("inProgressKeyResults", total.inProgressKeyResults());
         content.put("completedProjects", total.completedProjects());
@@ -115,8 +113,6 @@ public class PresentationService {
         Map<String, Object> content = new LinkedHashMap<>();
         content.put("slides", slideCount);
         content.put("summaryText", total.summaryText());
-        content.put("completedObjectives", total.completedObjectives());
-        content.put("inProgressObjectives", total.inProgressObjectives());
         content.put("completedKeyResults", total.completedKeyResults());
         content.put("inProgressKeyResults", total.inProgressKeyResults());
         content.put("completedProjects", total.completedProjects());
@@ -125,8 +121,6 @@ public class PresentationService {
     }
 
     private StrategyDtos.ExecutionSummaryResponse totalSummary(List<StrategyDtos.StrategicBetResponse> bets) {
-        int completedObjectives = 0;
-        int inProgressObjectives = 0;
         int completedKeyResults = 0;
         int inProgressKeyResults = 0;
         int completedProjects = 0;
@@ -136,25 +130,19 @@ public class PresentationService {
             if (summary == null) {
                 continue;
             }
-            completedObjectives += summary.completedObjectives();
-            inProgressObjectives += summary.inProgressObjectives();
             completedKeyResults += summary.completedKeyResults();
             inProgressKeyResults += summary.inProgressKeyResults();
             completedProjects += summary.completedProjects();
             inProgressProjects += summary.inProgressProjects();
         }
         return new StrategyDtos.ExecutionSummaryResponse(
-                "%d objetivos completos, %d en desarrollo. %d KPIs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo."
+                "%d KRs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo."
                         .formatted(
-                                completedObjectives,
-                                inProgressObjectives,
                                 completedKeyResults,
                                 inProgressKeyResults,
                                 completedProjects,
                                 inProgressProjects
                         ),
-                completedObjectives,
-                inProgressObjectives,
                 completedKeyResults,
                 inProgressKeyResults,
                 completedProjects,

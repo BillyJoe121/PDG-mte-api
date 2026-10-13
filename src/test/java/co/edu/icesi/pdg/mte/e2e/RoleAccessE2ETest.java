@@ -45,18 +45,21 @@ class RoleAccessE2ETest {
     void managerCanManageStrategyProjectsAndViewReports() throws Exception {
         Scenario scenario = createScenarioAsAdmin();
         JsonNode me = getJson("/api/v1/auth/me", "manager-token", 200);
-        patchJson("/api/v1/objectives/" + scenario.objectiveId(),
-                "{\"name\":\"Objetivo actualizado por manager\",\"description\":\"Edición permitida\"}",
-                "manager-token", 200);
-        postJson("/api/v1/objectives/" + scenario.objectiveId() + "/key-results", """
-                {"name":"KR creado por user","description":"Gestión permitida","metric":"Cobertura",
-                 "baseValue":0,"targetValue":10,"measurementUnitId":%d}
-                """.formatted(scenario.unitId()), "manager-token", 201);
+        JsonNode updated = putJson("/api/v1/key-results/" + scenario.keyResultId(),
+                keyResultPayload("KR actualizado por manager", scenario), "manager-token", 200);
+        JsonNode created = postJson("/api/v1/key-results", keyResultPayload("KR creado por manager", scenario),
+                "manager-token", 201);
+        getJson("/api/v1/objectives", "manager-token", 404);
         getJson("/api/v1/reports/general", "manager-token", 200);
+        getJson("/api/v1/reports/key-results/ranking", "manager-token", 200);
+        getJson("/api/v1/reports/objectives/ranking", "manager-token", 404);
         getJson("/api/v1/presentation", "manager-token", 200);
 
+        assertThat(updated.get("name").asText()).startsWith("KR actualizado por manager");
+        assertThat(created.get("goals").get(0).get("id").asLong()).isEqualTo(scenario.goalId());
+        assertThat(created.get("strategicBets").get(0).get("id").asLong()).isEqualTo(scenario.betId());
         assertThat(me.get("user").get("roles").toString()).contains("MANAGER");
-        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isTrue();
+        assertThat(me.get("capabilities").has("manageObjectives")).isFalse();
         assertThat(me.get("capabilities").get("manageKeyResults").asBoolean()).isTrue();
         assertThat(me.get("capabilities").get("viewReports").asBoolean()).isTrue();
     }
@@ -83,14 +86,15 @@ class RoleAccessE2ETest {
         postJson("/api/v1/projects/" + scenario.projectId() + "/progress", """
                 {"progressPercent":25,"comment":"Avance con evidencia","milestones":"Evidencia cargada"}
                 """, "contributor-token", 201);
-        patchJson("/api/v1/objectives/" + scenario.objectiveId(),
-                "{\"name\":\"Cambio bloqueado\",\"description\":\"No autorizado\"}",
+        putJson("/api/v1/key-results/" + scenario.keyResultId(), keyResultPayload("KR bloqueado", scenario),
                 "contributor-token", 403);
+        postJson("/api/v1/key-results", keyResultPayload("KR no autorizado", scenario), "contributor-token", 403);
         getJson("/api/v1/reports/general", "contributor-token", 403);
 
         assertThat(me.get("user").get("roles").toString()).contains("CONTRIBUTOR");
         assertThat(me.get("capabilities").get("registerProjectProgress").asBoolean()).isTrue();
-        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isFalse();
+        assertThat(me.get("capabilities").get("manageKeyResults").asBoolean()).isFalse();
+        assertThat(me.get("capabilities").has("manageObjectives")).isFalse();
     }
 
     @Test
@@ -117,7 +121,7 @@ class RoleAccessE2ETest {
     void legacyInstitutionalRolesMapToContributor() throws Exception {
         JsonNode me = getJson("/api/v1/auth/me", "legacy-token", 200);
         assertThat(me.get("user").get("roles").toString()).isEqualTo("[\"CONTRIBUTOR\"]");
-        assertThat(me.get("capabilities").get("manageObjectives").asBoolean()).isFalse();
+        assertThat(me.get("capabilities").get("manageKeyResults").asBoolean()).isFalse();
         assertThat(me.get("capabilities").get("registerProjectProgress").asBoolean()).isTrue();
         assertThat(me.get("capabilities").get("manageCatalogs").asBoolean()).isFalse();
     }
@@ -132,13 +136,19 @@ class RoleAccessE2ETest {
         Long goalId = postJson("/api/v1/goals", """
                 {"name":"Meta rol %d","description":"Base","expectedValue":100,"measurementUnitId":%d}
                 """.formatted(SEQUENCE.incrementAndGet(), unitId), "admin-token", 201).get("id").asLong();
-        JsonNode objective = postJson("/api/v1/objectives", """
-                {"name":"Objetivo rol %d","description":"Base","departmentId":%d,"academicPeriodId":%d,
-                 "goalId":%d,"strategicBetId":%d,"keyResults":[{"name":"KR inicial","description":"Base",
-                 "metric":"Cobertura","baseValue":0,"targetValue":100,"measurementUnitId":%d}]}
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId), "admin-token", 201);
         Long projectId = postJson("/api/v1/projects", projectPayload(departmentId), "admin-token", 201).get("id").asLong();
-        return new Scenario(objective.get("id").asLong(), unitId, projectId);
+        Scenario scenario = new Scenario(null, unitId, periodId, goalId, betId, projectId);
+        Long keyResultId = postJson("/api/v1/key-results", keyResultPayload("KR rol inicial", scenario), "admin-token", 201)
+                .get("id").asLong();
+        return new Scenario(keyResultId, unitId, periodId, goalId, betId, projectId);
+    }
+
+    private String keyResultPayload(String name, Scenario scenario) {
+        return """
+                {"name":"%s %d","description":"Base","metric":"Cobertura","baseValue":0,"targetValue":100,
+                 "measurementUnitId":%d,"academicPeriodId":%d,"goalIds":[%d],"strategicBetIds":[%d]}
+                """.formatted(name, SEQUENCE.incrementAndGet(), scenario.unitId(), scenario.periodId(),
+                scenario.goalId(), scenario.betId());
     }
 
     private String projectPayload(Long departmentId) {
@@ -165,6 +175,13 @@ class RoleAccessE2ETest {
         return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
     }
 
+    private JsonNode putJson(String url, String payload, String token, int expectedStatus) throws Exception {
+        String body = mockMvc.perform(put(url).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
+        return body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
+    }
+
     private JsonNode patchJson(String url, String payload, String token, int expectedStatus) throws Exception {
         String body = mockMvc.perform(patch(url).header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
@@ -178,5 +195,5 @@ class RoleAccessE2ETest {
                 99L, "Usuario " + role, "DCSI");
     }
 
-    private record Scenario(Long objectiveId, Long unitId, Long projectId) {}
+    private record Scenario(Long keyResultId, Long unitId, Long periodId, Long goalId, Long betId, Long projectId) {}
 }

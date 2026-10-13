@@ -53,7 +53,7 @@ class AuthContextControllerTest {
         assertThat(response.user().externalProfessorId()).isEqualTo(44L);
         assertThat(response.user().professorName()).isEqualTo("Jefe Dpto");
         assertThat(response.user().departmentName()).isEqualTo("Departamento de Computaci\u00f3n y Sistemas inteligentes.");
-        assertThat(response.capabilities().get("manageObjectives")).isTrue();
+        assertThat(response.capabilities()).doesNotContainKey("manageObjectives");
         assertThat(response.capabilities().get("manageKeyResults")).isTrue();
         assertThat(response.capabilities().get("linkProjectsToKeyResults")).isTrue();
         assertThat(response.capabilities().get("viewReports")).isTrue();

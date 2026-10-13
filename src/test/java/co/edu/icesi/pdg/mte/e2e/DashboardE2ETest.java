@@ -32,12 +32,12 @@ class DashboardE2ETest {
     @Test
     void happyPathExposesDashboardKpisChartsAndContributionChainAlias() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
-        Long periodId = firstId("/api/v1/academic-periods");
+        Long periodId = periodIdByName("2026-1");
         Long departmentId = firstId("/api/v1/departments");
         Long betId = createStrategicBet();
         Long goalId = createGoal(unitId);
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(departmentId, periodId, goalId, betId, unitId), 201);
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(periodId, goalId, betId, unitId), 201)
+                .get("id").asLong();
         Long projectId = createProject(departmentId);
 
         doPost("/api/v1/project-key-result-links", """
@@ -63,7 +63,7 @@ class DashboardE2ETest {
         JsonNode contributionChain = doGet("/api/v1/projects/" + projectId + "/contribution-chain", 200);
         JsonNode generalReport = doGet("/api/v1/reports/general?period=2026-1", 200);
         JsonNode departmentsReport = doGet("/api/v1/reports/departments?period=2026-1", 200);
-        JsonNode rankingReport = doGet("/api/v1/reports/objectives/ranking?period=2026-1", 200);
+        JsonNode rankingReport = doGet("/api/v1/reports/key-results/ranking?period=2026-1", 200);
         JsonNode comparisonReport = doGet("/api/v1/reports/period-comparison?basePeriod=2026-1&comparePeriod=2026-1", 200);
         JsonNode presentation = doGet("/api/v1/presentation?period=2026-1", 200);
         expectGet("/api/v1/reports/export.csv?period=2026-1", 200);
@@ -81,20 +81,26 @@ class DashboardE2ETest {
                 .contains(departmentId);
         assertThat(bets.findValues("strategicBetId").stream().map(JsonNode::asLong))
                 .contains(betId);
-        assertThat(bets.findValues("averageObjectiveCoverage")).isEmpty();
-        assertThat(bets.findValues("completedObjectives").stream().map(JsonNode::asLong))
+        assertThat(bets.findValues("completedObjectives")).isEmpty();
+        assertThat(bets.findValues("completedKeyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
         assertThat(goals.findValues("goalId").stream().map(JsonNode::asLong))
                 .contains(goalId);
-        assertThat(goals.findValues("averageObjectiveCoverage")).isEmpty();
-        assertThat(goals.findValues("completedObjectives").stream().map(JsonNode::asLong))
+        assertThat(goals.findValues("completedObjectives")).isEmpty();
+        assertThat(goals.findValues("completedKeyResults").stream().map(JsonNode::asLong))
+                .anyMatch(value -> value >= 1);
+        assertThat(summary.has("objectivesInFollowUp")).isFalse();
+        assertThat(summary.get("keyResultsInFollowUp").isNumber()).isTrue();
+        assertThat(departments.findValues("keyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
         assertThat(contributionChain.get("impacts").get(0).get("appliedContribution").decimalValue())
                 .isEqualByComparingTo("100.00");
         assertThat(generalReport.get("totalProjects").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(departmentsReport).isNotEmpty();
-        assertThat(rankingReport).isNotEmpty();
-        assertThat(comparisonReport.get("objectiveCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(rankingReport.findValues("keyResultId").stream().map(JsonNode::asLong)).contains(keyResultId);
+        assertThat(rankingReport.findValues("objectiveId")).isEmpty();
+        assertThat(comparisonReport.has("objectiveCoverageDelta")).isFalse();
+        assertThat(comparisonReport.get("keyResultCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
         assertThat(presentation.get("slides").findValues("type").stream().map(JsonNode::asText))
                 .contains("COVER", "STRATEGIC_BET", "CLOSING");
     }
@@ -113,7 +119,8 @@ class DashboardE2ETest {
     void sadPathsRejectMalformedReportPeriodsAndMissingComparisonInputs() throws Exception {
         doGet("/api/v1/reports/general?period=2026-3", 400);
         doGet("/api/v1/reports/departments?period=2026-Q9", 400);
-        doGet("/api/v1/reports/objectives/ranking?period=26-1", 400);
+        doGet("/api/v1/reports/key-results/ranking?period=26-1", 400);
+        doGet("/api/v1/reports/objectives/ranking", 404);
         doGet("/api/v1/reports/period-comparison?basePeriod=&comparePeriod=2026-1", 400);
         doGet("/api/v1/reports/period-comparison?basePeriod=2026-1&comparePeriod=", 400);
         doGet("/api/v1/reports/export.csv?period=2026-X", 400);
@@ -123,13 +130,12 @@ class DashboardE2ETest {
     @Test
     void reportsExportsAndPresentationExposeFrontendReadyContracts() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
-        Long periodId = firstId("/api/v1/academic-periods");
+        Long periodId = periodIdByName("2026-1");
         Long departmentId = firstId("/api/v1/departments");
         Long betId = createStrategicBet();
         Long goalId = createGoal(unitId);
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(departmentId, periodId, goalId, betId, unitId), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(periodId, goalId, betId, unitId), 201)
+                .get("id").asLong();
         Long projectId = createProject(departmentId);
 
         doPost("/api/v1/project-key-result-links", """
@@ -145,33 +151,35 @@ class DashboardE2ETest {
                 {"status": "FINALIZADO"}
                 """, 200);
 
-        JsonNode consolidated = doGet("/api/v1/reports?period=2026-1&departmentId=" + departmentId + "&objectiveId=" + objectiveId, 200);
+        JsonNode consolidated = doGet("/api/v1/reports?period=2026-1&departmentId=" + departmentId, 200);
         JsonNode comparison = doGet("/api/v1/reports/period-comparison?basePeriod=2026-1&comparePeriod=2026-1&departmentId=" + departmentId, 200);
         JsonNode presentation = doGet("/api/v1/presentation?period=2026-1", 200);
         var csvResponse = mockMvc.perform(get("/api/v1/reports/export.csv")
                         .param("period", "2026-1")
-                        .param("departmentId", departmentId.toString())
-                        .param("objectiveId", objectiveId.toString()))
+                        .param("departmentId", departmentId.toString()))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse();
         var pdfResponse = mockMvc.perform(get("/api/v1/reports/export.pdf")
                         .param("period", "2026-1")
-                        .param("departmentId", departmentId.toString())
-                        .param("objectiveId", objectiveId.toString()))
+                        .param("departmentId", departmentId.toString()))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse();
 
         assertThat(consolidated.get("general").get("departmentId").asLong()).isEqualTo(departmentId);
-        assertThat(consolidated.get("general").get("objectiveId").asLong()).isEqualTo(objectiveId);
-        assertThat(consolidated.get("objectiveRanking")).hasSize(1);
-        assertThat(comparison.get("objectiveCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(consolidated.get("general").has("objectiveId")).isFalse();
+        assertThat(consolidated.get("general").get("totalKeyResults").asLong()).isGreaterThanOrEqualTo(1);
+        assertThat(consolidated.get("keyResultRanking").findValues("keyResultId").stream().map(JsonNode::asLong))
+                .contains(keyResultId);
+        assertThat(consolidated.get("keyResultRanking").get(0).get("goalNames").isArray()).isTrue();
+        assertThat(comparison.get("keyResultCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
         assertThat(presentation.get("controls").get("fullscreenEnabled").asBoolean()).isTrue();
         assertThat(presentation.get("controls").get("keyboardNavigationEnabled").asBoolean()).isTrue();
         assertThat(presentation.get("controls").get("nextKeys").toString()).contains("ArrowRight", "Space");
         assertThat(csvResponse.getHeader("Content-Disposition")).contains("msp-report.csv");
-        assertThat(csvResponse.getContentAsString()).contains("section,name,value", "general,totalProjects");
+        assertThat(csvResponse.getContentAsString()).contains("seccion,nombre,valor", "general,totalProyectos", "general,totalKRs");
+        assertThat(csvResponse.getContentAsString().toLowerCase()).doesNotContain("objective");
         assertThat(pdfResponse.getHeader("Content-Disposition")).contains("msp-report.pdf");
         assertThat(pdfResponse.getContentAsString()).startsWith("%PDF-1.4");
     }
@@ -213,25 +221,29 @@ class DashboardE2ETest {
                 """.formatted(SEQUENCE.incrementAndGet(), departmentId), 201).get("id").asLong();
     }
 
-    private String objectivePayload(Long departmentId, Long periodId, Long goalId, Long betId, Long unitId) {
+    private String keyResultPayload(Long periodId, Long goalId, Long betId, Long unitId) {
         return """
                 {
-                  "name": "Objetivo dashboard %d",
-                  "description": "Objetivo para metricas de tablero.",
-                  "departmentId": %d,
+                  "name": "KR dashboard %d",
+                  "description": "KR de ejecucion completa",
+                  "metric": "Contribucion de proyectos finalizados",
+                  "baseValue": 0,
+                  "targetValue": 100,
+                  "measurementUnitId": %d,
                   "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [{
-                    "name": "KR dashboard",
-                    "description": "KR de ejecucion completa",
-                    "metric": "Contribucion de proyectos finalizados",
-                    "baseValue": 0,
-                    "targetValue": 100,
-                    "measurementUnitId": %d
-                  }]
+                  "goalIds": [%d],
+                  "strategicBetIds": [%d]
                 }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId);
+                """.formatted(SEQUENCE.incrementAndGet(), unitId, periodId, goalId, betId);
+    }
+
+    private Long periodIdByName(String name) throws Exception {
+        for (JsonNode period : doGet("/api/v1/academic-periods", 200)) {
+            if (name.equals(period.get("name").asText())) {
+                return period.get("id").asLong();
+            }
+        }
+        throw new IllegalStateException("Periodo no sembrado: " + name);
     }
 
     private Long firstId(String url) throws Exception {

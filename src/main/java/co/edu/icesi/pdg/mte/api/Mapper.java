@@ -17,7 +17,6 @@ import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
 import co.edu.icesi.pdg.mte.project.ProjectTeacher;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
 import co.edu.icesi.pdg.mte.strategy.World;
 
@@ -178,35 +177,25 @@ public final class Mapper {
                 keyResult.getMeasurementUnit().getName(),
                 keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getId(),
                 keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
-                keyResult.getObjective() == null ? null : keyResult.getObjective().getId(),
-                keyResult.getObjective() == null ? null : keyResult.getObjective().getName(),
+                keyResult.getGoals().stream()
+                        .map(goal -> new StrategyDtos.StrategyLinkResponse(goal.getId(), goal.getName()))
+                        .sorted(Comparator.comparing(StrategyDtos.StrategyLinkResponse::name))
+                        .toList(),
+                keyResult.getStrategicBets().stream()
+                        .map(bet -> new StrategyDtos.StrategyLinkResponse(bet.getId(), bet.getName()))
+                        .sorted(Comparator.comparing(StrategyDtos.StrategyLinkResponse::name))
+                        .toList(),
                 keyResult.getStatus(),
                 keyResult.getCreatedAt()
         );
     }
 
-    public static StrategyDtos.ObjectiveResponse toResponse(Objective objective) {
-        return new StrategyDtos.ObjectiveResponse(
-                objective.getId(),
-                objective.getName(),
-                objective.getDescription(),
-                objective.getStatus(),
-                objective.getCreatedAt(),
-                objective.getEstimatedWeight(),
-                objective.getCreatedBy() == null ? null : objective.getCreatedBy().getId(),
-                objective.getCreatedBy() == null ? null : objective.getCreatedBy().getName(),
-                objective.getQuarter(),
-                objective.getDepartment().getId(),
-                objective.getDepartment().getName(),
-                objective.getAcademicPeriod().getId(),
-                objective.getAcademicPeriod().getName(),
-                objective.getGoal().getId(),
-                objective.getGoal().getName(),
-                objective.getStrategicBet().getId(),
-                objective.getStrategicBet().getName(),
-                objective.completionPercentage(),
-                objective.getKeyResults().stream().map(Mapper::toResponse).toList()
-        );
+    public static List<String> goalNames(KeyResult keyResult) {
+        return keyResult.getGoals().stream().map(InstitutionalGoal::getName).sorted().toList();
+    }
+
+    public static List<String> strategicBetNames(KeyResult keyResult) {
+        return keyResult.getStrategicBets().stream().map(StrategicBet::getName).sorted().toList();
     }
 
     public static ProjectDtos.ProjectResponse toResponse(Project project) {

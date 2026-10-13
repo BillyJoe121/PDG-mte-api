@@ -34,9 +34,10 @@ class ConsistencyE2ETest {
         Long departmentId = firstId("/api/v1/departments");
         Long betId = createStrategicBet();
         Long goalId = createGoal(unitId);
-        JsonNode unlinkedObjective = doPost("/api/v1/objectives", objectivePayload("sin proyecto", departmentId, periodId, goalId, betId, unitId), 201);
-        JsonNode projectObjective = doPost("/api/v1/objectives", objectivePayload("con proyecto", departmentId, periodId, goalId, betId, unitId), 201);
-        Long projectKeyResultId = projectObjective.get("keyResults").get(0).get("id").asLong();
+        Long unlinkedKeyResultId = doPost("/api/v1/key-results", keyResultPayload("sin proyecto", periodId, goalId, betId, unitId), 201)
+                .get("id").asLong();
+        Long projectKeyResultId = doPost("/api/v1/key-results", keyResultPayload("con proyecto", periodId, goalId, betId, unitId), 201)
+                .get("id").asLong();
 
         Long projectId = createProject(departmentId, projectKeyResultId);
 
@@ -55,11 +56,10 @@ class ConsistencyE2ETest {
         assertThat(check.findValues("type").stream().map(JsonNode::asText))
                 .contains("KR_WITHOUT_ACTIVE_PROJECTS", "ACTIVE_PROJECT_WITHOUT_RECENT_PROGRESS");
         assertThat(check.findValues("entityCode").stream().map(JsonNode::asText))
-                .contains("KR-" + unlinkedObjective.get("keyResults").get(0).get("id").asLong(), "PRJ-" + projectId);
+                .contains("KR-" + unlinkedKeyResultId, "PRJ-" + projectId);
         assertThat(check.findValues("actionUrl").stream().map(JsonNode::asText))
                 .contains(
-                        "/krs?objectiveId=" + unlinkedObjective.get("id").asLong()
-                                + "&keyResultId=" + unlinkedObjective.get("keyResults").get(0).get("id").asLong(),
+                        "/krs?keyResultId=" + unlinkedKeyResultId,
                         "/proyectos?projectId=" + projectId
                 );
         assertThat(highOnly.findValues("severity").stream().map(JsonNode::asText))
@@ -115,25 +115,20 @@ class ConsistencyE2ETest {
                 """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 201).get("id").asLong();
     }
 
-    private String objectivePayload(String suffix, Long departmentId, Long periodId, Long goalId, Long betId, Long unitId) {
+    private String keyResultPayload(String suffix, Long periodId, Long goalId, Long betId, Long unitId) {
         return """
                 {
-                  "name": "Objetivo consistencia %s %d",
-                  "description": "Objetivo para consistencia.",
-                  "departmentId": %d,
+                  "name": "KR consistencia %s %d",
+                  "description": "KR para consistencia",
+                  "metric": "Trazabilidad",
+                  "baseValue": 0,
+                  "targetValue": 100,
+                  "measurementUnitId": %d,
                   "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [{
-                    "name": "KR consistencia %s",
-                    "description": "KR para consistencia",
-                    "metric": "Trazabilidad",
-                    "baseValue": 0,
-                    "targetValue": 100,
-                    "measurementUnitId": %d
-                  }]
+                  "goalIds": [%d],
+                  "strategicBetIds": [%d]
                 }
-                """.formatted(suffix, SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, suffix, unitId);
+                """.formatted(suffix, SEQUENCE.incrementAndGet(), unitId, periodId, goalId, betId);
     }
 
     private Long firstId(String url) throws Exception {

@@ -10,13 +10,10 @@ public final class ReportDtos {
     public record GeneralReportResponse(
             String period,
             Long departmentId,
-            Long objectiveId,
             long totalProjects,
             long activeProjects,
             long completedProjects,
-            long totalObjectives,
             long totalKeyResults,
-            BigDecimal averageObjectiveCoverage,
             BigDecimal averageKeyResultCoverage
     ) {
     }
@@ -25,19 +22,19 @@ public final class ReportDtos {
             Long departmentId,
             String departmentName,
             long projects,
-            long objectives,
             long keyResults,
-            BigDecimal averageObjectiveCoverage
+            BigDecimal averageKeyResultCoverage
     ) {
     }
 
-    public record ObjectiveRankingResponse(
-            Long objectiveId,
-            String objectiveName,
-            String departmentName,
+    public record KeyResultRankingResponse(
+            Long keyResultId,
+            String keyResultName,
+            List<String> goalNames,
+            List<String> strategicBetNames,
             String period,
             BigDecimal coveragePercentage,
-            int keyResults
+            int linkedProjects
     ) {
     }
 
@@ -46,7 +43,6 @@ public final class ReportDtos {
             String comparePeriod,
             GeneralReportResponse base,
             GeneralReportResponse compare,
-            BigDecimal objectiveCoverageDelta,
             BigDecimal keyResultCoverageDelta
     ) {
     }
@@ -54,7 +50,7 @@ public final class ReportDtos {
     public record ConsolidatedReportResponse(
             GeneralReportResponse general,
             List<DepartmentReportResponse> departments,
-            List<ObjectiveRankingResponse> objectiveRanking
+            List<KeyResultRankingResponse> keyResultRanking
     ) {
     }
 }

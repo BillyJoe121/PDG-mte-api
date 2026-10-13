@@ -76,7 +76,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         World world = TestFixtures.world(2L);
         StrategicBet other = TestFixtures.strategicBet(2L); other.setName("Duplicada");
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
         when(strategicBetRepository.findByNameIgnoreCase("Duplicada")).thenReturn(Optional.of(other));
         assertThatThrownBy(() -> service.updateStrategicBet(1L,
                 new StrategyDtos.StrategicBetRequest("Duplicada", "Desc", null, null)))
@@ -98,7 +98,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         outsidePeriod.setEndDate(LocalDate.of(2027, 12, 31));
         when(periodRepository.findByNameIgnoreCase("2026-1")).thenReturn(Optional.of(period));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet, outsidePeriod));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         var response = service.listStrategicBets("2026-1");
 
@@ -120,7 +120,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
 
         when(periodRepository.findByNameIgnoreCase("2026-1")).thenReturn(Optional.of(period));
         when(goalRepository.findAll()).thenReturn(List.of(explicitlyIncluded, explicitlyExcluded, legacyGoal));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         var response = service.listGoals("2026-1");
 
@@ -135,7 +135,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         inactiveGoal.setStatus(StrategicStatus.INACTIVA);
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet, inactiveBet));
         when(goalRepository.findAll()).thenReturn(List.of(goal, inactiveGoal));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         assertThat(service.listStrategicBets(null)).extracting(StrategyDtos.StrategicBetResponse::id).containsExactly(1L);
         assertThat(service.listStrategicBets(null, true)).hasSize(2);
@@ -149,7 +149,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         when(strategicBetRepository.save(bet)).thenReturn(bet);
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(goalRepository.save(goal)).thenReturn(goal);
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         assertThat(service.setStrategicBetActive(1L, false).status()).isEqualTo(StrategicStatus.INACTIVA);
         assertThat(service.setStrategicBetActive(1L, true).status()).isEqualTo(StrategicStatus.ACTIVA);
@@ -210,7 +210,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(strategicBetRepository.findByNameIgnoreCase("Apuesta editada")).thenReturn(Optional.empty());
         when(strategicBetRepository.save(any(StrategicBet.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         var response = service.updateStrategicBet(1L, new StrategyDtos.StrategicBetRequest(
                 "Apuesta editada",
@@ -314,7 +314,7 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
         when(goalRepository.save(any(InstitutionalGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(objectiveRepository.findAll()).thenReturn(List.of());
+        when(keyResultRepository.findAll()).thenReturn(List.of());
 
         var response = service.updateGoal(1L, new StrategyDtos.GoalRequest(
                 "Meta editada",
@@ -361,55 +361,4 @@ class StrategyServiceCatalogTest extends StrategyServiceTestSupport {
         ))).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("fecha de cierre");
     }
-
-    @Test
-    void createsObjectiveWithKeyResultAndCurrentUserContext() {
-        when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
-        when(periodRepository.findById(1L)).thenReturn(Optional.of(period));
-        when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
-        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
-        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
-        when(objectiveRepository.save(any(Objective.class))).thenAnswer(invocation -> {
-            Objective saved = invocation.getArgument(0);
-            saved.setId(1L);
-            return saved;
-        });
-
-        var response = service.createObjective(objectiveRequest(1L, 1L, 1L, 1L, 1L));
-
-        assertThat(response.keyResults()).hasSize(1);
-        assertThat(response.completionPercentage()).isEqualByComparingTo("0.00");
-        verify(objectiveRepository).save(argThat(saved -> saved.getCreatedByExternalUserId().equals(1L)));
-    }
-
-    @Test
-    void rejectsObjectiveWhenDepartmentIsMissing() {
-        when(departmentRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.createObjective(objectiveRequest(99L, 1L, 1L, 1L, 1L)))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Departamento");
-    }
-
-    @Test
-    void updatesKeyResultAndRecalculatesProgress() {
-        KeyResult keyResult = TestFixtures.keyResult(1L, unit);
-        unit.setType(MeasurementUnitType.NUMERICA);
-        when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
-        when(unitRepository.findById(1L)).thenReturn(Optional.of(unit));
-        when(keyResultRepository.save(any(KeyResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        var response = service.updateKeyResult(1L, new StrategyDtos.KeyResultRequest(
-                "KR actualizado",
-                "KR actualizado",
-                "Metric",
-                BigDecimal.ZERO,
-                BigDecimal.valueOf(200),
-                1L
-        ));
-
-        assertThat(response.progressPercentage()).isEqualByComparingTo("0.00");
-        assertThat(response.currentValue()).isEqualByComparingTo("0.00");
-    }
-
 }

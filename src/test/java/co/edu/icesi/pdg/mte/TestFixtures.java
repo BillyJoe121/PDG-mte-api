@@ -79,25 +79,22 @@ public final class TestFixtures {
         return goal;
     }
 
-    public static Objective objective(
+    public static KeyResult keyResult(
             Long id,
             MeasurementUnit unit,
             AcademicPeriod period,
-            Department department,
             InstitutionalGoal goal,
             StrategicBet bet
     ) {
-        Objective objective = new Objective();
-        objective.setId(id);
-        objective.setName("Objetivo");
-        objective.setDescription("Descripcion de objetivo");
-        objective.setStatus(ObjectiveStatus.ACTIVO);
-        objective.setAcademicPeriod(period);
-        objective.setDepartment(department);
-        objective.setGoal(goal);
-        objective.setStrategicBet(bet);
-        objective.addKeyResult(keyResult(1L, unit));
-        return objective;
+        KeyResult keyResult = keyResult(id, unit);
+        keyResult.setAcademicPeriod(period);
+        if (goal != null) {
+            keyResult.getGoals().add(goal);
+        }
+        if (bet != null) {
+            keyResult.getStrategicBets().add(bet);
+        }
+        return keyResult;
     }
 
     public static KeyResult keyResult(Long id, MeasurementUnit unit) {

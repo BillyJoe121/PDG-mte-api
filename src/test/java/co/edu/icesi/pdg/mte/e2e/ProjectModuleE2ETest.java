@@ -167,14 +167,13 @@ class ProjectModuleE2ETest {
         Long departmentId = firstId("/api/v1/departments");
         Long strategicBetId = createStrategicBet("Apuesta proyecto inmediato " + SEQUENCE.incrementAndGet());
         Long goalId = createGoal("Meta proyecto inmediato " + SEQUENCE.incrementAndGet(), unitId);
-        Long keyResultId = doPost("/api/v1/objectives", objectivePayload(
-                "Objetivo proyecto inmediato " + SEQUENCE.incrementAndGet(),
-                departmentId,
+        Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(
+                "KR proyecto inmediato " + SEQUENCE.incrementAndGet(),
                 periodId,
                 goalId,
                 strategicBetId,
                 unitId
-        ), 201).get("keyResults").get(0).get("id").asLong();
+        ), 201).get("id").asLong();
 
         JsonNode created = doPost("/api/v1/projects", projectPayloadWithImmediateLink(
                 "Proyecto inmediato " + SEQUENCE.incrementAndGet(),
@@ -233,14 +232,13 @@ class ProjectModuleE2ETest {
         Long departmentId = firstId("/api/v1/departments");
         Long strategicBetId = createStrategicBet("Apuesta vinculos " + SEQUENCE.incrementAndGet());
         Long goalId = createGoal("Meta vinculos " + SEQUENCE.incrementAndGet(), unitId);
-        Long keyResultId = doPost("/api/v1/objectives", objectivePayload(
-                "Objetivo vinculos " + SEQUENCE.incrementAndGet(),
-                departmentId,
+        Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(
+                "KR vinculos " + SEQUENCE.incrementAndGet(),
                 periodId,
                 goalId,
                 strategicBetId,
                 unitId
-        ), 201).get("keyResults").get(0).get("id").asLong();
+        ), 201).get("id").asLong();
         Long firstProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo A " + SEQUENCE.incrementAndGet()), 201)
                 .get("id").asLong();
         Long secondProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo B " + SEQUENCE.incrementAndGet()), 201)
@@ -351,25 +349,20 @@ class ProjectModuleE2ETest {
                 """.formatted(name, unitId), 201).get("id").asLong();
     }
 
-    private String objectivePayload(String name, Long departmentId, Long periodId, Long goalId, Long strategicBetId, Long unitId) {
+    private String keyResultPayload(String name, Long periodId, Long goalId, Long strategicBetId, Long unitId) {
         return """
                 {
                   "name": "%s",
-                  "description": "Objetivo para vincular proyectos.",
-                  "departmentId": %d,
+                  "description": "KR para vinculo inmediato",
+                  "metric": "Porcentaje",
+                  "baseValue": 0,
+                  "targetValue": 100,
+                  "measurementUnitId": %d,
                   "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [{
-                    "name": "KR proyecto inmediato",
-                    "description": "KR para vinculo inmediato",
-                    "metric": "Porcentaje",
-                    "baseValue": 0,
-                    "targetValue": 100,
-                    "measurementUnitId": %d
-                  }]
+                  "goalIds": [%d],
+                  "strategicBetIds": [%d]
                 }
-                """.formatted(name, departmentId, periodId, goalId, strategicBetId, unitId);
+                """.formatted(name, unitId, periodId, goalId, strategicBetId);
     }
 
     private Long firstId(String url) throws Exception {

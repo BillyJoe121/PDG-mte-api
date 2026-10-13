@@ -13,13 +13,12 @@ public final class DashboardDtos {
             long draftProjects,
             long suspendedProjects,
             long archivedProjects,
-            long objectivesInFollowUp,
-            long lowCompletionObjectives,
-            long completedObjectives,
-            long objectivesAbove50,
-            long objectivesBetween0And50,
-            long objectivesAtZero,
+            long keyResultsInFollowUp,
+            long lowCompletionKeyResults,
             long completedKeyResults,
+            long keyResultsAbove50,
+            long keyResultsBetween0And50,
+            long keyResultsAtZero,
             long inProgressKeyResults,
             BigDecimal averageKeyResultCoverage
     ) {
@@ -42,12 +41,11 @@ public final class DashboardDtos {
             String departmentName,
             long activeProjects,
             long completedProjects,
-            long objectives,
-            long completedObjectives,
-            long objectivesAbove50,
-            long objectivesBetween0And50,
-            long objectivesAtZero,
+            long keyResults,
             long completedKeyResults,
+            long keyResultsAbove50,
+            long keyResultsBetween0And50,
+            long keyResultsAtZero,
             long inProgressKeyResults
     ) {
     }
@@ -55,12 +53,11 @@ public final class DashboardDtos {
     public record StrategicBetExecutionResponse(
             Long strategicBetId,
             String strategicBetName,
-            long objectives,
-            long completedObjectives,
-            long objectivesAbove50,
-            long objectivesBetween0And50,
-            long objectivesAtZero,
             long keyResults,
+            long completedKeyResults,
+            long keyResultsAbove50,
+            long keyResultsBetween0And50,
+            long keyResultsAtZero,
             long completedProjects,
             long inProgressProjects
     ) {
@@ -69,12 +66,11 @@ public final class DashboardDtos {
     public record GoalExecutionResponse(
             Long goalId,
             String goalName,
-            long objectives,
-            long completedObjectives,
-            long objectivesAbove50,
-            long objectivesBetween0And50,
-            long objectivesAtZero,
             long keyResults,
+            long completedKeyResults,
+            long keyResultsAbove50,
+            long keyResultsBetween0And50,
+            long keyResultsAtZero,
             long completedProjects,
             long inProgressProjects
     ) {

@@ -27,10 +27,9 @@ public class ReportController {
     @GetMapping("/general")
     public ReportDtos.GeneralReportResponse general(
             @RequestParam(required = false) String period,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long objectiveId
+            @RequestParam(required = false) Long departmentId
     ) {
-        return reportService.general(period, departmentId, objectiveId);
+        return reportService.general(period, departmentId);
     }
 
     @GetMapping("/departments")
@@ -38,58 +37,54 @@ public class ReportController {
         return reportService.departments(period);
     }
 
-    @GetMapping("/objectives/ranking")
-    public List<ReportDtos.ObjectiveRankingResponse> objectiveRanking(
+    @GetMapping("/key-results/ranking")
+    public List<ReportDtos.KeyResultRankingResponse> keyResultRanking(
             @RequestParam(required = false) String period,
             @RequestParam(required = false) Long departmentId
     ) {
-        return reportService.objectiveRanking(period, departmentId);
+        return reportService.keyResultRanking(period, departmentId);
     }
 
     @GetMapping("/period-comparison")
     public ReportDtos.PeriodComparisonResponse periodComparison(
             @RequestParam String basePeriod,
             @RequestParam String comparePeriod,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long objectiveId
+            @RequestParam(required = false) Long departmentId
     ) {
-        return reportService.periodComparison(basePeriod, comparePeriod, departmentId, objectiveId);
+        return reportService.periodComparison(basePeriod, comparePeriod, departmentId);
     }
 
     @GetMapping
     public ReportDtos.ConsolidatedReportResponse consolidated(
             @RequestParam(required = false) String period,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long objectiveId
+            @RequestParam(required = false) Long departmentId
     ) {
-        return reportService.consolidated(period, departmentId, objectiveId);
+        return reportService.consolidated(period, departmentId);
     }
 
     @GetMapping(value = "/export.csv", produces = "text/csv")
     public ResponseEntity<String> csv(
             @RequestParam(required = false) String period,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long objectiveId
+            @RequestParam(required = false) Long departmentId
     ) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename("msp-report.csv")
                         .build()
                         .toString())
-                .body(reportService.csv(period, departmentId, objectiveId));
+                .body(reportService.csv(period, departmentId));
     }
 
     @GetMapping(value = "/export.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> pdf(
             @RequestParam(required = false) String period,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long objectiveId
+            @RequestParam(required = false) Long departmentId
     ) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename("msp-report.pdf", StandardCharsets.UTF_8)
                         .build()
                         .toString())
-                .body(reportService.pdf(period, departmentId, objectiveId));
+                .body(reportService.pdf(period, departmentId));
     }
 }

@@ -1,5 +1,6 @@
 package co.edu.icesi.pdg.mte.integration;
 
+import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
@@ -153,8 +154,8 @@ public class ProjectKeyResultLinkService {
                 link.getId(),
                 keyResult.getId(),
                 keyResult.getDescription(),
-                keyResult.getObjective().getId(),
-                keyResult.getObjective().getName(),
+                Mapper.goalNames(keyResult),
+                Mapper.strategicBetNames(keyResult),
                 link.getContributionWeight(),
                 link.getContributionType(),
                 link.appliedContribution().setScale(2, RoundingMode.HALF_UP),

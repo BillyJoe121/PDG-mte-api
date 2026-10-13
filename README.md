@@ -68,6 +68,8 @@ project
 project_teacher
 ```
 
+[V10__retire_objective_links.sql](src/main/resources/db/migration/V10__retire_objective_links.sql) retira el Objetivo como nivel de la jerarquia: crea `key_result_goal` y `key_result_strategic_bet` (vinculos N:M del KR con Metas y Apuestas), traslada los vinculos de cada objetivo a sus KRs y vuelve opcional `key_result.objective_id`. La tabla `objective` queda como legado y ningun codigo la usa.
+
 Tambien se conservan tablas operativas del backend:
 
 ```text
@@ -193,7 +195,7 @@ $env:MTE_AUTH_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
 
-Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, objetivos, metas, apuestas, catalogos base y personas antes de poblar de nuevo. Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
+Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, metas, apuestas, catalogos base y personas antes de poblar de nuevo. Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
 
 Para borrar esa base local:
 
@@ -264,8 +266,10 @@ GET/POST/PUT/DELETE /api/v1/worlds
 GET/POST/PUT        /api/v1/strategic-bets
 GET/POST/PUT        /api/v1/goals
 POST/DELETE         /api/v1/goals/{id}/periods/{periodId}
-GET/POST/PATCH      /api/v1/objectives
-GET/POST            /api/v1/objectives/{id}/key-results
+GET/POST            /api/v1/key-results
+GET/PUT/DELETE      /api/v1/key-results/{id}
+PATCH               /api/v1/key-results/{id}/current-value
+PATCH               /api/v1/key-results/{id}/status
 ```
 
 Proyectos:

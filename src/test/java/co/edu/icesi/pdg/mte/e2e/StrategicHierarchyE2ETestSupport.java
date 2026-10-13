@@ -78,31 +78,28 @@ abstract class StrategicHierarchyE2ETestSupport {
                 """.formatted(name, departmentId, keyResultId), 201).get("id").asLong();
     }
 
-    protected String objectivePayload(String name, Long departmentId, Long periodId, Long goalId, Long strategicBetId, Long unitId) {
+    protected JsonNode createKeyResult(String name, Long periodId, Long goalId, Long strategicBetId, Long unitId) throws Exception {
+        return doPost("/api/v1/key-results", keyResultPayload(name, periodId, goalId, strategicBetId, unitId), 201);
+    }
+
+    protected String keyResultPayload(String name, Long periodId, Long goalId, Long strategicBetId, Long unitId) {
         return """
                 {
                   "name": "%s",
-                  "description": "Objetivo operativo para tablero directivo.",
-                  "departmentId": %d,
-                  "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [%s]
-                }
-                """.formatted(name, departmentId, periodId, goalId, strategicBetId, keyResultPayload(unitId));
-    }
-
-    protected String keyResultPayload(Long unitId) {
-        return """
-                {
-                  "name": "KR operativo",
                   "description": "Lograr trazabilidad de proyectos activos",
                   "metric": "Porcentaje de proyectos vinculados",
                   "baseValue": 0,
                   "targetValue": 100,
-                  "measurementUnitId": %d
+                  "measurementUnitId": %d,
+                  "academicPeriodId": %d,
+                  "goalIds": %s,
+                  "strategicBetIds": %s
                 }
-                """.formatted(unitId);
+                """.formatted(name, unitId, periodId, idList(goalId), idList(strategicBetId));
+    }
+
+    private String idList(Long id) {
+        return id == null ? "[]" : "[" + id + "]";
     }
 
     protected Long firstId(String url) throws Exception {

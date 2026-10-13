@@ -6,19 +6,37 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/key-results")
 public class KeyResultController {
 
-    private final StrategyService strategyService;
+    private final KeyResultService keyResultService;
 
-    public KeyResultController(StrategyService strategyService) {
-        this.strategyService = strategyService;
+    public KeyResultController(KeyResultService keyResultService) {
+        this.keyResultService = keyResultService;
+    }
+
+    @GetMapping
+    List<StrategyDtos.KeyResultResponse> list(
+            @RequestParam(required = false) Long goalId,
+            @RequestParam(required = false) Long strategicBetId,
+            @RequestParam(required = false) Long periodId
+    ) {
+        return keyResultService.list(goalId, strategicBetId, periodId);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    StrategyDtos.KeyResultResponse create(@Valid @RequestBody StrategyDtos.KeyResultRequest request) {
+        return keyResultService.create(request);
     }
 
     @GetMapping("/{id}")
     StrategyDtos.KeyResultResponse get(@PathVariable Long id) {
-        return strategyService.getKeyResult(id);
+        return keyResultService.get(id);
     }
 
     @PutMapping("/{id}")
@@ -27,7 +45,7 @@ public class KeyResultController {
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultRequest request
     ) {
-        return strategyService.updateKeyResult(id, request);
+        return keyResultService.update(id, request);
     }
 
     @PatchMapping("/{id}/current-value")
@@ -36,7 +54,7 @@ public class KeyResultController {
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultCurrentValueRequest request
     ) {
-        return strategyService.updateKeyResultCurrentValue(id, request.currentValue());
+        return keyResultService.updateCurrentValue(id, request.currentValue());
     }
 
     @PatchMapping("/{id}/status")
@@ -45,13 +63,13 @@ public class KeyResultController {
             @PathVariable Long id,
             @Valid @RequestBody StrategyDtos.KeyResultStatusRequest request
     ) {
-        return strategyService.setKeyResultStatus(id, request.status());
+        return keyResultService.setStatus(id, request.status());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     void delete(@PathVariable Long id) {
-        strategyService.deleteKeyResult(id);
+        keyResultService.delete(id);
     }
 }

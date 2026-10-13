@@ -1,9 +1,7 @@
 package co.edu.icesi.pdg.mte.api.dto;
 
-import co.edu.icesi.pdg.mte.strategy.ObjectiveStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import co.edu.icesi.pdg.mte.strategy.StrategicStatus;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -95,6 +93,9 @@ public final class StrategyDtos {
     ) {
     }
 
+    public record StrategyLinkResponse(Long id, String name) {
+    }
+
     public record KeyResultRequest(
             @NotBlank String name,
             @NotBlank String description,
@@ -102,18 +103,10 @@ public final class StrategyDtos {
             @NotNull BigDecimal baseValue,
             @NotNull BigDecimal targetValue,
             @NotNull Long measurementUnitId,
-            Long academicPeriodId
+            @NotNull Long academicPeriodId,
+            List<@NotNull Long> goalIds,
+            List<@NotNull Long> strategicBetIds
     ) {
-        public KeyResultRequest(
-                String name,
-                String description,
-                String metric,
-                BigDecimal baseValue,
-                BigDecimal targetValue,
-                Long measurementUnitId
-        ) {
-            this(name, description, metric, baseValue, targetValue, measurementUnitId, null);
-        }
     }
 
     public record KeyResultCurrentValueRequest(@NotNull BigDecimal currentValue) {
@@ -132,104 +125,18 @@ public final class StrategyDtos {
             String measurementUnitName,
             Long academicPeriodId,
             String academicPeriodName,
-            Long objectiveId,
-            String objectiveName,
+            List<StrategyLinkResponse> goals,
+            List<StrategyLinkResponse> strategicBets,
             KeyResultStatus status,
             Instant createdAt
     ) {
     }
 
-    public record ObjectiveStatusRequest(@NotNull ObjectiveStatus status) {
-    }
-
     public record KeyResultStatusRequest(@NotNull KeyResultStatus status) {
-    }
-
-    public record ObjectiveRequest(
-            @NotBlank String name,
-            @NotBlank String description,
-            @NotNull Long departmentId,
-            @NotNull Long academicPeriodId,
-            @NotNull Long goalId,
-            @NotNull Long strategicBetId,
-            @DecimalMin("0.00") BigDecimal estimatedWeight,
-            @Min(1) @Max(4) Integer quarter,
-            Long createdByProfessorId,
-            @NotEmpty List<@Valid KeyResultRequest> keyResults
-    ) {
-        public ObjectiveRequest(
-                String name,
-                String description,
-                Long departmentId,
-                Long academicPeriodId,
-                Long goalId,
-                Long strategicBetId,
-                List<KeyResultRequest> keyResults
-        ) {
-            this(name, description, departmentId, academicPeriodId, goalId, strategicBetId, null, null, null, keyResults);
-        }
-    }
-
-    public record ObjectiveResponse(
-            Long id,
-            String name,
-            String description,
-            ObjectiveStatus status,
-            Instant createdAt,
-            BigDecimal estimatedWeight,
-            Long createdByProfessorId,
-            String createdByProfessorName,
-            Integer quarter,
-            Long departmentId,
-            String departmentName,
-            Long academicPeriodId,
-            String academicPeriodName,
-            Long goalId,
-            String goalName,
-            Long strategicBetId,
-            String strategicBetName,
-            BigDecimal completionPercentage,
-            List<KeyResultResponse> keyResults
-    ) {
-    }
-
-    public record ObjectiveDetailResponse(
-            ObjectiveResponse objective,
-            List<CoverageTrendPointResponse> coverageTrend
-    ) {
-    }
-
-    public record ObjectiveUpdateRequest(
-            @NotBlank String name,
-            @NotBlank String description
-    ) {
     }
 
     public record ActiveStateRequest(
             boolean active
-    ) {
-    }
-
-    public record ArchiveStateRequest(
-            boolean archived
-    ) {
-    }
-
-    public record ObjectiveCardResponse(
-            Long id,
-            String name,
-            String description,
-            Long strategicBetId,
-            String strategicBetName,
-            Long goalId,
-            String goalName,
-            Long departmentId,
-            String departmentName,
-            Long academicPeriodId,
-            String academicPeriodName,
-            BigDecimal completionPercentage,
-            boolean lowCompletionAlert,
-            List<KeyResultResponse> keyResults
     ) {
     }
 
@@ -247,8 +154,6 @@ public final class StrategyDtos {
 
     public record ExecutionSummaryResponse(
             String summaryText,
-            int completedObjectives,
-            int inProgressObjectives,
             int completedKeyResults,
             int inProgressKeyResults,
             int completedProjects,
@@ -259,19 +164,10 @@ public final class StrategyDtos {
 
     public record PeriodExecutionSummaryResponse(
             String period,
-            int completedObjectives,
-            int inProgressObjectives,
             int completedKeyResults,
             int inProgressKeyResults,
             int completedProjects,
             int inProgressProjects
-    ) {
-    }
-
-    public record CoverageTrendPointResponse(
-            java.time.Instant timestamp,
-            BigDecimal coveragePercentage,
-            String source
     ) {
     }
 

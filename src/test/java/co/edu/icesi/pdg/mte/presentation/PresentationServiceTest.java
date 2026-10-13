@@ -24,9 +24,7 @@ class PresentationServiceTest {
         StrategyService strategyService = mock(StrategyService.class);
         AcademicPeriodRepository periodRepository = mock(AcademicPeriodRepository.class);
         var executionSummary = new StrategyDtos.ExecutionSummaryResponse(
-                "1 objetivo completo",
-                1,
-                0,
+                "1 KR completo",
                 1,
                 0,
                 1,
@@ -57,9 +55,10 @@ class PresentationServiceTest {
         assertThat(response.slides()).hasSize(3);
         assertThat(response.slides().stream().map(slide -> slide.type())).containsExactly("COVER", "STRATEGIC_BET", "CLOSING");
         assertThat(response.slides().get(0).content()).containsEntry("institution", "Escuela TDI");
-        assertThat(response.slides().get(0).content()).containsEntry("completedObjectives", 1);
+        assertThat(response.slides().get(0).content()).containsEntry("completedKeyResults", 1);
+        assertThat(response.slides().get(0).content()).doesNotContainKeys("completedObjectives", "inProgressObjectives");
         assertThat(response.slides().get(1).content()).containsKey("executionSummary");
-        assertThat(response.slides().get(2).content()).containsEntry("summaryText", "1 objetivos completos, 0 en desarrollo. 1 KPIs completos, 0 en desarrollo. 1 proyectos completados, 0 en desarrollo.");
+        assertThat(response.slides().get(2).content()).containsEntry("summaryText", "1 KRs completos, 0 en desarrollo. 1 proyectos completados, 0 en desarrollo.");
     }
 
     @Test

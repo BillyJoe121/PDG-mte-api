@@ -13,38 +13,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class StrategicHierarchyTreeE2ETest extends StrategicHierarchyE2ETestSupport {
     @Test
-    void happyPathListsObjectiveCardsUpdatesObjectiveAndShowsHierarchyTree() throws Exception {
+    void happyPathShowsKeyResultsDirectlyUnderBetsAndGoalsInHierarchyTree() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
-        Long departmentId = firstId("/api/v1/departments");
-        Long strategicBetId = createStrategicBet("Apuesta cards " + SEQUENCE.incrementAndGet());
-        Long goalId = createGoal("Meta cards " + SEQUENCE.incrementAndGet(), unitId);
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(
-                "Objetivo cards " + SEQUENCE.incrementAndGet(),
-                departmentId,
-                periodId,
-                goalId,
-                strategicBetId,
-                unitId
-        ), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        Long strategicBetId = createStrategicBet("Apuesta arbol " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta arbol " + SEQUENCE.incrementAndGet(), unitId);
+        Long keyResultId = createKeyResult("KR arbol " + SEQUENCE.incrementAndGet(), periodId, goalId, strategicBetId, unitId)
+                .get("id").asLong();
         createProjectLink(keyResultId, 9001L);
 
-        JsonNode cards = doGet("/api/v1/objectives/cards?strategicBetId=" + strategicBetId);
-        JsonNode updated = doPatch("/api/v1/objectives/" + objectiveId, """
-                {
-                  "name": "Objetivo editado",
-                  "description": "Descripcion editada"
-                }
-                """, 200);
         JsonNode tree = doGet("/api/v1/strategic-hierarchy/tree");
 
-        assertThat(cards).hasSize(1);
-        assertThat(cards.get(0).get("lowCompletionAlert").asBoolean()).isTrue();
-        assertThat(cards.get(0).get("keyResults")).hasSize(1);
-        assertThat(updated.get("name").asText()).isEqualTo("Objetivo editado");
-        assertThat(tree.findValues("nodeType").stream().map(JsonNode::asText)).contains("STRATEGIC_BET", "GOAL", "OBJECTIVE", "KEY_RESULT", "PROJECT");
+        assertThat(tree.findValues("nodeType").stream().map(JsonNode::asText))
+                .contains("STRATEGIC_BET", "GOAL", "KEY_RESULT", "PROJECT")
+                .doesNotContain("OBJECTIVE");
+        for (String rootType : java.util.List.of("STRATEGIC_BET", "GOAL")) {
+            Long ownerId = "GOAL".equals(rootType) ? goalId : strategicBetId;
+            JsonNode root = java.util.stream.StreamSupport.stream(tree.spliterator(), false)
+                    .filter(node -> rootType.equals(node.get("nodeType").asText()))
+                    .filter(node -> ownerId.toString().equals(node.get("id").asText()))
+                    .findFirst()
+                    .orElseThrow();
+            JsonNode keyResultNode = root.get("children").get(0);
+            assertThat(keyResultNode.get("nodeType").asText()).isEqualTo("KEY_RESULT");
+            assertThat(keyResultNode.get("id").asText()).isEqualTo(keyResultId.toString());
+            assertThat(keyResultNode.get("children").get(0).get("nodeType").asText()).isEqualTo("PROJECT");
+        }
     }
 
     @Test

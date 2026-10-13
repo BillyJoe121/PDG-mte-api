@@ -5,17 +5,12 @@ import co.edu.icesi.pdg.mte.api.dto.StrategyDtos;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
-import co.edu.icesi.pdg.mte.catalog.Department;
-import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnitRepository;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
-import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import co.edu.icesi.pdg.mte.project.Project;
-import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
-import co.edu.icesi.pdg.mte.project.ProjectProgressEntryRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
@@ -23,10 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,72 +29,61 @@ abstract class StrategyServiceTestSupport {
     @Mock
     protected InstitutionalGoalRepository goalRepository;
     @Mock
-    protected ObjectiveRepository objectiveRepository;
-    @Mock
     protected KeyResultRepository keyResultRepository;
     @Mock
     protected WorldRepository worldRepository;
-    @Mock
-    protected ProfessorRepository professorRepository;
     @Mock
     protected MeasurementUnitRepository unitRepository;
     @Mock
     protected AcademicPeriodRepository periodRepository;
     @Mock
-    protected DepartmentRepository departmentRepository;
-    @Mock
     protected ProjectKeyResultLinkRepository linkRepository;
-    @Mock
-    protected ProjectProgressEntryRepository progressRepository;
     @Mock
     protected AuditService auditService;
 
     protected StrategyService service;
+    protected KeyResultService keyResultService;
     protected MeasurementUnit unit;
     protected AcademicPeriod period;
-    protected Department department;
     protected StrategicBet bet;
     protected InstitutionalGoal goal;
-    protected Objective objective;
+    protected KeyResult keyResult;
 
     @BeforeEach
     void setUpStrategyService() {
-        StrategyExecutionSummaryService executionSummaryService = new StrategyExecutionSummaryService(objectiveRepository, linkRepository);
+        StrategyExecutionSummaryService executionSummaryService = new StrategyExecutionSummaryService(keyResultRepository, linkRepository);
         StrategicHierarchyTreeService hierarchyTreeService = new StrategicHierarchyTreeService(
                 strategicBetRepository,
                 goalRepository,
-                objectiveRepository,
+                keyResultRepository,
                 periodRepository,
                 linkRepository,
                 executionSummaryService
         );
-        ObjectiveCoverageTrendService coverageTrendService = new ObjectiveCoverageTrendService(
-                objectiveRepository,
-                linkRepository,
-                progressRepository
-        );
         service = new StrategyService(
                 strategicBetRepository,
                 goalRepository,
-                objectiveRepository,
-                keyResultRepository,
                 worldRepository,
-                professorRepository,
                 unitRepository,
                 periodRepository,
-                departmentRepository,
-                linkRepository,
                 auditService,
                 executionSummaryService,
-                hierarchyTreeService,
-                coverageTrendService
+                hierarchyTreeService
+        );
+        keyResultService = new KeyResultService(
+                keyResultRepository,
+                goalRepository,
+                strategicBetRepository,
+                unitRepository,
+                periodRepository,
+                linkRepository,
+                auditService
         );
         unit = TestFixtures.unit(1L);
         period = TestFixtures.period(1L);
-        department = TestFixtures.department(1L);
         bet = TestFixtures.strategicBet(1L);
         goal = TestFixtures.goal(1L, unit);
-        objective = TestFixtures.objective(1L, unit, period, department, goal, bet);
+        keyResult = TestFixtures.keyResult(1L, unit, period, goal, bet);
         org.mockito.Mockito.lenient().when(worldRepository.findAll()).thenReturn(List.of(TestFixtures.world(1L)));
         org.mockito.Mockito.lenient().when(worldRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.world(1L)));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
@@ -111,28 +93,26 @@ abstract class StrategyServiceTestSupport {
         ));
     }
 
-    protected StrategyDtos.ObjectiveRequest objectiveRequest(
-            Long departmentId,
-            Long periodId,
-            Long goalId,
-            Long strategicBetId,
-            Long unitId
+    protected StrategyDtos.KeyResultRequest keyResultRequest(List<Long> goalIds, List<Long> strategicBetIds) {
+        return keyResultRequest("KR", BigDecimal.valueOf(100), goalIds, strategicBetIds);
+    }
+
+    protected StrategyDtos.KeyResultRequest keyResultRequest(
+            String name,
+            BigDecimal targetValue,
+            List<Long> goalIds,
+            List<Long> strategicBetIds
     ) {
-        return new StrategyDtos.ObjectiveRequest(
-                "Objetivo",
-                "Descripcion",
-                departmentId,
-                periodId,
-                goalId,
-                strategicBetId,
-                List.of(new StrategyDtos.KeyResultRequest(
-                        "KR",
-                        "Descripcion KR",
-                        "Porcentaje",
-                        BigDecimal.ZERO,
-                        BigDecimal.valueOf(100),
-                        unitId
-                ))
+        return new StrategyDtos.KeyResultRequest(
+                name,
+                "Descripcion KR",
+                "Cobertura",
+                BigDecimal.ZERO,
+                targetValue,
+                1L,
+                1L,
+                goalIds,
+                strategicBetIds
         );
     }
 
@@ -155,14 +135,5 @@ abstract class StrategyServiceTestSupport {
         project.setStartPeriod("2026-1");
         project.setEndPeriod("2026-1");
         return project;
-    }
-
-    protected ProjectProgressEntry progressEntry(Project project, BigDecimal progress, Instant createdAt) {
-        ProjectProgressEntry entry = new ProjectProgressEntry();
-        entry.setProject(project);
-        entry.setProgressPercent(progress);
-        entry.setComment("Avance");
-        ReflectionTestUtils.setField(entry, "createdAt", createdAt);
-        return entry;
     }
 }

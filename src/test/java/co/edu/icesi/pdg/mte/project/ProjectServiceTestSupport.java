@@ -18,7 +18,6 @@ import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
-import co.edu.icesi.pdg.mte.strategy.Objective;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -84,15 +83,13 @@ abstract class ProjectServiceTestSupport {
                 fieldMapper
         );
         department = TestFixtures.department(1L);
-        Objective objective = TestFixtures.objective(
+        keyResult = TestFixtures.keyResult(
                 1L,
                 TestFixtures.unit(1L),
                 TestFixtures.period(1L),
-                department,
                 TestFixtures.goal(1L, TestFixtures.unit(1L)),
                 TestFixtures.strategicBet(1L)
         );
-        keyResult = objective.getKeyResults().get(0);
         org.mockito.Mockito.lenient().when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         org.mockito.Mockito.lenient().when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(

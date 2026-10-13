@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,7 +18,7 @@ import java.util.Map;
 class StrategicHierarchyTreeService {
     private final StrategicBetRepository strategicBetRepository;
     private final InstitutionalGoalRepository goalRepository;
-    private final ObjectiveRepository objectiveRepository;
+    private final KeyResultRepository keyResultRepository;
     private final AcademicPeriodRepository periodRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final StrategyExecutionSummaryService executionSummaryService;
@@ -27,14 +26,14 @@ class StrategicHierarchyTreeService {
     StrategicHierarchyTreeService(
             StrategicBetRepository strategicBetRepository,
             InstitutionalGoalRepository goalRepository,
-            ObjectiveRepository objectiveRepository,
+            KeyResultRepository keyResultRepository,
             AcademicPeriodRepository periodRepository,
             ProjectKeyResultLinkRepository linkRepository,
             StrategyExecutionSummaryService executionSummaryService
     ) {
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
-        this.objectiveRepository = objectiveRepository;
+        this.keyResultRepository = keyResultRepository;
         this.periodRepository = periodRepository;
         this.linkRepository = linkRepository;
         this.executionSummaryService = executionSummaryService;
@@ -42,9 +41,8 @@ class StrategicHierarchyTreeService {
 
     List<StrategyDtos.StrategicHierarchyNodeResponse> tree(String period) {
         AcademicPeriod selectedPeriod = StrategyPeriodScope.resolve(period, periodRepository);
-        List<Objective> objectives = objectiveRepository.findAll().stream()
-                .filter(objective -> objective.getStatus() != ObjectiveStatus.ARCHIVADO)
-                .filter(objective -> StrategyPeriodScope.matches(objective, selectedPeriod))
+        List<KeyResult> keyResults = keyResultRepository.findAll().stream()
+                .filter(keyResult -> StrategyPeriodScope.matches(keyResult, selectedPeriod))
                 .toList();
         List<StrategicBet> bets = strategicBetRepository.findAll().stream()
                 .filter(bet -> bet.getStatus() == StrategicStatus.ACTIVA)
@@ -62,17 +60,17 @@ class StrategicHierarchyTreeService {
                 goals.stream().map(InstitutionalGoal::getId).toList(),
                 period
         );
-        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(objectives);
+        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(keyResults);
 
         List<StrategyDtos.StrategicHierarchyNodeResponse> betRoots = bets
                 .stream()
                 .sorted(Comparator.comparing(StrategicBet::getName))
-                .map(bet -> strategicBetNode(bet, objectives, betSummaries, linksByKeyResult))
+                .map(bet -> strategicBetNode(bet, keyResults, betSummaries, linksByKeyResult))
                 .toList();
         List<StrategyDtos.StrategicHierarchyNodeResponse> goalRoots = goals
                 .stream()
                 .sorted(Comparator.comparing(InstitutionalGoal::getName))
-                .map(goal -> goalNode(goal, objectives, goalSummaries, linksByKeyResult))
+                .map(goal -> goalNode(goal, keyResults, goalSummaries, linksByKeyResult))
                 .toList();
 
         List<StrategyDtos.StrategicHierarchyNodeResponse> roots = new ArrayList<>();
@@ -83,14 +81,14 @@ class StrategicHierarchyTreeService {
 
     private StrategyDtos.StrategicHierarchyNodeResponse strategicBetNode(
             StrategicBet bet,
-            List<Objective> objectives,
+            List<KeyResult> keyResults,
             Map<Long, StrategyDtos.ExecutionSummaryResponse> summaries,
             Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
     ) {
-        List<StrategyDtos.StrategicHierarchyNodeResponse> children = objectives.stream()
-                .filter(objective -> objective.getStrategicBet().getId().equals(bet.getId()))
-                .sorted(Comparator.comparing(Objective::getName))
-                .map(objective -> objectiveNode(objective, "Meta: " + objective.getGoal().getName(), linksByKeyResult))
+        List<StrategyDtos.StrategicHierarchyNodeResponse> children = keyResults.stream()
+                .filter(keyResult -> keyResult.getStrategicBets().stream().anyMatch(item -> item.getId().equals(bet.getId())))
+                .sorted(Comparator.comparing(KeyResult::getId))
+                .map(keyResult -> keyResultNode(keyResult, linksByKeyResult))
                 .toList();
         return new StrategyDtos.StrategicHierarchyNodeResponse(
                 "STRATEGIC_BET",
@@ -106,14 +104,14 @@ class StrategicHierarchyTreeService {
 
     private StrategyDtos.StrategicHierarchyNodeResponse goalNode(
             InstitutionalGoal goal,
-            List<Objective> objectives,
+            List<KeyResult> keyResults,
             Map<Long, StrategyDtos.ExecutionSummaryResponse> summaries,
             Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
     ) {
-        List<StrategyDtos.StrategicHierarchyNodeResponse> children = objectives.stream()
-                .filter(objective -> objective.getGoal().getId().equals(goal.getId()))
-                .sorted(Comparator.comparing(Objective::getName))
-                .map(objective -> objectiveNode(objective, "Apuesta: " + objective.getStrategicBet().getName(), linksByKeyResult))
+        List<StrategyDtos.StrategicHierarchyNodeResponse> children = keyResults.stream()
+                .filter(keyResult -> keyResult.getGoals().stream().anyMatch(item -> item.getId().equals(goal.getId())))
+                .sorted(Comparator.comparing(KeyResult::getId))
+                .map(keyResult -> keyResultNode(keyResult, linksByKeyResult))
                 .toList();
         return new StrategyDtos.StrategicHierarchyNodeResponse(
                 "GOAL",
@@ -134,27 +132,6 @@ class StrategicHierarchyTreeService {
             return valueAndUnit;
         }
         return goal.getReferenceIndicator() + ": " + valueAndUnit;
-    }
-
-    private StrategyDtos.StrategicHierarchyNodeResponse objectiveNode(
-            Objective objective,
-            String badge,
-            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
-    ) {
-        return new StrategyDtos.StrategicHierarchyNodeResponse(
-                "OBJECTIVE",
-                objective.getId().toString(),
-                objective.getName(),
-                objective.getDescription(),
-                objective.completionPercentage(),
-                null,
-                badge,
-                objective.getKeyResults()
-                        .stream()
-                        .sorted(Comparator.comparing(KeyResult::getId))
-                        .map(keyResult -> keyResultNode(keyResult, linksByKeyResult))
-                        .toList()
-        );
     }
 
     private StrategyDtos.StrategicHierarchyNodeResponse keyResultNode(
@@ -205,10 +182,8 @@ class StrategicHierarchyTreeService {
         );
     }
 
-    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<Objective> objectives) {
-        List<Long> keyResultIds = objectives.stream()
-                .map(Objective::getKeyResults)
-                .flatMap(Collection::stream)
+    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<KeyResult> keyResults) {
+        List<Long> keyResultIds = keyResults.stream()
                 .map(KeyResult::getId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()

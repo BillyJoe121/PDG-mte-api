@@ -19,7 +19,6 @@ import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
-import co.edu.icesi.pdg.mte.strategy.Objective;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,13 +65,11 @@ class ConsistencyServiceTest {
         department = TestFixtures.department(1L);
         InstitutionalGoal goal = TestFixtures.goal(1L, unit);
         StrategicBet bet = TestFixtures.strategicBet(1L);
-        Objective objective = TestFixtures.objective(1L, unit, period, department, goal, bet);
-        linkedKr = objective.getKeyResults().get(0);
+        linkedKr = TestFixtures.keyResult(1L, unit, period, goal, bet);
         linkedKr.setId(1L);
         linkedKr.setName("KR vinculado");
-        unlinkedKr = TestFixtures.keyResult(2L, unit);
+        unlinkedKr = TestFixtures.keyResult(2L, unit, period, goal, bet);
         unlinkedKr.setName("KR sin proyecto");
-        unlinkedKr.setObjective(objective);
 
         linkedActiveProject = project(1L, "Proyecto vinculado", ProjectStatus.ACTIVO, linkedKr);
         projectWithoutKr = project(2L, "Proyecto sin KR", ProjectStatus.ACTIVO, null);
@@ -155,7 +152,7 @@ class ConsistencyServiceTest {
 
         assertThat(findings)
                 .extracting(finding -> finding.actionUrl())
-                .contains("/krs?objectiveId=1&keyResultId=2", "/proyectos?projectId=2");
+                .contains("/krs?keyResultId=2", "/proyectos?projectId=2");
     }
 
     private Project project(Long id, String name, ProjectStatus status, KeyResult keyResult) {

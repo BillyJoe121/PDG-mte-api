@@ -30,7 +30,8 @@ class AccessControlServiceTest {
 
         assertThat(capabilities.get("viewDashboard")).isTrue();
         assertThat(capabilities.get("manageStrategicBets")).isTrue();
-        assertThat(capabilities.get("manageObjectives")).isTrue();
+        assertThat(capabilities.get("manageKeyResults")).isTrue();
+        assertThat(capabilities).doesNotContainKey("manageObjectives");
         assertThat(capabilities.get("createProjects")).isTrue();
         assertThat(capabilities.get("changeProjectStatus")).isTrue();
         assertThat(capabilities.get("viewReports")).isTrue();
@@ -48,7 +49,7 @@ class AccessControlServiceTest {
         assertThat(capabilities.get("viewProjects")).isTrue();
         assertThat(capabilities.get("registerProjectProgress")).isTrue();
         assertThat(capabilities.get("viewPresentation")).isTrue();
-        assertThat(capabilities.get("manageObjectives")).isFalse();
+        assertThat(capabilities.get("manageKeyResults")).isFalse();
         assertThat(capabilities.get("createProjects")).isFalse();
         assertThat(capabilities.get("updateProjects")).isFalse();
         assertThat(capabilities.get("linkProjectsToKeyResults")).isFalse();

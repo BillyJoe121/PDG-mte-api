@@ -30,7 +30,7 @@ class AuditTrailE2ETest {
     private ObjectMapper objectMapper;
 
     @Test
-    void recordsFiltersAndSummarizesSystemEventsAndObjectiveCoverageTrend() throws Exception {
+    void recordsFiltersAndSummarizesSystemEventsIncludingKeyResultChanges() throws Exception {
         Instant from = Instant.now().minusSeconds(60);
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
@@ -65,29 +65,24 @@ class AuditTrailE2ETest {
                 """.formatted(SEQUENCE.incrementAndGet(), unitId), 201).get("id").asLong();
         post("/api/v1/goals/" + goalId + "/periods/" + periodId, "", 200);
 
-        JsonNode objective = post("/api/v1/objectives", """
+        String keyResultPayload = """
                 {
-                  "name": "Objetivo audit %d",
-                  "description": "Objetivo auditable",
-                  "departmentId": %d,
+                  "name": "KR audit %d",
+                  "description": "KR auditable",
+                  "metric": "Cobertura",
+                  "baseValue": 0,
+                  "targetValue": 100,
+                  "measurementUnitId": %d,
                   "academicPeriodId": %d,
-                  "goalId": %d,
-                  "strategicBetId": %d,
-                  "keyResults": [{
-                    "name": "KR audit",
-                    "description": "KR auditable",
-                    "metric": "Cobertura",
-                    "baseValue": 0,
-                    "targetValue": 100,
-                    "measurementUnitId": %d
-                  }]
+                  "goalIds": [%d],
+                  "strategicBetIds": [%d]
                 }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId, periodId, goalId, betId, unitId), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
-        patch("/api/v1/objectives/" + objectiveId, """
-                {"name": "Objetivo audit editado", "description": "Objetivo auditado editado"}
-                """, 200);
+                """;
+        Long keyResultId = post("/api/v1/key-results",
+                keyResultPayload.formatted(SEQUENCE.incrementAndGet(), unitId, periodId, goalId, betId), 201)
+                .get("id").asLong();
+        put("/api/v1/key-results/" + keyResultId,
+                keyResultPayload.formatted(SEQUENCE.incrementAndGet(), unitId, periodId, goalId, betId), 200);
 
         JsonNode project = post("/api/v1/projects", """
                 {
@@ -110,7 +105,6 @@ class AuditTrailE2ETest {
         patch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);
-        JsonNode detail = get("/api/v1/objectives/" + objectiveId + "/detail", 200);
         delete("/api/v1/project-key-result-links/" + link.get("id").asLong(), 204);
         post("/api/v1/projects/sync/trayectoria", "", 200);
 
@@ -119,6 +113,7 @@ class AuditTrailE2ETest {
         JsonNode projectCreates = get("/api/v1/audit-logs?action=CREATE&entityType=project&entityId=" + projectId, 200);
         JsonNode linkRemoved = get("/api/v1/audit-logs?action=LINK_REMOVED&entityType=PROJECT_KEY_RESULT_LINK", 200);
         JsonNode summary = getWithDates("/api/v1/audit-logs/summary", from, to, 200);
+        JsonNode keyResultLogs = get("/api/v1/audit-logs?entityType=KEY_RESULT&entityId=" + keyResultId, 200);
 
         assertThat(logs.findValues("action").stream().map(JsonNode::asText))
                 .contains("CREATE", "DELETE", "UPDATE", "STATUS_CHANGE", "PROGRESS_REGISTERED", "LINK_CREATED", "LINK_REMOVED", "EXTERNAL_SYNC");
@@ -131,9 +126,7 @@ class AuditTrailE2ETest {
         assertThat(summary.get("trend")).isNotEmpty();
         assertThat(summary.get("trend").get(0).hasNonNull("date")).isTrue();
         assertThat(summary.get("trend").get(0).hasNonNull("count")).isTrue();
-        assertThat(detail.get("objective").get("id").asLong()).isEqualTo(objectiveId);
-        assertThat(detail.get("coverageTrend").findValues("source").stream().map(JsonNode::asText))
-                .contains("OBJECTIVE_CREATED", "PROJECT_PROGRESS", "CURRENT");
+        assertThat(keyResultLogs.findValues("action").stream().map(JsonNode::asText)).contains("CREATE", "UPDATE");
 
         getWithDates("/api/v1/audit-logs", to, from, 400);
     }

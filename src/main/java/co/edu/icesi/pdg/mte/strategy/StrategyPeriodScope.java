@@ -30,8 +30,9 @@ final class StrategyPeriodScope {
         return overlaps(goal.getStartDate(), goal.getEndDate(), period);
     }
 
-    static boolean matches(Objective objective, AcademicPeriod period) {
-        return period == null || objective.getAcademicPeriod().getId().equals(period.getId());
+    static boolean matches(KeyResult keyResult, AcademicPeriod period) {
+        return period == null
+                || keyResult.getAcademicPeriod() != null && keyResult.getAcademicPeriod().getId().equals(period.getId());
     }
 
     private static boolean overlaps(LocalDate startDate, LocalDate endDate, AcademicPeriod period) {

@@ -25,7 +25,7 @@ Documento generado a partir de las migraciones Flyway en `src/main/resources/db/
 | `MeasurementUnitType` | `NUMERICA`, `PORCENTAJE`, `BOOLEANA`, `OTRA` | `unit_of_measure.type` |
 | `PeriodStatus` | `ACTIVO`, `CERRADO`, `PLANIFICACION` | `period.status` |
 | `StrategicStatus` | `ACTIVA`, `INACTIVA` | `strategic_bet.status`, `goal.status` |
-| `ObjectiveStatus` | `BORRADOR`, `ACTIVO`, `CERRADO` | `objective.status` |
+| `KeyResultStatus` | `BORRADOR`, `ACTIVO`, `CERRADO` | `key_result.status` |
 | `ProjectType` | `GRADO`, `INVESTIGACION`, `EXTENSION`, `MACROPROYECTO` | `project.type` |
 | `ProjectStatus` | `BORRADOR`, `ACTIVO`, `FINALIZADO`, `SUSPENDIDO`, `ARCHIVADO` | `project.status` |
 | `ProjectOrigin` | `LOCAL`, `SYNCED` | `project.origin` |
@@ -125,7 +125,6 @@ Relaciones:
 
 - `department N:1 school`.
 - `department 1:N professor`.
-- `department 1:N objective`.
 - `department 1:N project` opcional.
 
 ### 5. `position`
@@ -175,7 +174,6 @@ Relaciones:
 - `professor N:1 department`.
 - `professor 1:N teacher_position`.
 - `professor 1:N project_teacher`.
-- `professor 1:N objective` como creador opcional por `objective.created_by`.
 
 ### 7. `teacher_position`
 
@@ -205,7 +203,7 @@ Relaciones:
 
 Entidad JPA: `AcademicPeriod`.
 
-Periodos académicos utilizados para metas, objetivos y resultados clave.
+Periodos académicos utilizados para metas y resultados clave.
 
 | Columna | Tipo DB | Java | Nulo | Detalle |
 | --- | --- | --- | --- | --- |
@@ -223,7 +221,7 @@ Restricciones:
 Relaciones:
 
 - `period N:M goal` a través de `goal_period`.
-- `period 1:N objective` por `objective.academic_period_id`.
+- `period 1:N key_result` por `key_result.academic_period_id`.
 - `period 1:N key_result` opcional por `key_result.academic_period_id`.
 
 ### 9. `world`
@@ -275,7 +273,7 @@ Restricciones e índices:
 Relaciones:
 
 - `strategic_bet N:1 world`.
-- `strategic_bet 1:N objective`.
+- `strategic_bet N:M key_result` por `key_result_strategic_bet`.
 
 ### 11. `goal`
 
@@ -309,7 +307,7 @@ Relaciones:
 - `goal N:1 world` opcional.
 - `goal N:1 unit_of_measure`.
 - `goal N:M period` a través de `goal_period`.
-- `goal 1:N objective`.
+- `goal N:M key_result` por `key_result_goal`.
 
 ### 12. `goal_period`
 
@@ -332,54 +330,15 @@ Relaciones:
 
 - Materializa `goal N:M period`.
 
-### 13. `objective`
+### 13. `objective` (legado)
 
-Entidad JPA: `Objective`.
-
-Objetivos estratégicos ligados a una meta, apuesta estratégica, departamento y periodo académico.
-
-| Columna | Tipo DB | Java | Nulo | Detalle |
-| --- | --- | --- | --- | --- |
-| `id` | `BIGINT IDENTITY` | `Long` | No | PK. |
-| `name` | `VARCHAR(255)` | `String` | No | Nombre del objetivo. |
-| `description` | `TEXT` | `String` | No | Descripción. |
-| `status` | `VARCHAR(255)` | `ObjectiveStatus` | Sí | Enum: `BORRADOR`, `ACTIVO`, `CERRADO`. Default JPA: `ACTIVO`. |
-| `estimated_weight` | `NUMERIC(5,2)` | `BigDecimal` | No | Peso estimado. Default: `0`. |
-| `created_at` | `TIMESTAMP WITH TIME ZONE` | `Instant` | No | Fecha de creación. Default JPA: `Instant.now()`. |
-| `created_by` | `BIGINT` | `Professor` | Sí | FK opcional a `professor.id`. |
-| `created_by_external_user_id` | `BIGINT` | `Long` | Sí | Usuario externo creador. |
-| `goal_id` | `BIGINT` | `InstitutionalGoal` | No | FK a `goal.id`. |
-| `strategic_bet_id` | `BIGINT` | `StrategicBet` | No | FK a `strategic_bet.id`. |
-| `quarter` | `INTEGER` | `Integer` | No | Trimestre. Default: `1`. Check: entre `1` y `4`. |
-| `completion_percentage` | `NUMERIC(10,2)` | `BigDecimal` | Sí | Porcentaje de cumplimiento. Si es nulo, JPA lo calcula como promedio del progreso de resultados clave. |
-| `department_id` | `BIGINT` | `Department` | No | FK a `department.id`. |
-| `academic_period_id` | `BIGINT` | `AcademicPeriod` | No | FK a `period.id`. |
-
-Restricciones e índices:
-
-- PK: `id`.
-- FK: `fk_objective_created_by (created_by) -> professor(id)`.
-- FK: `fk_objective_goal (goal_id) -> goal(id)`.
-- FK: `fk_objective_strategic_bet (strategic_bet_id) -> strategic_bet(id)`.
-- FK: `fk_objective_department (department_id) -> department(id)`.
-- FK: `fk_objective_period (academic_period_id) -> period(id)`.
-- Check: `ck_objective_quarter (quarter BETWEEN 1 AND 4)`.
-- Índices: `idx_objective_goal`, `idx_objective_strategic_bet`, `idx_objective_period`, `idx_objective_department`.
-
-Relaciones:
-
-- `objective N:1 goal`.
-- `objective N:1 strategic_bet`.
-- `objective N:1 department`.
-- `objective N:1 period`.
-- `objective N:1 professor` como creador opcional.
-- `objective 1:N key_result` con cascade y orphan removal en JPA.
+Sin entidad JPA desde `V10__retire_objective_links.sql`. La tabla se conserva con sus datos históricos; ningún código la lee ni la escribe. Sus vínculos con meta y apuesta se trasladaron a `key_result_goal` y `key_result_strategic_bet`.
 
 ### 14. `key_result`
 
 Entidad JPA: `KeyResult`.
 
-Resultados clave asociados a un objetivo. Su progreso se recalcula desde enlaces activos a proyectos finalizados.
+Resultados clave vinculados N:M a metas y apuestas estratégicas (al menos una de cualquiera). Su progreso se recalcula desde enlaces activos a proyectos finalizados.
 
 | Columna | Tipo DB | Java | Nulo | Detalle |
 | --- | --- | --- | --- | --- |
@@ -392,9 +351,9 @@ Resultados clave asociados a un objetivo. Su progreso se recalcula desde enlaces
 | `current_value` | `NUMERIC(12,2)` | `BigDecimal` | Sí | Valor actual. |
 | `progress_percentage` | `NUMERIC(10,2)` | `BigDecimal` | Sí | Progreso porcentual. Default JPA: `0`. |
 | `created_at` | `TIMESTAMP WITH TIME ZONE` | `Instant` | Sí | Fecha de creación. Default JPA: `Instant.now()`. |
-| `academic_period_id` | `BIGINT` | `AcademicPeriod` | Sí | FK opcional a `period.id`. |
+| `academic_period_id` | `BIGINT` | `AcademicPeriod` | Sí | FK a `period.id`. La API lo exige al crear o editar; V10 lo completa desde el objetivo legado. |
 | `unit_of_measure_id` | `BIGINT` | `MeasurementUnit` | No | FK a `unit_of_measure.id`. |
-| `objective_id` | `BIGINT` | `Objective` | No | FK a `objective.id`. |
+| `objective_id` | `BIGINT` | - | Sí | Legado. FK a `objective.id`; sin mapeo JPA desde V10. |
 
 Restricciones e índices:
 
@@ -403,10 +362,12 @@ Restricciones e índices:
 - FK: `fk_key_result_unit_of_measure (unit_of_measure_id) -> unit_of_measure(id)`.
 - FK: `fk_key_result_objective (objective_id) -> objective(id)`.
 - Índices: `idx_key_result_objective`, `idx_key_result_period`.
+- Tablas de vínculo (V10): `key_result_goal (key_result_id, goal_id)` y `key_result_strategic_bet (key_result_id, strategic_bet_id)`, ambas con PK compuesta, FK a `key_result` con `ON DELETE CASCADE` e índices `idx_key_result_goal_goal`, `idx_key_result_strategic_bet_bet`.
 
 Relaciones:
 
-- `key_result N:1 objective`.
+- `key_result N:M goal` por `key_result_goal`.
+- `key_result N:M strategic_bet` por `key_result_strategic_bet`.
 - `key_result N:1 unit_of_measure`.
 - `key_result N:1 period` opcional.
 - `key_result 1:N project`.
@@ -616,11 +577,9 @@ Relaciones:
 | Mundo -> Apuestas estratégicas | `world 1:N strategic_bet` | `strategic_bet.world_id` |
 | Mundo -> Metas institucionales | `world 1:N goal` opcional | `goal.world_id` |
 | Meta -> Periodos | `goal N:M period` | `goal_period(goal_id, period_id)` |
-| Meta -> Objetivos | `goal 1:N objective` | `objective.goal_id` |
-| Apuesta estratégica -> Objetivos | `strategic_bet 1:N objective` | `objective.strategic_bet_id` |
-| Departamento -> Objetivos | `department 1:N objective` | `objective.department_id` |
-| Periodo -> Objetivos | `period 1:N objective` | `objective.academic_period_id` |
-| Objetivo -> Resultados clave | `objective 1:N key_result` | `key_result.objective_id` |
+| Meta <-> Resultados clave | `goal N:M key_result` | `key_result_goal(key_result_id, goal_id)` |
+| Apuesta estratégica <-> Resultados clave | `strategic_bet N:M key_result` | `key_result_strategic_bet(key_result_id, strategic_bet_id)` |
+| Periodo -> Resultados clave | `period 1:N key_result` | `key_result.academic_period_id` |
 | Unidad de medida -> Metas | `unit_of_measure 1:N goal` | `goal.unit_of_measure_id` |
 | Unidad de medida -> Resultados clave | `unit_of_measure 1:N key_result` | `key_result.unit_of_measure_id` |
 
@@ -649,12 +608,14 @@ Relaciones:
 | `idx_professor_department` | `professor` | `department_id` |
 | `idx_strategic_bet_world` | `strategic_bet` | `world_id` |
 | `idx_goal_world` | `goal` | `world_id` |
-| `idx_objective_goal` | `objective` | `goal_id` |
-| `idx_objective_strategic_bet` | `objective` | `strategic_bet_id` |
-| `idx_objective_period` | `objective` | `academic_period_id` |
-| `idx_objective_department` | `objective` | `department_id` |
+| `idx_objective_goal` | `objective` (legado) | `goal_id` |
+| `idx_objective_strategic_bet` | `objective` (legado) | `strategic_bet_id` |
+| `idx_objective_period` | `objective` (legado) | `academic_period_id` |
+| `idx_objective_department` | `objective` (legado) | `department_id` |
 | `idx_key_result_objective` | `key_result` | `objective_id` |
 | `idx_key_result_period` | `key_result` | `academic_period_id` |
+| `idx_key_result_goal_goal` | `key_result_goal` | `goal_id` |
+| `idx_key_result_strategic_bet_bet` | `key_result_strategic_bet` | `strategic_bet_id` |
 | `idx_project_key_result` | `project` | `key_result_id` |
 | `idx_project_periods` | `project` | `start_period`, `end_period` |
 | `idx_project_status` | `project` | `status` |
@@ -665,9 +626,7 @@ Relaciones:
 
 ## Reglas de negocio visibles en el modelo
 
-- Un objetivo siempre pertenece a una meta institucional, una apuesta estratégica, un departamento y un periodo académico.
-- `objective.quarter` solo acepta valores entre `1` y `4`.
-- Un resultado clave siempre pertenece a un objetivo y a una unidad de medida; el periodo académico es opcional.
+- Un resultado clave se vincula al menos a una meta institucional o a una apuesta estratégica, y siempre a una unidad de medida y a un periodo académico (regla de la API).
 - El progreso de un resultado clave se puede calcular desde enlaces activos a proyectos finalizados, sumando `project_key_result_link.contribution_weight`.
 - Un proyecto siempre apunta a un resultado clave principal por `project.key_result_id`.
 - Además del resultado clave principal del proyecto, la tabla `project_key_result_link` permite vínculos adicionales o trazabilidad con proyectos externos.

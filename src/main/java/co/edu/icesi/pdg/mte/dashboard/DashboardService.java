@@ -12,9 +12,8 @@ import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoal;
 import co.edu.icesi.pdg.mte.strategy.InstitutionalGoalRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.Objective;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveRepository;
-import co.edu.icesi.pdg.mte.strategy.ObjectiveStatus;
+import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
+import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
 import co.edu.icesi.pdg.mte.strategy.StrategicBetRepository;
 import org.springframework.http.HttpStatus;
@@ -23,12 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,7 +42,7 @@ public class DashboardService {
     private static final BigDecimal AT_RISK = BigDecimal.valueOf(30);
 
     private final ProjectRepository projectRepository;
-    private final ObjectiveRepository objectiveRepository;
+    private final KeyResultRepository keyResultRepository;
     private final DepartmentRepository departmentRepository;
     private final StrategicBetRepository strategicBetRepository;
     private final InstitutionalGoalRepository goalRepository;
@@ -49,14 +50,14 @@ public class DashboardService {
 
     public DashboardService(
             ProjectRepository projectRepository,
-            ObjectiveRepository objectiveRepository,
+            KeyResultRepository keyResultRepository,
             DepartmentRepository departmentRepository,
             StrategicBetRepository strategicBetRepository,
             InstitutionalGoalRepository goalRepository,
             ProjectKeyResultLinkRepository linkRepository
     ) {
         this.projectRepository = projectRepository;
-        this.objectiveRepository = objectiveRepository;
+        this.keyResultRepository = keyResultRepository;
         this.departmentRepository = departmentRepository;
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
@@ -66,9 +67,8 @@ public class DashboardService {
     public DashboardDtos.DashboardSummaryResponse summary(String period) {
         String normalizedPeriod = resolvePeriod(period);
         List<Project> projects = filteredProjects(normalizedPeriod);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod);
-        List<KeyResult> keyResults = keyResultsFrom(objectives);
-        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
+        List<KeyResult> keyResults = filteredKeyResults(normalizedPeriod);
+        ProgressBuckets buckets = progressBuckets(keyResults);
 
         return new DashboardDtos.DashboardSummaryResponse(
                 normalizedPeriod,
@@ -77,14 +77,13 @@ public class DashboardService {
                 countProjects(projects, ProjectStatus.BORRADOR),
                 countProjects(projects, ProjectStatus.SUSPENDIDO),
                 countProjects(projects, ProjectStatus.ARCHIVADO),
-                objectives.stream().filter(objective -> objective.getStatus() == ObjectiveStatus.ACTIVO).count(),
-                objectives.stream().filter(objective -> objective.completionPercentage().compareTo(AT_RISK) < 0).count(),
-                objectiveBuckets.completed(),
-                objectiveBuckets.above50(),
-                objectiveBuckets.between0And50(),
-                objectiveBuckets.atZero(),
-                keyResults.stream().filter(this::isCompleted).count(),
-                keyResults.stream().filter(keyResult -> !isCompleted(keyResult)).count(),
+                keyResults.stream().filter(keyResult -> keyResult.getStatus() == KeyResultStatus.ACTIVO).count(),
+                keyResults.stream().filter(keyResult -> progressOf(keyResult).compareTo(AT_RISK) < 0).count(),
+                buckets.completed(),
+                buckets.above50(),
+                buckets.between0And50(),
+                buckets.atZero(),
+                keyResults.size() - buckets.completed(),
                 averageKeyResultCoverage(keyResults)
         );
     }
@@ -104,7 +103,7 @@ public class DashboardService {
         buckets.put("AT_RISK", 0L);
         buckets.put("LOW", 0L);
 
-        keyResultsFrom(filteredObjectives(resolvePeriod(period))).stream()
+        filteredKeyResults(resolvePeriod(period)).stream()
                 .map(this::progressBucket)
                 .forEach(bucket -> buckets.merge(bucket, 1L, Long::sum));
 
@@ -116,124 +115,141 @@ public class DashboardService {
 
     public List<DashboardDtos.DepartmentExecutionResponse> departments(String period) {
         String normalizedPeriod = resolvePeriod(period);
-        List<Project> projects = filteredProjects(normalizedPeriod);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod);
+        List<Project> allProjects = projectRepository.findAll();
+        List<Project> projects = allProjects.stream()
+                .filter(project -> periodMatches(project, normalizedPeriod))
+                .toList();
+        List<KeyResult> keyResults = filteredKeyResults(normalizedPeriod);
+        Map<Long, Set<Long>> departmentsByKeyResult = departmentsByKeyResult(keyResults, allProjects);
 
         return departmentRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(Department::getName))
-                .map(department -> departmentSummary(department, projects, objectives))
+                .map(department -> departmentSummary(department, projects, keyResults, departmentsByKeyResult))
                 .toList();
     }
 
     public List<DashboardDtos.StrategicBetExecutionResponse> strategicBets(String period) {
         String normalizedPeriod = resolvePeriod(period);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod);
+        List<KeyResult> keyResults = filteredKeyResults(normalizedPeriod);
+        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(keyResults);
 
         return strategicBetRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(StrategicBet::getName))
-                .map(bet -> strategicBetSummary(bet, objectives, normalizedPeriod))
+                .map(bet -> {
+                    ExecutionBreakdown breakdown = executionBreakdown(
+                            keyResults,
+                            keyResult -> keyResult.getStrategicBets().stream().anyMatch(item -> bet.getId().equals(item.getId())),
+                            linksByKeyResult,
+                            normalizedPeriod
+                    );
+                    return new DashboardDtos.StrategicBetExecutionResponse(
+                            bet.getId(),
+                            bet.getName(),
+                            breakdown.keyResults(),
+                            breakdown.buckets().completed(),
+                            breakdown.buckets().above50(),
+                            breakdown.buckets().between0And50(),
+                            breakdown.buckets().atZero(),
+                            breakdown.completedProjects(),
+                            breakdown.inProgressProjects()
+                    );
+                })
                 .toList();
     }
 
     public List<DashboardDtos.GoalExecutionResponse> goals(String period) {
         String normalizedPeriod = resolvePeriod(period);
-        List<Objective> objectives = filteredObjectives(normalizedPeriod);
+        List<KeyResult> keyResults = filteredKeyResults(normalizedPeriod);
+        Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(keyResults);
 
         return goalRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(InstitutionalGoal::getName))
-                .map(goal -> goalSummary(goal, objectives, normalizedPeriod))
+                .map(goal -> {
+                    ExecutionBreakdown breakdown = executionBreakdown(
+                            keyResults,
+                            keyResult -> keyResult.getGoals().stream().anyMatch(item -> goal.getId().equals(item.getId())),
+                            linksByKeyResult,
+                            normalizedPeriod
+                    );
+                    return new DashboardDtos.GoalExecutionResponse(
+                            goal.getId(),
+                            goal.getName(),
+                            breakdown.keyResults(),
+                            breakdown.buckets().completed(),
+                            breakdown.buckets().above50(),
+                            breakdown.buckets().between0And50(),
+                            breakdown.buckets().atZero(),
+                            breakdown.completedProjects(),
+                            breakdown.inProgressProjects()
+                    );
+                })
                 .toList();
     }
 
     private DashboardDtos.DepartmentExecutionResponse departmentSummary(
             Department department,
             List<Project> projects,
-            List<Objective> objectives
+            List<KeyResult> keyResults,
+            Map<Long, Set<Long>> departmentsByKeyResult
     ) {
         List<Project> departmentProjects = projects.stream()
                 .filter(project -> project.getDepartment() != null)
                 .filter(project -> department.getId().equals(project.getDepartment().getId()))
                 .toList();
-        List<Objective> departmentObjectives = objectives.stream()
-                .filter(objective -> department.getId().equals(objective.getDepartment().getId()))
+        List<KeyResult> departmentKeyResults = keyResults.stream()
+                .filter(keyResult -> departmentsByKeyResult.getOrDefault(keyResult.getId(), Set.of()).contains(department.getId()))
                 .toList();
-        List<KeyResult> keyResults = keyResultsFrom(departmentObjectives);
-        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(departmentObjectives);
+        ProgressBuckets buckets = progressBuckets(departmentKeyResults);
 
         return new DashboardDtos.DepartmentExecutionResponse(
                 department.getId(),
                 department.getName(),
                 countProjects(departmentProjects, ProjectStatus.ACTIVO),
                 countProjects(departmentProjects, ProjectStatus.FINALIZADO),
-                departmentObjectives.size(),
-                objectiveBuckets.completed(),
-                objectiveBuckets.above50(),
-                objectiveBuckets.between0And50(),
-                objectiveBuckets.atZero(),
-                keyResults.stream().filter(this::isCompleted).count(),
-                keyResults.stream().filter(keyResult -> !isCompleted(keyResult)).count()
+                departmentKeyResults.size(),
+                buckets.completed(),
+                buckets.above50(),
+                buckets.between0And50(),
+                buckets.atZero(),
+                departmentKeyResults.size() - buckets.completed()
         );
     }
 
-    private DashboardDtos.StrategicBetExecutionResponse strategicBetSummary(
-            StrategicBet bet,
-            List<Objective> objectives,
+    /**
+     * Un KR pertenece a un departamento cuando un proyecto de ese departamento lo referencia,
+     * ya sea mediante un vinculo activo o como KR principal del proyecto.
+     */
+    private Map<Long, Set<Long>> departmentsByKeyResult(List<KeyResult> keyResults, List<Project> projects) {
+        Map<Long, Set<Long>> departments = new LinkedHashMap<>();
+        for (Project project : projects) {
+            if (project.getKeyResult() != null && project.getDepartment() != null) {
+                departments.computeIfAbsent(project.getKeyResult().getId(), ignored -> new LinkedHashSet<>())
+                        .add(project.getDepartment().getId());
+            }
+        }
+        linksByKeyResult(keyResults).forEach((keyResultId, links) -> links.stream()
+                .map(ProjectKeyResultLink::getProject)
+                .filter(project -> project != null && project.getDepartment() != null)
+                .forEach(project -> departments.computeIfAbsent(keyResultId, ignored -> new LinkedHashSet<>())
+                        .add(project.getDepartment().getId())));
+        return departments;
+    }
+
+    private ExecutionBreakdown executionBreakdown(
+            List<KeyResult> allKeyResults,
+            Predicate<KeyResult> ownerFilter,
+            Map<Long, List<ProjectKeyResultLink>> linksByKeyResult,
             String period
     ) {
-        List<Objective> betObjectives = objectives.stream()
-                .filter(objective -> bet.getId().equals(objective.getStrategicBet().getId()))
-                .toList();
-        ExecutionBreakdown breakdown = executionBreakdown(betObjectives, period);
-
-        return new DashboardDtos.StrategicBetExecutionResponse(
-                bet.getId(),
-                bet.getName(),
-                betObjectives.size(),
-                breakdown.objectives().completed(),
-                breakdown.objectives().above50(),
-                breakdown.objectives().between0And50(),
-                breakdown.objectives().atZero(),
-                breakdown.keyResults(),
-                breakdown.completedProjects(),
-                breakdown.inProgressProjects()
-        );
-    }
-
-    private DashboardDtos.GoalExecutionResponse goalSummary(
-            InstitutionalGoal goal,
-            List<Objective> objectives,
-            String period
-    ) {
-        List<Objective> goalObjectives = objectives.stream()
-                .filter(objective -> goal.getId().equals(objective.getGoal().getId()))
-                .toList();
-        ExecutionBreakdown breakdown = executionBreakdown(goalObjectives, period);
-
-        return new DashboardDtos.GoalExecutionResponse(
-                goal.getId(),
-                goal.getName(),
-                goalObjectives.size(),
-                breakdown.objectives().completed(),
-                breakdown.objectives().above50(),
-                breakdown.objectives().between0And50(),
-                breakdown.objectives().atZero(),
-                breakdown.keyResults(),
-                breakdown.completedProjects(),
-                breakdown.inProgressProjects()
-        );
-    }
-
-    private ExecutionBreakdown executionBreakdown(List<Objective> objectives, String period) {
-        List<KeyResult> keyResults = keyResultsFrom(objectives);
-        ObjectiveProgressBuckets objectiveBuckets = objectiveProgressBuckets(objectives);
+        List<KeyResult> keyResults = allKeyResults.stream().filter(ownerFilter).toList();
         Set<Long> completedProjects = new LinkedHashSet<>();
         Set<Long> inProgressProjects = new LinkedHashSet<>();
 
         for (KeyResult keyResult : keyResults) {
-            for (ProjectKeyResultLink link : linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId())) {
+            for (ProjectKeyResultLink link : linksByKeyResult.getOrDefault(keyResult.getId(), List.of())) {
                 Project project = link.getProject();
                 if (project == null || project.getId() == null || !periodMatches(project, period)) {
                     continue;
@@ -248,11 +264,27 @@ public class DashboardService {
         }
 
         return new ExecutionBreakdown(
-                objectiveBuckets,
+                progressBuckets(keyResults),
                 keyResults.size(),
                 completedProjects.size(),
                 inProgressProjects.size()
         );
+    }
+
+    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<KeyResult> keyResults) {
+        List<Long> keyResultIds = keyResults.stream()
+                .map(KeyResult::getId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (keyResultIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<ProjectKeyResultLink>> links = new LinkedHashMap<>();
+        for (ProjectKeyResultLink link : linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(keyResultIds)) {
+            links.computeIfAbsent(link.getKeyResult().getId(), ignored -> new ArrayList<>()).add(link);
+        }
+        return links;
     }
 
     private List<Project> filteredProjects(String period) {
@@ -262,10 +294,10 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<Objective> filteredObjectives(String period) {
-        return objectiveRepository.findAll()
+    private List<KeyResult> filteredKeyResults(String period) {
+        return keyResultRepository.findAll()
                 .stream()
-                .filter(objective -> periodMatches(objective, period))
+                .filter(keyResult -> periodMatches(keyResult, period))
                 .toList();
     }
 
@@ -281,14 +313,14 @@ public class DashboardService {
         return overlaps(new PeriodRange(projectStart.startIndex(), Math.max(projectStart.endIndex(), projectEnd.endIndex())), requestedPeriod);
     }
 
-    private boolean periodMatches(Objective objective, String period) {
+    private boolean periodMatches(KeyResult keyResult, String period) {
         if (period == null) {
             return true;
         }
-        if (objective.getAcademicPeriod() == null || objective.getAcademicPeriod().getName() == null) {
+        if (keyResult.getAcademicPeriod() == null || keyResult.getAcademicPeriod().getName() == null) {
             return false;
         }
-        return overlaps(parsePeriod(objective.getAcademicPeriod().getName()), parsePeriod(period));
+        return overlaps(parsePeriod(keyResult.getAcademicPeriod().getName()), parsePeriod(period));
     }
 
     private String resolvePeriod(String period) {
@@ -336,16 +368,6 @@ public class DashboardService {
         return projects.stream().filter(project -> project.getStatus() == status).count();
     }
 
-    private List<KeyResult> keyResultsFrom(List<Objective> objectives) {
-        return objectives.stream()
-                .flatMap(objective -> objective.getKeyResults().stream())
-                .toList();
-    }
-
-    private boolean isCompleted(KeyResult keyResult) {
-        return progressOf(keyResult).compareTo(COMPLETED) >= 0;
-    }
-
     private String progressBucket(KeyResult keyResult) {
         BigDecimal progress = progressOf(keyResult);
         if (progress.compareTo(COMPLETED) >= 0) {
@@ -364,14 +386,14 @@ public class DashboardService {
         return keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
     }
 
-    private ObjectiveProgressBuckets objectiveProgressBuckets(List<Objective> objectives) {
+    private ProgressBuckets progressBuckets(List<KeyResult> keyResults) {
         long completed = 0;
         long above50 = 0;
         long between0And50 = 0;
         long atZero = 0;
 
-        for (Objective objective : objectives) {
-            BigDecimal progress = objective.completionPercentage();
+        for (KeyResult keyResult : keyResults) {
+            BigDecimal progress = progressOf(keyResult);
             if (progress.compareTo(COMPLETED) >= 0) {
                 completed++;
             } else if (progress.compareTo(BigDecimal.valueOf(50)) > 0) {
@@ -383,7 +405,7 @@ public class DashboardService {
             }
         }
 
-        return new ObjectiveProgressBuckets(completed, above50, between0And50, atZero);
+        return new ProgressBuckets(completed, above50, between0And50, atZero);
     }
 
     private BigDecimal averageKeyResultCoverage(List<KeyResult> keyResults) {
@@ -399,11 +421,11 @@ public class DashboardService {
     private record PeriodRange(int startIndex, int endIndex) {
     }
 
-    private record ObjectiveProgressBuckets(long completed, long above50, long between0And50, long atZero) {
+    private record ProgressBuckets(long completed, long above50, long between0And50, long atZero) {
     }
 
     private record ExecutionBreakdown(
-            ObjectiveProgressBuckets objectives,
+            ProgressBuckets buckets,
             long keyResults,
             long completedProjects,
             long inProgressProjects

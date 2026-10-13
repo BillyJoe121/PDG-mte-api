@@ -13,50 +13,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
     @Test
-    void managesObjectiveAndKeyResultLifecycleWithoutAllowingReopening() throws Exception {
+    void managesKeyResultLifecycleWithoutAllowingReopening() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
-        Long departmentId = firstId("/api/v1/departments");
         Long strategicBetId = createStrategicBet("Apuesta ciclo " + SEQUENCE.incrementAndGet());
         Long goalId = createGoal("Meta ciclo " + SEQUENCE.incrementAndGet(), unitId);
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(
-                "Objetivo ciclo " + SEQUENCE.incrementAndGet(),
-                departmentId,
-                periodId,
-                goalId,
-                strategicBetId,
-                unitId
-        ), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        JsonNode keyResult = createKeyResult("KR ciclo " + SEQUENCE.incrementAndGet(), periodId, goalId, strategicBetId, unitId);
+        Long keyResultId = keyResult.get("id").asLong();
 
-        assertThat(objective.get("status").asText()).isEqualTo("BORRADOR");
-        assertThat(objective.get("keyResults").get(0).get("status").asText()).isEqualTo("BORRADOR");
+        assertThat(keyResult.get("status").asText()).isEqualTo("BORRADOR");
+        assertThat(keyResult.has("objectiveId")).isFalse();
 
-        JsonNode active = doPatch("/api/v1/objectives/" + objectiveId + "/status", """
+        JsonNode active = doPatch("/api/v1/key-results/" + keyResultId + "/status", """
                 {"status":"ACTIVO"}
                 """, 200);
-        assertThat(active.get("keyResults").get(0).get("status").asText()).isEqualTo("ACTIVO");
+        assertThat(active.get("status").asText()).isEqualTo("ACTIVO");
 
         JsonNode closedKr = doPatch("/api/v1/key-results/" + keyResultId + "/status", """
                 {"status":"CERRADO"}
                 """, 200);
         assertThat(closedKr.get("status").asText()).isEqualTo("CERRADO");
 
-        JsonNode closedObjective = doPatch("/api/v1/objectives/" + objectiveId + "/status", """
-                {"status":"CERRADO"}
-                """, 200);
-        assertThat(closedObjective.get("status").asText()).isEqualTo("CERRADO");
-
-        doPatch("/api/v1/objectives/" + objectiveId + "/status", """
+        doPatch("/api/v1/key-results/" + keyResultId + "/status", """
                 {"status":"ACTIVO"}
                 """, 409);
-        doPatch("/api/v1/objectives/" + objectiveId, """
-                {"name":"No permitido","description":"Un objetivo cerrado no cambia."}
-                """, 409);
+        doPut("/api/v1/key-results/" + keyResultId,
+                keyResultPayload("No permitido", periodId, goalId, strategicBetId, unitId), 409);
 
-        JsonNode audit = doGet("/api/v1/audit-logs?entityType=OBJECTIVE&entityId=" + objectiveId);
-        assertThat(audit.findValues("action").stream().map(JsonNode::asText)).contains("STATUS_CHANGE");
+        JsonNode audit = doGet("/api/v1/audit-logs?entityType=KEY_RESULT&entityId=" + keyResultId);
+        assertThat(audit.findValues("action").stream().map(JsonNode::asText)).contains("CREATE", "STATUS_CHANGE");
+        mockMvc.perform(get("/api/v1/objectives")).andExpect(status().isNotFound());
     }
 
     @Test
@@ -137,7 +123,6 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
     void happyPathBuildsStrategicHierarchyAndManagesKeyResults() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
-        Long departmentId = firstId("/api/v1/departments");
 
         Long strategicBetId = createStrategicBet("Transformacion digital " + SEQUENCE.incrementAndGet());
         Long goalId = createGoal("Impacto institucional " + SEQUENCE.incrementAndGet(), unitId);
@@ -145,29 +130,21 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         mockMvc.perform(post("/api/v1/goals/{id}/periods/{periodId}", goalId, periodId))
                 .andExpect(status().isOk());
 
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(
-                "Seguimiento de proyectos " + SEQUENCE.incrementAndGet(),
-                departmentId,
-                periodId,
-                goalId,
-                strategicBetId,
-                unitId
-        ), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        JsonNode keyResult = createKeyResult("Seguimiento de proyectos " + SEQUENCE.incrementAndGet(),
+                periodId, goalId, strategicBetId, unitId);
+        Long keyResultId = keyResult.get("id").asLong();
 
-        assertThat(objective.get("completionPercentage").decimalValue()).isEqualByComparingTo("0.00");
-        assertThat(doGet("/api/v1/objectives/" + objectiveId).get("id").asLong()).isEqualTo(objectiveId);
-        assertThat(doGet("/api/v1/objectives?strategicBetId=" + strategicBetId)).hasSize(1);
-        assertThat(doGet("/api/v1/objectives?goalId=" + goalId)).hasSize(1);
-        assertThat(ids(doGet("/api/v1/objectives?departmentId=" + departmentId))).contains(objectiveId);
-        assertThat(ids(doGet("/api/v1/objectives?periodId=" + periodId))).contains(objectiveId);
-        assertThat(doGet("/api/v1/objectives?strategicBetId=" + strategicBetId
+        assertThat(keyResult.get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(keyResult.get("academicPeriodId").asLong()).isEqualTo(periodId);
+        assertThat(keyResult.get("goals").get(0).get("id").asLong()).isEqualTo(goalId);
+        assertThat(keyResult.get("strategicBets").get(0).get("id").asLong()).isEqualTo(strategicBetId);
+        assertThat(doGet("/api/v1/key-results/" + keyResultId).get("id").asLong()).isEqualTo(keyResultId);
+        assertThat(ids(doGet("/api/v1/key-results?strategicBetId=" + strategicBetId))).containsExactly(keyResultId);
+        assertThat(ids(doGet("/api/v1/key-results?goalId=" + goalId))).containsExactly(keyResultId);
+        assertThat(ids(doGet("/api/v1/key-results?periodId=" + periodId))).contains(keyResultId);
+        assertThat(ids(doGet("/api/v1/key-results?strategicBetId=" + strategicBetId
                 + "&goalId=" + goalId
-                + "&departmentId=" + departmentId
-                + "&periodId=" + periodId)).hasSize(1);
-        assertThat(doGet("/api/v1/objectives/" + objectiveId + "/key-results")).hasSize(1);
-        assertThat(doGet("/api/v1/objectives/" + objectiveId + "/coverage-trend")).isNotEmpty();
+                + "&periodId=" + periodId))).containsExactly(keyResultId);
         assertThat(doGet("/api/v1/strategic-bets")).isNotEmpty();
         assertThat(doGet("/api/v1/goals")).isNotEmpty();
 
@@ -180,17 +157,24 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         assertThat(createdUnit.get("id").asLong()).isPositive();
         assertThat(createdPeriod.get("id").asLong()).isPositive();
 
-        JsonNode addedKr = doPost("/api/v1/objectives/" + objectiveId + "/key-results", keyResultPayload(unitId), 201);
-        JsonNode updatedKr = doPut("/api/v1/key-results/" + addedKr.get("id").asLong(), keyResultPayload(unitId), 200);
+        JsonNode betOnlyKr = createKeyResult("KR solo apuesta " + SEQUENCE.incrementAndGet(), periodId, null, strategicBetId, unitId);
+        assertThat(betOnlyKr.get("goals")).isEmpty();
+        JsonNode relinkedKr = doPut("/api/v1/key-results/" + betOnlyKr.get("id").asLong(),
+                keyResultPayload("KR solo meta " + SEQUENCE.incrementAndGet(), periodId, goalId, null, unitId), 200);
 
-        assertThat(updatedKr.get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
-        assertThat(updatedKr.get("currentValue").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(relinkedKr.get("strategicBets")).isEmpty();
+        assertThat(relinkedKr.get("goals").get(0).get("id").asLong()).isEqualTo(goalId);
+        assertThat(relinkedKr.get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(relinkedKr.get("currentValue").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(ids(doGet("/api/v1/key-results?strategicBetId=" + strategicBetId))).containsExactly(keyResultId);
+        assertThat(ids(doGet("/api/v1/key-results?goalId=" + goalId)))
+                .containsExactly(keyResultId, betOnlyKr.get("id").asLong());
         JsonNode measuredKr = doPatch("/api/v1/key-results/" + keyResultId + "/current-value", """
                 {"currentValue": 50}
                 """, 200);
         assertThat(measuredKr.get("progressPercentage").decimalValue()).isEqualByComparingTo("50.00");
 
-        mockMvc.perform(delete("/api/v1/key-results/{id}", addedKr.get("id").asLong()))
+        mockMvc.perform(delete("/api/v1/key-results/{id}", betOnlyKr.get("id").asLong()))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(delete("/api/v1/goals/{id}/periods/{periodId}", goalId, periodId))
@@ -250,16 +234,8 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         Long departmentId = firstId("/api/v1/departments");
         Long strategicBetId = createStrategicBet("Apuesta ejecucion " + SEQUENCE.incrementAndGet());
         Long goalId = createGoal("Meta ejecucion " + SEQUENCE.incrementAndGet(), unitId);
-        JsonNode objective = doPost("/api/v1/objectives", objectivePayload(
-                "Objetivo ejecucion " + SEQUENCE.incrementAndGet(),
-                departmentId,
-                periodId,
-                goalId,
-                strategicBetId,
-                unitId
-        ), 201);
-        Long objectiveId = objective.get("id").asLong();
-        Long keyResultId = objective.get("keyResults").get(0).get("id").asLong();
+        Long keyResultId = createKeyResult("KR ejecucion " + SEQUENCE.incrementAndGet(), periodId, goalId, strategicBetId, unitId)
+                .get("id").asLong();
         Long projectId = createProject("Proyecto vinculado " + SEQUENCE.incrementAndGet(), departmentId);
 
         JsonNode link = doPost("/api/v1/project-key-result-links", """
@@ -284,12 +260,14 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
                 {"status": "FINALIZADO"}
                 """, 200);
 
-        JsonNode keyResults = doGet("/api/v1/objectives/" + objectiveId + "/key-results");
+        JsonNode keyResultAfter = doGet("/api/v1/key-results/" + keyResultId);
         JsonNode chainAfter = doGet("/api/v1/projects/" + projectId + "/impact-chain");
         JsonNode bet = doGet("/api/v1/strategic-bets/" + strategicBetId + "?period=2026-Q2");
         JsonNode tree = doGet("/api/v1/strategic-hierarchy/tree?period=2026-Q2");
 
-        assertThat(keyResults.get(0).get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(chainAfter.get("impacts").get(0).get("goalNames").get(0).asText()).startsWith("Meta ejecucion");
+        assertThat(chainAfter.get("impacts").get(0).get("strategicBetNames").get(0).asText()).startsWith("Apuesta ejecucion");
+        assertThat(keyResultAfter.get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
         assertThat(chainAfter.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("60.00");
         assertThat(bet.get("executionSummary").get("completedProjects").asInt()).isEqualTo(1);
         assertThat(tree.findValues("completedProjects").stream().map(JsonNode::asInt)).contains(1);

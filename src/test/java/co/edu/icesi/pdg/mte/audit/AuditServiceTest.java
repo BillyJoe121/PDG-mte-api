@@ -100,16 +100,16 @@ class AuditServiceTest {
     @Test
     void summarizesActorsAndBuildsContinuousDailyTrend() {
         AuditService service = new AuditService(repository, new ObjectMapper());
-        AuditLog first = log(AuditAction.CREATE, "OBJECTIVE", "1");
+        AuditLog first = log(AuditAction.CREATE, "KEY_RESULT", "1");
         first.setActorUsername("admin");
         ReflectionTestUtils.setField(first, "createdAt", Instant.parse("2026-04-01T10:00:00Z"));
-        AuditLog second = log(AuditAction.UPDATE, "OBJECTIVE", "1");
+        AuditLog second = log(AuditAction.UPDATE, "KEY_RESULT", "1");
         second.setActorUsername("admin");
         ReflectionTestUtils.setField(second, "createdAt", Instant.parse("2026-04-03T10:00:00Z"));
         when(repository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(second, first));
 
         var summary = service.summary(
-                null, "OBJECTIVE", null, "admin",
+                null, "KEY_RESULT", null, "admin",
                 Instant.parse("2026-04-01T00:00:00Z"),
                 Instant.parse("2026-04-03T23:59:59Z")
         );

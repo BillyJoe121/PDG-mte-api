@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -17,21 +18,24 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 class StrategyExecutionSummaryService {
     private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d{4}-(Q[1-4]|[1-2])$");
+    private static final String SUMMARY_TEMPLATE =
+            "%d KRs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo.";
 
-    private final ObjectiveRepository objectiveRepository;
+    private final KeyResultRepository keyResultRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
 
     StrategyExecutionSummaryService(
-            ObjectiveRepository objectiveRepository,
+            KeyResultRepository keyResultRepository,
             ProjectKeyResultLinkRepository linkRepository
     ) {
-        this.objectiveRepository = objectiveRepository;
+        this.keyResultRepository = keyResultRepository;
         this.linkRepository = linkRepository;
     }
 
@@ -44,36 +48,24 @@ class StrategyExecutionSummaryService {
     }
 
     Map<Long, StrategyDtos.ExecutionSummaryResponse> forBets(Collection<Long> betIds, String periodFilter) {
-        Map<Long, List<Objective>> objectivesByBet = objectiveRepository.findAll()
+        Map<Long, List<KeyResult>> keyResultsByBet = groupByOwner(betIds, keyResult -> keyResult.getStrategicBets()
                 .stream()
-                .filter(objective -> objective.getStrategicBet() != null)
-                .filter(objective -> betIds.contains(objective.getStrategicBet().getId()))
-                .collect(java.util.stream.Collectors.groupingBy(
-                        objective -> objective.getStrategicBet().getId(),
-                        LinkedHashMap::new,
-                        java.util.stream.Collectors.toList()
-                ));
-        return buildAll(betIds, objectivesByBet, periodFilter);
+                .map(StrategicBet::getId)
+                .toList());
+        return buildAll(betIds, keyResultsByBet, periodFilter);
     }
 
     Map<Long, StrategyDtos.ExecutionSummaryResponse> forGoals(Collection<Long> goalIds, String periodFilter) {
-        Map<Long, List<Objective>> objectivesByGoal = objectiveRepository.findAll()
+        Map<Long, List<KeyResult>> keyResultsByGoal = groupByOwner(goalIds, keyResult -> keyResult.getGoals()
                 .stream()
-                .filter(objective -> objective.getGoal() != null)
-                .filter(objective -> goalIds.contains(objective.getGoal().getId()))
-                .collect(java.util.stream.Collectors.groupingBy(
-                        objective -> objective.getGoal().getId(),
-                        LinkedHashMap::new,
-                        java.util.stream.Collectors.toList()
-                ));
-        return buildAll(goalIds, objectivesByGoal, periodFilter);
+                .map(InstitutionalGoal::getId)
+                .toList());
+        return buildAll(goalIds, keyResultsByGoal, periodFilter);
     }
 
     StrategyDtos.ExecutionSummaryResponse empty() {
         return new StrategyDtos.ExecutionSummaryResponse(
-                "0 objetivos completos, 0 en desarrollo. 0 KPIs completos, 0 en desarrollo. 0 proyectos completados, 0 en desarrollo.",
-                0,
-                0,
+                SUMMARY_TEMPLATE.formatted(0, 0, 0, 0),
                 0,
                 0,
                 0,
@@ -82,42 +74,51 @@ class StrategyExecutionSummaryService {
         );
     }
 
+    private Map<Long, List<KeyResult>> groupByOwner(
+            Collection<Long> ownerIds,
+            Function<KeyResult, List<Long>> ownersOf
+    ) {
+        Map<Long, List<KeyResult>> keyResultsByOwner = new LinkedHashMap<>();
+        for (KeyResult keyResult : keyResultRepository.findAll()) {
+            for (Long ownerId : ownersOf.apply(keyResult)) {
+                if (ownerIds.contains(ownerId)) {
+                    keyResultsByOwner.computeIfAbsent(ownerId, ignored -> new ArrayList<>()).add(keyResult);
+                }
+            }
+        }
+        return keyResultsByOwner;
+    }
+
     private Map<Long, StrategyDtos.ExecutionSummaryResponse> buildAll(
             Collection<Long> ownerIds,
-            Map<Long, List<Objective>> objectivesByOwner,
+            Map<Long, List<KeyResult>> keyResultsByOwner,
             String periodFilter
     ) {
         Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(
-                objectivesByOwner.values().stream().flatMap(Collection::stream).toList()
+                keyResultsByOwner.values().stream().flatMap(Collection::stream).toList()
         );
         Map<Long, StrategyDtos.ExecutionSummaryResponse> summaries = new LinkedHashMap<>();
         for (Long ownerId : ownerIds) {
-            summaries.put(ownerId, build(objectivesByOwner.getOrDefault(ownerId, List.of()), periodFilter, linksByKeyResult));
+            summaries.put(ownerId, build(keyResultsByOwner.getOrDefault(ownerId, List.of()), periodFilter, linksByKeyResult));
         }
         return summaries;
     }
 
     private StrategyDtos.ExecutionSummaryResponse build(
-            List<Objective> objectives,
+            List<KeyResult> keyResults,
             String periodFilter,
             Map<Long, List<ProjectKeyResultLink>> linksByKeyResult
     ) {
         Map<String, ExecutionAccumulator> byPeriod = new LinkedHashMap<>();
         ExecutionAccumulator total = new ExecutionAccumulator();
 
-        for (Objective objective : objectives) {
-            Set<String> objectivePeriods = new LinkedHashSet<>();
-            for (KeyResult keyResult : objective.getKeyResults()) {
-                List<ProjectKeyResultLink> links = linksByKeyResult.getOrDefault(keyResult.getId(), List.of());
-                if (links.isEmpty()) {
-                    addUnlinkedKeyResult(periodFilter, byPeriod, objectivePeriods, objective, keyResult);
-                    continue;
-                }
-                addLinkedKeyResult(periodFilter, byPeriod, objectivePeriods, objective, keyResult, links);
+        for (KeyResult keyResult : keyResults) {
+            List<ProjectKeyResultLink> links = linksByKeyResult.getOrDefault(keyResult.getId(), List.of());
+            if (links.isEmpty()) {
+                addUnlinkedKeyResult(periodFilter, byPeriod, keyResult);
+                continue;
             }
-            for (String period : objectivePeriods) {
-                byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addObjective(objective);
-            }
+            addLinkedKeyResult(periodFilter, byPeriod, keyResult, links);
         }
 
         byPeriod.values().forEach(total::merge);
@@ -129,9 +130,8 @@ class StrategyExecutionSummaryService {
         return total.toResponse(periodResponses);
     }
 
-    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<Objective> objectives) {
-        List<Long> keyResultIds = objectives.stream()
-                .flatMap(objective -> objective.getKeyResults().stream())
+    private Map<Long, List<ProjectKeyResultLink>> linksByKeyResult(List<KeyResult> keyResults) {
+        List<Long> keyResultIds = keyResults.stream()
                 .map(KeyResult::getId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()
@@ -151,13 +151,10 @@ class StrategyExecutionSummaryService {
     private void addUnlinkedKeyResult(
             String periodFilter,
             Map<String, ExecutionAccumulator> byPeriod,
-            Set<String> objectivePeriods,
-            Objective objective,
             KeyResult keyResult
     ) {
-        String period = objective.getAcademicPeriod().getName();
+        String period = periodOf(null, keyResult);
         if (periodMatches(period, periodFilter)) {
-            objectivePeriods.add(period);
             byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addKeyResult(keyResult);
         }
     }
@@ -165,24 +162,25 @@ class StrategyExecutionSummaryService {
     private void addLinkedKeyResult(
             String periodFilter,
             Map<String, ExecutionAccumulator> byPeriod,
-            Set<String> objectivePeriods,
-            Objective objective,
             KeyResult keyResult,
             List<ProjectKeyResultLink> links
     ) {
         for (ProjectKeyResultLink link : links) {
             Project project = link.getProject();
-            String period = periodOf(project, objective);
+            String period = periodOf(project, keyResult);
             if (!periodMatches(period, periodFilter)) {
                 continue;
             }
-            objectivePeriods.add(period);
             byPeriod.computeIfAbsent(period, ExecutionAccumulator::new).addKeyResult(keyResult);
             byPeriod.get(period).addProject(project);
         }
     }
 
     private boolean periodMatches(String period, String periodFilter) {
+        if (period == null) {
+            // KR heredado sin periodo académico ni proyecto con periodo: no se puede ubicar en el tiempo.
+            return false;
+        }
         if (periodFilter == null || periodFilter.isBlank()) {
             return true;
         }
@@ -219,17 +217,14 @@ class StrategyExecutionSummaryService {
         return first.startIndex() <= second.endIndex() && second.startIndex() <= first.endIndex();
     }
 
-    private String periodOf(Project project, Objective fallbackObjective) {
-        if (project == null) {
-            return fallbackObjective.getAcademicPeriod().getName();
-        }
-        if (project.getEndPeriod() != null && !project.getEndPeriod().isBlank()) {
+    private String periodOf(Project project, KeyResult fallbackKeyResult) {
+        if (project != null && project.getEndPeriod() != null && !project.getEndPeriod().isBlank()) {
             return project.getEndPeriod();
         }
-        if (project.getStartPeriod() != null && !project.getStartPeriod().isBlank()) {
+        if (project != null && project.getStartPeriod() != null && !project.getStartPeriod().isBlank()) {
             return project.getStartPeriod();
         }
-        return fallbackObjective.getAcademicPeriod().getName();
+        return fallbackKeyResult.getAcademicPeriod() == null ? null : fallbackKeyResult.getAcademicPeriod().getName();
     }
 
     private record PeriodRange(int startIndex, int endIndex) {
@@ -237,8 +232,6 @@ class StrategyExecutionSummaryService {
 
     private static final class ExecutionAccumulator {
         private final String period;
-        private final Set<Long> completedObjectives = new LinkedHashSet<>();
-        private final Set<Long> inProgressObjectives = new LinkedHashSet<>();
         private final Set<Long> completedKeyResults = new LinkedHashSet<>();
         private final Set<Long> inProgressKeyResults = new LinkedHashSet<>();
         private final Set<Long> completedProjects = new LinkedHashSet<>();
@@ -254,17 +247,6 @@ class StrategyExecutionSummaryService {
 
         private String period() {
             return period;
-        }
-
-        private void addObjective(Objective objective) {
-            if (objective.completionPercentage().compareTo(BigDecimal.valueOf(100)) >= 0) {
-                completedObjectives.add(objective.getId());
-                inProgressObjectives.remove(objective.getId());
-                return;
-            }
-            if (!completedObjectives.contains(objective.getId())) {
-                inProgressObjectives.add(objective.getId());
-            }
         }
 
         private void addKeyResult(KeyResult keyResult) {
@@ -294,9 +276,6 @@ class StrategyExecutionSummaryService {
         }
 
         private void merge(ExecutionAccumulator other) {
-            completedObjectives.addAll(other.completedObjectives);
-            inProgressObjectives.addAll(other.inProgressObjectives);
-            inProgressObjectives.removeAll(completedObjectives);
             completedKeyResults.addAll(other.completedKeyResults);
             inProgressKeyResults.addAll(other.inProgressKeyResults);
             inProgressKeyResults.removeAll(completedKeyResults);
@@ -308,8 +287,6 @@ class StrategyExecutionSummaryService {
         private StrategyDtos.PeriodExecutionSummaryResponse toPeriodResponse() {
             return new StrategyDtos.PeriodExecutionSummaryResponse(
                     period,
-                    completedObjectives.size(),
-                    inProgressObjectives.size(),
                     completedKeyResults.size(),
                     inProgressKeyResults.size(),
                     completedProjects.size(),
@@ -319,17 +296,12 @@ class StrategyExecutionSummaryService {
 
         private StrategyDtos.ExecutionSummaryResponse toResponse(List<StrategyDtos.PeriodExecutionSummaryResponse> periods) {
             return new StrategyDtos.ExecutionSummaryResponse(
-                    "%d objetivos completos, %d en desarrollo. %d KPIs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo."
-                            .formatted(
-                                    completedObjectives.size(),
-                                    inProgressObjectives.size(),
-                                    completedKeyResults.size(),
-                                    inProgressKeyResults.size(),
-                                    completedProjects.size(),
-                                    inProgressProjects.size()
-                            ),
-                    completedObjectives.size(),
-                    inProgressObjectives.size(),
+                    SUMMARY_TEMPLATE.formatted(
+                            completedKeyResults.size(),
+                            inProgressKeyResults.size(),
+                            completedProjects.size(),
+                            inProgressProjects.size()
+                    ),
                     completedKeyResults.size(),
                     inProgressKeyResults.size(),
                     completedProjects.size(),
