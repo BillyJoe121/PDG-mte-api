@@ -29,9 +29,9 @@ public class DashboardController {
         return dashboardService.projectsByStatus(period);
     }
 
-    @GetMapping("/key-results/by-progress")
-    public List<DashboardDtos.ProgressBucketResponse> keyResultsByProgress(@RequestParam(required = false) String period) {
-        return dashboardService.keyResultsByProgress(period);
+    @GetMapping("/key-results/by-status")
+    public List<DashboardDtos.CountByStatusResponse> keyResultsByStatus(@RequestParam(required = false) String period) {
+        return dashboardService.keyResultsByStatus(period);
     }
 
     @GetMapping("/departments/summary")

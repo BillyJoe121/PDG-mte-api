@@ -1,7 +1,5 @@
 package co.edu.icesi.pdg.mte.api.dto;
 
-import java.math.BigDecimal;
-
 public final class DashboardDtos {
     private DashboardDtos() {
     }
@@ -14,24 +12,14 @@ public final class DashboardDtos {
             long suspendedProjects,
             long archivedProjects,
             long keyResultsInFollowUp,
-            long lowCompletionKeyResults,
-            long completedKeyResults,
-            long keyResultsAbove50,
-            long keyResultsBetween0And50,
-            long keyResultsAtZero,
-            long inProgressKeyResults,
-            BigDecimal averageKeyResultCoverage
+            long draftKeyResults,
+            long activeKeyResults,
+            long closedKeyResults
     ) {
     }
 
     public record CountByStatusResponse(
             String status,
-            long count
-    ) {
-    }
-
-    public record ProgressBucketResponse(
-            String bucket,
             long count
     ) {
     }
@@ -42,11 +30,9 @@ public final class DashboardDtos {
             long activeProjects,
             long completedProjects,
             long keyResults,
-            long completedKeyResults,
-            long keyResultsAbove50,
-            long keyResultsBetween0And50,
-            long keyResultsAtZero,
-            long inProgressKeyResults
+            long draftKeyResults,
+            long activeKeyResults,
+            long closedKeyResults
     ) {
     }
 
@@ -54,10 +40,9 @@ public final class DashboardDtos {
             Long strategicBetId,
             String strategicBetName,
             long keyResults,
-            long completedKeyResults,
-            long keyResultsAbove50,
-            long keyResultsBetween0And50,
-            long keyResultsAtZero,
+            long draftKeyResults,
+            long activeKeyResults,
+            long closedKeyResults,
             long completedProjects,
             long inProgressProjects
     ) {
@@ -67,10 +52,9 @@ public final class DashboardDtos {
             Long goalId,
             String goalName,
             long keyResults,
-            long completedKeyResults,
-            long keyResultsAbove50,
-            long keyResultsBetween0And50,
-            long keyResultsAtZero,
+            long draftKeyResults,
+            long activeKeyResults,
+            long closedKeyResults,
             long completedProjects,
             long inProgressProjects
     ) {

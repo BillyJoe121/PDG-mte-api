@@ -52,11 +52,18 @@ class DashboardE2ETest {
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);
+        JsonNode keyResultAfterProjectClosure = doGet("/api/v1/key-results/" + keyResultId, 200);
+        doPatch("/api/v1/key-results/" + keyResultId + "/status", """
+                {"status": "ACTIVO"}
+                """, 200);
+        doPatch("/api/v1/key-results/" + keyResultId + "/status", """
+                {"status": "CERRADO"}
+                """, 200);
 
         JsonNode summary = doGet("/api/v1/dashboard/summary?period=2026-1", 200);
         JsonNode globalSummary = doGet("/api/v1/dashboard/summary", 200);
         JsonNode statusChart = doGet("/api/v1/dashboard/projects/by-status?period=2026-1", 200);
-        JsonNode krChart = doGet("/api/v1/dashboard/key-results/by-progress?period=2026-1", 200);
+        JsonNode krChart = doGet("/api/v1/dashboard/key-results/by-status?period=2026-1", 200);
         JsonNode departments = doGet("/api/v1/dashboard/departments/summary?period=2026-1", 200);
         JsonNode bets = doGet("/api/v1/dashboard/strategic-bets/summary?period=2026-1", 200);
         JsonNode goals = doGet("/api/v1/dashboard/goals/summary?period=2026-1", 200);
@@ -72,35 +79,41 @@ class DashboardE2ETest {
         assertThat(summary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(globalSummary.hasNonNull("period")).isFalse();
         assertThat(globalSummary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(summary.get("completedProjects").asLong());
-        assertThat(summary.get("completedKeyResults").asLong()).isGreaterThanOrEqualTo(1);
+        assertThat(summary.get("closedKeyResults").asLong()).isGreaterThanOrEqualTo(1);
+        assertThat(summary.has("averageKeyResultCoverage")).isFalse();
+        assertThat(keyResultAfterProjectClosure.get("progressPercentage").decimalValue()).isEqualByComparingTo("0");
+        assertThat(keyResultAfterProjectClosure.get("currentValue").decimalValue()).isEqualByComparingTo("0");
         assertThat(statusChart.findValues("status").stream().map(JsonNode::asText))
                 .contains("BORRADOR", "ACTIVO", "FINALIZADO", "SUSPENDIDO", "ARCHIVADO");
-        assertThat(krChart.findValues("bucket").stream().map(JsonNode::asText))
-                .containsExactly("COMPLETED", "ON_TRACK", "AT_RISK", "LOW");
+        assertThat(krChart.findValues("status").stream().map(JsonNode::asText))
+                .containsExactly("BORRADOR", "ACTIVO", "CERRADO");
+        assertThat(krChart.get(2).get("count").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(departments.findValues("departmentId").stream().map(JsonNode::asLong))
                 .contains(departmentId);
         assertThat(bets.findValues("strategicBetId").stream().map(JsonNode::asLong))
                 .contains(betId);
         assertThat(bets.findValues("completedObjectives")).isEmpty();
-        assertThat(bets.findValues("completedKeyResults").stream().map(JsonNode::asLong))
+        assertThat(bets.findValues("closedKeyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
         assertThat(goals.findValues("goalId").stream().map(JsonNode::asLong))
                 .contains(goalId);
         assertThat(goals.findValues("completedObjectives")).isEmpty();
-        assertThat(goals.findValues("completedKeyResults").stream().map(JsonNode::asLong))
+        assertThat(goals.findValues("closedKeyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
         assertThat(summary.has("objectivesInFollowUp")).isFalse();
         assertThat(summary.get("keyResultsInFollowUp").isNumber()).isTrue();
         assertThat(departments.findValues("keyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
-        assertThat(contributionChain.get("impacts").get(0).get("appliedContribution").decimalValue())
-                .isEqualByComparingTo("100.00");
+        assertThat(contributionChain.get("impacts").get(0).get("contributionWeight").decimalValue())
+                .isEqualByComparingTo("100");
+        assertThat(contributionChain.get("impacts").get(0).has("appliedContribution")).isFalse();
         assertThat(generalReport.get("totalProjects").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(departmentsReport).isNotEmpty();
         assertThat(rankingReport.findValues("keyResultId").stream().map(JsonNode::asLong)).contains(keyResultId);
         assertThat(rankingReport.findValues("objectiveId")).isEmpty();
         assertThat(comparisonReport.has("objectiveCoverageDelta")).isFalse();
-        assertThat(comparisonReport.get("keyResultCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(comparisonReport.has("keyResultCoverageDelta")).isFalse();
+        assertThat(comparisonReport.get("base").get("closedKeyResults").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(presentation.get("slides").findValues("type").stream().map(JsonNode::asText))
                 .contains("COVER", "STRATEGIC_BET", "CLOSING");
     }
@@ -109,7 +122,7 @@ class DashboardE2ETest {
     void sadPathsRejectMalformedDashboardPeriods() throws Exception {
         doGet("/api/v1/dashboard/summary?period=2026-X", 400);
         doGet("/api/v1/dashboard/projects/by-status?period=2026-0", 400);
-        doGet("/api/v1/dashboard/key-results/by-progress?period=abc", 400);
+        doGet("/api/v1/dashboard/key-results/by-status?period=abc", 400);
         doGet("/api/v1/dashboard/departments/summary?period=2026-Q5", 400);
         doGet("/api/v1/dashboard/strategic-bets/summary?period=26-1", 400);
         doGet("/api/v1/dashboard/goals/summary?period=26-1", 400);
@@ -173,13 +186,14 @@ class DashboardE2ETest {
         assertThat(consolidated.get("keyResultRanking").findValues("keyResultId").stream().map(JsonNode::asLong))
                 .contains(keyResultId);
         assertThat(consolidated.get("keyResultRanking").get(0).get("goalNames").isArray()).isTrue();
-        assertThat(comparison.get("keyResultCoverageDelta").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(comparison.has("keyResultCoverageDelta")).isFalse();
+        assertThat(comparison.get("compare").get("totalKeyResults").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(presentation.get("controls").get("fullscreenEnabled").asBoolean()).isTrue();
         assertThat(presentation.get("controls").get("keyboardNavigationEnabled").asBoolean()).isTrue();
         assertThat(presentation.get("controls").get("nextKeys").toString()).contains("ArrowRight", "Space");
         assertThat(csvResponse.getHeader("Content-Disposition")).contains("msp-report.csv");
-        assertThat(csvResponse.getContentAsString()).contains("seccion,nombre,valor", "general,totalProyectos", "general,totalKRs");
-        assertThat(csvResponse.getContentAsString().toLowerCase()).doesNotContain("objective");
+        assertThat(csvResponse.getContentAsString()).contains("seccion,nombre,valor", "general,totalProyectos", "general,totalKRs", "general,krsCerrados", "krAvanceRegistrado,");
+        assertThat(csvResponse.getContentAsString().toLowerCase()).doesNotContain("objective", "cobertura");
         assertThat(pdfResponse.getHeader("Content-Disposition")).contains("msp-report.pdf");
         assertThat(pdfResponse.getContentAsString()).startsWith("%PDF-1.4");
     }

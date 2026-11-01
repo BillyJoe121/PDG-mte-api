@@ -12,12 +12,12 @@ import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
+import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,13 +68,7 @@ public class ReportService {
         String normalizedCompare = requirePeriod(comparePeriod, "comparePeriod");
         ReportDtos.GeneralReportResponse base = general(normalizedBase, departmentId);
         ReportDtos.GeneralReportResponse compare = general(normalizedCompare, departmentId);
-        return new ReportDtos.PeriodComparisonResponse(
-                normalizedBase,
-                normalizedCompare,
-                base,
-                compare,
-                compare.averageKeyResultCoverage().subtract(base.averageKeyResultCoverage()).setScale(2, RoundingMode.HALF_UP)
-        );
+        return new ReportDtos.PeriodComparisonResponse(normalizedBase, normalizedCompare, base, compare);
     }
 
     public ReportDtos.ConsolidatedReportResponse consolidated(String period, Long departmentId) {
@@ -96,14 +90,18 @@ public class ReportService {
         csv.append("general,proyectosActivos,").append(report.general().activeProjects()).append('\n');
         csv.append("general,proyectosFinalizados,").append(report.general().completedProjects()).append('\n');
         csv.append("general,totalKRs,").append(report.general().totalKeyResults()).append('\n');
-        csv.append("general,coberturaPromedioKRs,").append(report.general().averageKeyResultCoverage()).append('\n');
+        csv.append("general,krsActivos,").append(report.general().activeKeyResults()).append('\n');
+        csv.append("general,krsCerrados,").append(report.general().closedKeyResults()).append('\n');
         for (ReportDtos.DepartmentReportResponse department : report.departments()) {
-            csv.append("departamento,").append(escapeCsv(department.departmentName())).append(',')
-                    .append(department.averageKeyResultCoverage()).append('\n');
+            String name = escapeCsv(department.departmentName());
+            csv.append("departamentoProyectos,").append(name).append(',').append(department.projects()).append('\n');
+            csv.append("departamentoKRs,").append(name).append(',').append(department.keyResults()).append('\n');
+            csv.append("departamentoKRsCerrados,").append(name).append(',').append(department.closedKeyResults()).append('\n');
         }
         for (ReportDtos.KeyResultRankingResponse keyResult : report.keyResultRanking()) {
-            csv.append("kr,").append(escapeCsv(keyResult.keyResultName())).append(',')
-                    .append(keyResult.coveragePercentage()).append('\n');
+            csv.append("krAvanceRegistrado,").append(escapeCsv(keyResult.keyResultName())).append(',')
+                    .append(keyResult.progressPercentage() == null ? "" : keyResult.progressPercentage().toPlainString())
+                    .append('\n');
         }
         return csv.toString();
     }
@@ -125,7 +123,8 @@ public class ReportService {
                 projects.stream().filter(project -> project.getStatus() == ProjectStatus.ACTIVO).count(),
                 projects.stream().filter(project -> project.getStatus() == ProjectStatus.FINALIZADO).count(),
                 keyResults.size(),
-                averageKeyResultCoverage(keyResults)
+                countByStatus(keyResults, KeyResultStatus.ACTIVO),
+                countByStatus(keyResults, KeyResultStatus.CERRADO)
         );
     }
 
@@ -141,7 +140,7 @@ public class ReportService {
                             department.getName(),
                             projectsOf(snapshot, department.getId()).size(),
                             keyResults.size(),
-                            averageKeyResultCoverage(keyResults)
+                            countByStatus(keyResults, KeyResultStatus.CERRADO)
                     );
                 })
                 .toList();
@@ -150,14 +149,16 @@ public class ReportService {
     private List<ReportDtos.KeyResultRankingResponse> keyResultRanking(Snapshot snapshot, Long departmentId) {
         return keyResultsOf(snapshot, departmentId)
                 .stream()
-                .sorted(Comparator.comparing(this::progressOf).reversed().thenComparing(KeyResult::getId))
+                .sorted(Comparator.comparing(KeyResult::getProgressPercentage,
+                                Comparator.nullsLast(Comparator.<BigDecimal>reverseOrder()))
+                        .thenComparing(KeyResult::getId))
                 .map(keyResult -> new ReportDtos.KeyResultRankingResponse(
                         keyResult.getId(),
                         keyResult.getName(),
                         Mapper.goalNames(keyResult),
                         Mapper.strategicBetNames(keyResult),
                         keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
-                        progressOf(keyResult),
+                        keyResult.getProgressPercentage(),
                         snapshot.linksByKeyResult().getOrDefault(keyResult.getId(), List.of()).size()
                 ))
                 .toList();
@@ -256,18 +257,8 @@ public class ReportService {
         return overlaps(parsePeriod(keyResult.getAcademicPeriod().getName()), parsePeriod(period));
     }
 
-    private BigDecimal progressOf(KeyResult keyResult) {
-        return keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
-    }
-
-    private BigDecimal averageKeyResultCoverage(List<KeyResult> keyResults) {
-        if (keyResults.isEmpty()) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        BigDecimal total = keyResults.stream()
-                .map(this::progressOf)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.divide(BigDecimal.valueOf(keyResults.size()), 2, RoundingMode.HALF_UP);
+    private long countByStatus(List<KeyResult> keyResults, KeyResultStatus status) {
+        return keyResults.stream().filter(keyResult -> keyResult.getStatus() == status).count();
     }
 
     private String normalizePeriod(String period) {

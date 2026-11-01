@@ -14,7 +14,8 @@ public final class ReportDtos {
             long activeProjects,
             long completedProjects,
             long totalKeyResults,
-            BigDecimal averageKeyResultCoverage
+            long activeKeyResults,
+            long closedKeyResults
     ) {
     }
 
@@ -23,7 +24,7 @@ public final class ReportDtos {
             String departmentName,
             long projects,
             long keyResults,
-            BigDecimal averageKeyResultCoverage
+            long closedKeyResults
     ) {
     }
 
@@ -33,7 +34,7 @@ public final class ReportDtos {
             List<String> goalNames,
             List<String> strategicBetNames,
             String period,
-            BigDecimal coveragePercentage,
+            BigDecimal progressPercentage,
             int linkedProjects
     ) {
     }
@@ -42,8 +43,7 @@ public final class ReportDtos {
             String basePeriod,
             String comparePeriod,
             GeneralReportResponse base,
-            GeneralReportResponse compare,
-            BigDecimal keyResultCoverageDelta
+            GeneralReportResponse compare
     ) {
     }
 

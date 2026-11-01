@@ -20,8 +20,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -37,9 +35,6 @@ import java.util.regex.Pattern;
 @Transactional(readOnly = true)
 public class DashboardService {
     private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d{4}-(Q[1-4]|[1-2])$");
-    private static final BigDecimal COMPLETED = BigDecimal.valueOf(100);
-    private static final BigDecimal ON_TRACK = BigDecimal.valueOf(60);
-    private static final BigDecimal AT_RISK = BigDecimal.valueOf(30);
 
     private final ProjectRepository projectRepository;
     private final KeyResultRepository keyResultRepository;
@@ -68,7 +63,7 @@ public class DashboardService {
         String normalizedPeriod = resolvePeriod(period);
         List<Project> projects = filteredProjects(normalizedPeriod);
         List<KeyResult> keyResults = filteredKeyResults(normalizedPeriod);
-        ProgressBuckets buckets = progressBuckets(keyResults);
+        KeyResultStatusCounts statusCounts = statusCounts(keyResults);
 
         return new DashboardDtos.DashboardSummaryResponse(
                 normalizedPeriod,
@@ -77,14 +72,10 @@ public class DashboardService {
                 countProjects(projects, ProjectStatus.BORRADOR),
                 countProjects(projects, ProjectStatus.SUSPENDIDO),
                 countProjects(projects, ProjectStatus.ARCHIVADO),
-                keyResults.stream().filter(keyResult -> keyResult.getStatus() == KeyResultStatus.ACTIVO).count(),
-                keyResults.stream().filter(keyResult -> progressOf(keyResult).compareTo(AT_RISK) < 0).count(),
-                buckets.completed(),
-                buckets.above50(),
-                buckets.between0And50(),
-                buckets.atZero(),
-                keyResults.size() - buckets.completed(),
-                averageKeyResultCoverage(keyResults)
+                statusCounts.active(),
+                statusCounts.draft(),
+                statusCounts.active(),
+                statusCounts.closed()
         );
     }
 
@@ -96,20 +87,11 @@ public class DashboardService {
                 .toList();
     }
 
-    public List<DashboardDtos.ProgressBucketResponse> keyResultsByProgress(String period) {
-        Map<String, Long> buckets = new LinkedHashMap<>();
-        buckets.put("COMPLETED", 0L);
-        buckets.put("ON_TRACK", 0L);
-        buckets.put("AT_RISK", 0L);
-        buckets.put("LOW", 0L);
-
-        filteredKeyResults(resolvePeriod(period)).stream()
-                .map(this::progressBucket)
-                .forEach(bucket -> buckets.merge(bucket, 1L, Long::sum));
-
-        return buckets.entrySet()
+    public List<DashboardDtos.CountByStatusResponse> keyResultsByStatus(String period) {
+        List<KeyResult> keyResults = filteredKeyResults(resolvePeriod(period));
+        return List.of(KeyResultStatus.values())
                 .stream()
-                .map(entry -> new DashboardDtos.ProgressBucketResponse(entry.getKey(), entry.getValue()))
+                .map(status -> new DashboardDtos.CountByStatusResponse(status.name(), countKeyResults(keyResults, status)))
                 .toList();
     }
 
@@ -148,10 +130,9 @@ public class DashboardService {
                             bet.getId(),
                             bet.getName(),
                             breakdown.keyResults(),
-                            breakdown.buckets().completed(),
-                            breakdown.buckets().above50(),
-                            breakdown.buckets().between0And50(),
-                            breakdown.buckets().atZero(),
+                            breakdown.statusCounts().draft(),
+                            breakdown.statusCounts().active(),
+                            breakdown.statusCounts().closed(),
                             breakdown.completedProjects(),
                             breakdown.inProgressProjects()
                     );
@@ -178,10 +159,9 @@ public class DashboardService {
                             goal.getId(),
                             goal.getName(),
                             breakdown.keyResults(),
-                            breakdown.buckets().completed(),
-                            breakdown.buckets().above50(),
-                            breakdown.buckets().between0And50(),
-                            breakdown.buckets().atZero(),
+                            breakdown.statusCounts().draft(),
+                            breakdown.statusCounts().active(),
+                            breakdown.statusCounts().closed(),
                             breakdown.completedProjects(),
                             breakdown.inProgressProjects()
                     );
@@ -202,7 +182,7 @@ public class DashboardService {
         List<KeyResult> departmentKeyResults = keyResults.stream()
                 .filter(keyResult -> departmentsByKeyResult.getOrDefault(keyResult.getId(), Set.of()).contains(department.getId()))
                 .toList();
-        ProgressBuckets buckets = progressBuckets(departmentKeyResults);
+        KeyResultStatusCounts statusCounts = statusCounts(departmentKeyResults);
 
         return new DashboardDtos.DepartmentExecutionResponse(
                 department.getId(),
@@ -210,11 +190,9 @@ public class DashboardService {
                 countProjects(departmentProjects, ProjectStatus.ACTIVO),
                 countProjects(departmentProjects, ProjectStatus.FINALIZADO),
                 departmentKeyResults.size(),
-                buckets.completed(),
-                buckets.above50(),
-                buckets.between0And50(),
-                buckets.atZero(),
-                departmentKeyResults.size() - buckets.completed()
+                statusCounts.draft(),
+                statusCounts.active(),
+                statusCounts.closed()
         );
     }
 
@@ -264,7 +242,7 @@ public class DashboardService {
         }
 
         return new ExecutionBreakdown(
-                progressBuckets(keyResults),
+                statusCounts(keyResults),
                 keyResults.size(),
                 completedProjects.size(),
                 inProgressProjects.size()
@@ -368,64 +346,26 @@ public class DashboardService {
         return projects.stream().filter(project -> project.getStatus() == status).count();
     }
 
-    private String progressBucket(KeyResult keyResult) {
-        BigDecimal progress = progressOf(keyResult);
-        if (progress.compareTo(COMPLETED) >= 0) {
-            return "COMPLETED";
-        }
-        if (progress.compareTo(ON_TRACK) >= 0) {
-            return "ON_TRACK";
-        }
-        if (progress.compareTo(AT_RISK) >= 0) {
-            return "AT_RISK";
-        }
-        return "LOW";
+    private long countKeyResults(List<KeyResult> keyResults, KeyResultStatus status) {
+        return keyResults.stream().filter(keyResult -> keyResult.getStatus() == status).count();
     }
 
-    private BigDecimal progressOf(KeyResult keyResult) {
-        return keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
-    }
-
-    private ProgressBuckets progressBuckets(List<KeyResult> keyResults) {
-        long completed = 0;
-        long above50 = 0;
-        long between0And50 = 0;
-        long atZero = 0;
-
-        for (KeyResult keyResult : keyResults) {
-            BigDecimal progress = progressOf(keyResult);
-            if (progress.compareTo(COMPLETED) >= 0) {
-                completed++;
-            } else if (progress.compareTo(BigDecimal.valueOf(50)) > 0) {
-                above50++;
-            } else if (progress.compareTo(BigDecimal.ZERO) > 0) {
-                between0And50++;
-            } else {
-                atZero++;
-            }
-        }
-
-        return new ProgressBuckets(completed, above50, between0And50, atZero);
-    }
-
-    private BigDecimal averageKeyResultCoverage(List<KeyResult> keyResults) {
-        if (keyResults.isEmpty()) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        BigDecimal total = keyResults.stream()
-                .map(this::progressOf)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.divide(BigDecimal.valueOf(keyResults.size()), 2, RoundingMode.HALF_UP);
+    private KeyResultStatusCounts statusCounts(List<KeyResult> keyResults) {
+        return new KeyResultStatusCounts(
+                countKeyResults(keyResults, KeyResultStatus.BORRADOR),
+                countKeyResults(keyResults, KeyResultStatus.ACTIVO),
+                countKeyResults(keyResults, KeyResultStatus.CERRADO)
+        );
     }
 
     private record PeriodRange(int startIndex, int endIndex) {
     }
 
-    private record ProgressBuckets(long completed, long above50, long between0And50, long atZero) {
+    private record KeyResultStatusCounts(long draft, long active, long closed) {
     }
 
     private record ExecutionBreakdown(
-            ProgressBuckets buckets,
+            KeyResultStatusCounts statusCounts,
             long keyResults,
             long completedProjects,
             long inProgressProjects

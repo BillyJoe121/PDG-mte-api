@@ -83,6 +83,7 @@ class DashboardServiceTest {
         Project withoutId = project(null, ProjectStatus.ACTIVO, department, "2026-1", null);
         Project outsidePeriod = project(6L, ProjectStatus.ACTIVO, department, "2026-2", null);
         draft.setKeyResult(onTrackKr);
+        atRiskKr.setStatus(KeyResultStatus.BORRADOR);
         KeyResult nullProgressKr = keyResult(5L, TestFixtures.unit(1L), null);
         nullProgressKr.setStatus(KeyResultStatus.CERRADO);
         AcademicPeriod laterPeriod = TestFixtures.period(2L);
@@ -108,7 +109,7 @@ class DashboardServiceTest {
         var summary = service.summary("2026-1");
         var byStatus = service.projectsByStatus("2026-1");
         var byStatusForQuarterInsideRange = service.projectsByStatus("2026-Q3");
-        var byProgress = service.keyResultsByProgress("2026-1");
+        var keyResultsByStatus = service.keyResultsByStatus("2026-1");
         var departments = service.departments("2026-1");
         var bets = service.strategicBets("2026-1");
         var goals = service.goals("2026-1");
@@ -119,41 +120,35 @@ class DashboardServiceTest {
         assertThat(summary.draftProjects()).isEqualTo(1);
         assertThat(summary.suspendedProjects()).isEqualTo(1);
         assertThat(summary.archivedProjects()).isZero();
-        assertThat(summary.keyResultsInFollowUp()).isEqualTo(4);
-        assertThat(summary.lowCompletionKeyResults()).isEqualTo(2);
-        assertThat(summary.completedKeyResults()).isEqualTo(1);
-        assertThat(summary.keyResultsAbove50()).isEqualTo(1);
-        assertThat(summary.keyResultsBetween0And50()).isEqualTo(2);
-        assertThat(summary.keyResultsAtZero()).isEqualTo(1);
-        assertThat(summary.inProgressKeyResults()).isEqualTo(4);
-        assertThat(summary.averageKeyResultCoverage()).isEqualByComparingTo("48.00");
+        assertThat(summary.keyResultsInFollowUp()).isEqualTo(3);
+        assertThat(summary.draftKeyResults()).isEqualTo(1);
+        assertThat(summary.activeKeyResults()).isEqualTo(3);
+        assertThat(summary.closedKeyResults()).isEqualTo(1);
         assertThat(globalSummary.period()).isNull();
         assertThat(globalSummary.activeProjects()).isEqualTo(3);
         assertThat(globalSummary.archivedProjects()).isEqualTo(1);
-        assertThat(globalSummary.keyResultsBetween0And50()).isEqualTo(3);
+        assertThat(globalSummary.activeKeyResults()).isEqualTo(4);
+        assertThat(globalSummary.closedKeyResults()).isEqualTo(1);
         assertThat(byStatus).extracting("status").containsExactly("BORRADOR", "ACTIVO", "FINALIZADO", "SUSPENDIDO", "ARCHIVADO");
         assertThat(byStatus).extracting("count").containsExactly(1L, 2L, 1L, 1L, 0L);
         assertThat(byStatusForQuarterInsideRange).extracting("count").containsExactly(0L, 2L, 0L, 0L, 1L);
-        assertThat(byProgress).extracting("bucket").containsExactly("COMPLETED", "ON_TRACK", "AT_RISK", "LOW");
-        assertThat(byProgress).extracting("count").containsExactly(1L, 1L, 1L, 2L);
+        assertThat(keyResultsByStatus).extracting("status").containsExactly("BORRADOR", "ACTIVO", "CERRADO");
+        assertThat(keyResultsByStatus).extracting("count").containsExactly(1L, 3L, 1L);
         assertThat(departments.get(0).activeProjects()).isEqualTo(2);
         assertThat(departments.get(0).completedProjects()).isEqualTo(1);
         assertThat(departments.get(0).keyResults()).isEqualTo(5);
-        assertThat(departments.get(0).completedKeyResults()).isEqualTo(1);
-        assertThat(departments.get(0).keyResultsAbove50()).isEqualTo(1);
-        assertThat(departments.get(0).keyResultsBetween0And50()).isEqualTo(2);
-        assertThat(departments.get(0).keyResultsAtZero()).isEqualTo(1);
-        assertThat(departments.get(0).inProgressKeyResults()).isEqualTo(4);
+        assertThat(departments.get(0).draftKeyResults()).isEqualTo(1);
+        assertThat(departments.get(0).activeKeyResults()).isEqualTo(3);
+        assertThat(departments.get(0).closedKeyResults()).isEqualTo(1);
         assertThat(bets.get(0).keyResults()).isEqualTo(5);
-        assertThat(bets.get(0).completedKeyResults()).isEqualTo(1);
-        assertThat(bets.get(0).keyResultsAbove50()).isEqualTo(1);
-        assertThat(bets.get(0).keyResultsBetween0And50()).isEqualTo(2);
-        assertThat(bets.get(0).keyResultsAtZero()).isEqualTo(1);
+        assertThat(bets.get(0).draftKeyResults()).isEqualTo(1);
+        assertThat(bets.get(0).activeKeyResults()).isEqualTo(3);
+        assertThat(bets.get(0).closedKeyResults()).isEqualTo(1);
         assertThat(bets.get(0).completedProjects()).isEqualTo(1);
         assertThat(bets.get(0).inProgressProjects()).isEqualTo(1);
         assertThat(goals.get(0).keyResults()).isEqualTo(5);
-        assertThat(goals.get(0).keyResultsAbove50()).isEqualTo(1);
-        assertThat(goals.get(0).keyResultsAtZero()).isEqualTo(1);
+        assertThat(goals.get(0).draftKeyResults()).isEqualTo(1);
+        assertThat(goals.get(0).closedKeyResults()).isEqualTo(1);
         assertThat(goals.get(0).completedProjects()).isEqualTo(1);
     }
 
@@ -163,6 +158,7 @@ class DashboardServiceTest {
         otherBet.setName("Otra apuesta");
         KeyResult goalOnly = keyResult(7L, TestFixtures.unit(1L), BigDecimal.valueOf(100));
         goalOnly.getStrategicBets().clear();
+        goalOnly.setStatus(KeyResultStatus.CERRADO);
         when(keyResultRepository.findAll()).thenReturn(List.of(lowKr, goalOnly));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet, otherBet));
         when(goalRepository.findAll()).thenReturn(List.of(goal));
@@ -173,7 +169,8 @@ class DashboardServiceTest {
         assertThat(bets).extracting("strategicBetName").containsExactly("Apuesta", "Otra apuesta");
         assertThat(bets).extracting("keyResults").containsExactly(1L, 0L);
         assertThat(goals.get(0).keyResults()).isEqualTo(2);
-        assertThat(goals.get(0).completedKeyResults()).isEqualTo(1);
+        assertThat(goals.get(0).activeKeyResults()).isEqualTo(1);
+        assertThat(goals.get(0).closedKeyResults()).isEqualTo(1);
     }
 
     @Test
@@ -184,10 +181,11 @@ class DashboardServiceTest {
         when(strategicBetRepository.findAll()).thenReturn(List.of());
         when(goalRepository.findAll()).thenReturn(List.of());
 
-        assertThat(service.summary(null).keyResultsAtZero()).isZero();
-        assertThat(service.summary("   ").averageKeyResultCoverage()).isEqualByComparingTo("0.00");
+        assertThat(service.summary(null).closedKeyResults()).isZero();
+        assertThat(service.summary("   ").activeKeyResults()).isZero();
         assertThat(service.projectsByStatus(null)).extracting("count").containsExactly(0L, 0L, 0L, 0L, 0L);
-        assertThat(service.keyResultsByProgress(null)).extracting("count").containsExactly(0L, 0L, 0L, 0L);
+        assertThat(service.keyResultsByStatus(null)).extracting("status").containsExactly("BORRADOR", "ACTIVO", "CERRADO");
+        assertThat(service.keyResultsByStatus(null)).extracting("count").containsExactly(0L, 0L, 0L);
         assertThat(service.departments(null)).isEmpty();
         assertThat(service.strategicBets(null)).isEmpty();
         assertThat(service.goals(null)).isEmpty();
@@ -200,7 +198,7 @@ class DashboardServiceTest {
                 .hasMessageContaining("periodo");
         assertThatThrownBy(() -> service.projectsByStatus("2026-0"))
                 .isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> service.keyResultsByProgress("abc"))
+        assertThatThrownBy(() -> service.keyResultsByStatus("abc"))
                 .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> service.departments("2026-Q5"))
                 .isInstanceOf(BusinessException.class);

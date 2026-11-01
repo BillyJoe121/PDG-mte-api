@@ -11,6 +11,7 @@ import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
+import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,10 +85,12 @@ class ReportServiceTest {
         assertThat(general.totalKeyResults()).isEqualTo(1);
         assertThat(quarterlyGeneral.totalProjects()).isEqualTo(1);
         assertThat(quarterlyGeneral.totalKeyResults()).isZero();
-        assertThat(general.averageKeyResultCoverage()).isEqualByComparingTo("60.00");
+        assertThat(general.activeKeyResults()).isEqualTo(1);
+        assertThat(general.closedKeyResults()).isZero();
         assertThat(departments).singleElement().satisfies(item -> {
+            assertThat(item.projects()).isEqualTo(2);
             assertThat(item.keyResults()).isEqualTo(1);
-            assertThat(item.averageKeyResultCoverage()).isEqualByComparingTo("60.00");
+            assertThat(item.closedKeyResults()).isZero();
         });
         assertThat(ranking).singleElement().satisfies(item -> {
             assertThat(item.keyResultId()).isEqualTo(1L);
@@ -95,11 +98,16 @@ class ReportServiceTest {
             assertThat(item.strategicBetNames()).containsExactly("Apuesta");
             assertThat(item.period()).isEqualTo("2026-1");
             assertThat(item.linkedProjects()).isEqualTo(2);
+            assertThat(item.progressPercentage()).isEqualByComparingTo("60");
         });
-        assertThat(comparison.keyResultCoverageDelta()).isEqualByComparingTo("0.00");
+        assertThat(comparison.base()).isEqualTo(comparison.compare());
         assertThat(consolidated.keyResultRanking()).hasSize(1);
         assertThat(csv).contains("seccion,nombre,valor", "filtro,periodo,2026-1", "filtro,departamentoId,1",
-                "general,totalProyectos,2", "general,totalKRs,1", "general,coberturaPromedioKRs,60.00", "kr,\"KR\",60");
+                "general,totalProyectos,2", "general,totalKRs,1", "general,krsActivos,1", "general,krsCerrados,0",
+                "departamentoProyectos,\"" + department.getName() + "\",2",
+                "departamentoKRs,\"" + department.getName() + "\",1",
+                "departamentoKRsCerrados,\"" + department.getName() + "\",0", "krAvanceRegistrado,\"KR\",60");
+        assertThat(csv).doesNotContain("cobertura", "Promedio");
         assertThat(csv.toLowerCase()).doesNotContain("objective", "objetivo");
         assertThat(new String(pdf)).contains("%PDF-1.4", "Reporte consolidado MSP");
     }
@@ -110,7 +118,8 @@ class ReportServiceTest {
         when(keyResultRepository.findAll()).thenReturn(List.of());
         when(departmentRepository.findAll()).thenReturn(List.of());
 
-        assertThat(service.general("   ", null).averageKeyResultCoverage()).isEqualByComparingTo("0.00");
+        assertThat(service.general("   ", null).totalKeyResults()).isZero();
+        assertThat(service.general(null, null).closedKeyResults()).isZero();
         assertThat(service.departments(null)).isEmpty();
         assertThat(service.keyResultRanking(null, null)).isEmpty();
         assertThatThrownBy(() -> service.general("2026-X", null)).isInstanceOf(BusinessException.class);
@@ -118,7 +127,7 @@ class ReportServiceTest {
     }
 
     @Test
-    void periodComparisonCalculatesDeltasAndCsvEscapesNames() {
+    void periodComparisonReturnsBothPeriodsWithoutDeltaAndCsvEscapesNames() {
         Department quotedDepartment = TestFixtures.department(2L);
         quotedDepartment.setName("Depto \"Especial\"");
         var comparePeriod = TestFixtures.period(2L);
@@ -132,6 +141,7 @@ class ReportServiceTest {
         );
         keyResult.setProgressPercentage(BigDecimal.valueOf(40));
         compareKeyResult.setProgressPercentage(BigDecimal.valueOf(90));
+        compareKeyResult.setStatus(KeyResultStatus.CERRADO);
 
         when(projectRepository.findAll()).thenReturn(List.of(
                 project(1L, ProjectStatus.ACTIVO, department, "2026-1", "2026-1"),
@@ -145,7 +155,10 @@ class ReportServiceTest {
 
         assertThat(comparison.base().totalKeyResults()).isEqualTo(1);
         assertThat(comparison.compare().totalKeyResults()).isEqualTo(1);
-        assertThat(comparison.keyResultCoverageDelta()).isEqualByComparingTo("50.00");
+        assertThat(comparison.basePeriod()).isEqualTo("2026-1");
+        assertThat(comparison.comparePeriod()).isEqualTo("2026-2");
+        assertThat(comparison.base().closedKeyResults()).isZero();
+        assertThat(comparison.compare().closedKeyResults()).isEqualTo(1);
         assertThat(csv).contains("\"Depto \"\"Especial\"\"\"");
     }
 
@@ -182,15 +195,15 @@ class ReportServiceTest {
         assertThat(general.period()).isNull();
         assertThat(general.totalProjects()).isEqualTo(2);
         assertThat(general.totalKeyResults()).isEqualTo(2);
-        assertThat(general.averageKeyResultCoverage()).isEqualByComparingTo("30.00");
+        assertThat(general.activeKeyResults()).isEqualTo(2);
         assertThat(otherDepartmentGeneral.totalKeyResults()).isEqualTo(1);
-        assertThat(otherDepartmentGeneral.averageKeyResultCoverage()).isEqualByComparingTo("0.00");
         assertThat(departments).extracting(item -> item.keyResults()).containsExactly(1L, 1L);
         assertThat(ranking).extracting(item -> item.keyResultId()).containsExactly(1L, 2L);
         assertThat(ranking.get(1).keyResultName()).isNull();
         assertThat(ranking.get(1).goalNames()).isEmpty();
         assertThat(ranking.get(1).linkedProjects()).isZero();
-        assertThat(csv).contains("kr,,0");
+        assertThat(ranking.get(1).progressPercentage()).isNull();
+        assertThat(csv).contains("krAvanceRegistrado,,\n");
     }
 
     private Project project(Long id, ProjectStatus status, Department department, String startPeriod, String endPeriod) {
