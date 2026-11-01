@@ -268,7 +268,7 @@ GET/POST/PUT        /api/v1/goals
 POST/DELETE         /api/v1/goals/{id}/periods/{periodId}
 GET/POST            /api/v1/key-results
 GET/PUT/DELETE      /api/v1/key-results/{id}
-PATCH               /api/v1/key-results/{id}/current-value
+PATCH               /api/v1/key-results/{id}/progress
 PATCH               /api/v1/key-results/{id}/status
 ```
 

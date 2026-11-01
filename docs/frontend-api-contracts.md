@@ -23,7 +23,7 @@ El `DashboardController` actual solo expone endpoints separados:
 ```http
 GET /api/v1/dashboard/summary
 GET /api/v1/dashboard/projects/by-status
-GET /api/v1/dashboard/key-results/by-progress
+GET /api/v1/dashboard/key-results/by-status
 GET /api/v1/dashboard/departments/summary
 GET /api/v1/dashboard/strategic-bets/summary
 GET /api/v1/dashboard/goals/summary
@@ -158,7 +158,7 @@ ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
 |---|---|---|---|---|
 | GET | `/api/v1/dashboard/summary` | `period?` | - | `DashboardSummaryResponse` |
 | GET | `/api/v1/dashboard/projects/by-status` | `period?` | - | `CountByStatusResponse[]` |
-| GET | `/api/v1/dashboard/key-results/by-progress` | `period?` | - | `ProgressBucketResponse[]` |
+| GET | `/api/v1/dashboard/key-results/by-status` | `period?` | - | `CountByStatusResponse[]` |
 | GET | `/api/v1/dashboard/departments/summary` | `period?` | - | `DepartmentExecutionResponse[]` |
 | GET | `/api/v1/dashboard/strategic-bets/summary` | `period?` | - | `StrategicBetExecutionResponse[]` |
 | GET | `/api/v1/dashboard/goals/summary` | `period?` | - | `GoalExecutionResponse[]` |
@@ -174,15 +174,13 @@ ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
   "suspendedProjects": 0,
   "archivedProjects": 0,
   "keyResultsInFollowUp": 0,
-  "lowCompletionKeyResults": 0,
-  "completedKeyResults": 0,
-  "keyResultsAbove50": 0,
-  "keyResultsBetween0And50": 0,
-  "keyResultsAtZero": 0,
-  "inProgressKeyResults": 0,
-  "averageKeyResultCoverage": 0.00
+  "draftKeyResults": 0,
+  "activeKeyResults": 0,
+  "closedKeyResults": 0
 }
 ```
+
+`keyResultsInFollowUp` cuenta los KR en estado `ACTIVO`. El dashboard solo entrega conteos de datos registrados; no calcula promedios, umbrales, rangos ni estados derivados del avance.
 
 `CountByStatusResponse`:
 
@@ -190,10 +188,14 @@ ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
 {"status": "ACTIVO", "count": 3}
 ```
 
-`ProgressBucketResponse.bucket`:
+`/dashboard/key-results/by-status` siempre devuelve los tres estados de `KeyResultStatus` en este orden, incluso con conteo 0:
 
-```text
-COMPLETED, ON_TRACK, AT_RISK, LOW
+```json
+[
+  {"status": "BORRADOR", "count": 0},
+  {"status": "ACTIVO", "count": 0},
+  {"status": "CERRADO", "count": 0}
+]
 ```
 
 `DepartmentExecutionResponse`:
@@ -205,11 +207,9 @@ COMPLETED, ON_TRACK, AT_RISK, LOW
   "activeProjects": 0,
   "completedProjects": 0,
   "keyResults": 0,
-  "completedKeyResults": 0,
-  "keyResultsAbove50": 0,
-  "keyResultsBetween0And50": 0,
-  "keyResultsAtZero": 0,
-  "inProgressKeyResults": 0
+  "draftKeyResults": 0,
+  "activeKeyResults": 0,
+  "closedKeyResults": 0
 }
 ```
 
@@ -220,10 +220,9 @@ COMPLETED, ON_TRACK, AT_RISK, LOW
   "strategicBetId": 1,
   "strategicBetName": "Apuesta",
   "keyResults": 0,
-  "completedKeyResults": 0,
-  "keyResultsAbove50": 0,
-  "keyResultsBetween0And50": 0,
-  "keyResultsAtZero": 0,
+  "draftKeyResults": 0,
+  "activeKeyResults": 0,
+  "closedKeyResults": 0,
   "completedProjects": 0,
   "inProgressProjects": 0
 }
@@ -347,7 +346,16 @@ TeacherPositionResponse: {"positionId": 1, "positionName": "Tutor", "teacherId":
 | POST | `/api/v1/key-results` | - | `KeyResultRequest` | `KeyResultResponse` (201) | ADMIN, MANAGER |
 | GET | `/api/v1/key-results/{id}` | - | - | `KeyResultResponse` | autenticado |
 | PUT | `/api/v1/key-results/{id}` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
+| PATCH | `/api/v1/key-results/{id}/progress` | - | `KeyResultProgressRequest` | `KeyResultResponse` | ADMIN, MANAGER |
+| PATCH | `/api/v1/key-results/{id}/status` | - | `KeyResultStatusRequest` | `KeyResultResponse` | ADMIN, MANAGER |
 | DELETE | `/api/v1/key-results/{id}` | - | - | 204 | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
+
+Registro de avance de un KR:
+
+- El valor actual y el porcentaje de avance se registran manualmente y juntos con `PATCH /key-results/{id}/progress`; el backend nunca calcula uno a partir del otro ni a partir de los proyectos vinculados.
+- Al crear un KR, `currentValue` arranca en `baseValue` y `progressPercentage` en 0. `PUT /key-results/{id}` no modifica los valores registrados.
+- Registrar avance de un proyecto, cambiar su estado o crear, editar o eliminar un vinculo proyecto-KR no altera los valores del KR.
+- 400 si falta alguno de los dos campos o si `progressPercentage` esta fuera de 0..100; 409 si el KR esta `CERRADO`. Cada registro queda auditado como `PROGRESS_REGISTERED` con el estado anterior y el nuevo.
 
 ### Jerarquia estrategica
 
@@ -395,6 +403,8 @@ GoalResponse: {
 }
 
 KeyResultRequest: {"name": "KR", "description": "...", "metric": "...", "baseValue": 0, "targetValue": 100, "measurementUnitId": 1, "academicPeriodId": 1, "goalIds": [1], "strategicBetIds": [1]}
+KeyResultProgressRequest: {"currentValue": 50, "progressPercentage": 35}
+KeyResultStatusRequest: {"status": "ACTIVO"}
 KeyResultResponse: {
   "id": 1,
   "name": "KR",
@@ -403,7 +413,7 @@ KeyResultResponse: {
   "baseValue": 0,
   "targetValue": 100,
   "currentValue": 50,
-  "progressPercentage": 50,
+  "progressPercentage": 35,
   "measurementUnitId": 1,
   "measurementUnitName": "Porcentaje",
   "academicPeriodId": 1,
@@ -417,7 +427,7 @@ KeyResultResponse: {
 `KeyResultRequest` exige al menos un id en `goalIds` o `strategicBetIds` (400 si ambos van vacíos).
 ```
 
-`ExecutionSummaryResponse`:
+`ExecutionSummaryResponse` (un KR cuenta como completo solo cuando su estado es `CERRADO`, sin importar el avance registrado):
 
 ```json
 {
@@ -526,6 +536,28 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
 }
 ```
 
+`ImpactChainResponse` (`/impact-chain` y `/contribution-chain`) muestra solo el peso de contribucion declarado en cada vinculo:
+
+```json
+{
+  "projectId": 1,
+  "projectName": "Proyecto",
+  "globalProgress": 75,
+  "status": "ACTIVO",
+  "impacts": [{
+    "linkId": 1,
+    "keyResultId": 1,
+    "keyResultDescription": "KR",
+    "goalNames": ["Meta"],
+    "strategicBetNames": ["Apuesta"],
+    "contributionWeight": 50,
+    "contributionType": "DIRECTA",
+    "projectCompleted": false,
+    "period": "2026-1"
+  }]
+}
+```
+
 ## Vinculos Proyecto-KR
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
@@ -583,13 +615,19 @@ GeneralReportResponse: {
   "activeProjects": 0,
   "completedProjects": 0,
   "totalKeyResults": 0,
-  "averageKeyResultCoverage": 0.00
+  "activeKeyResults": 0,
+  "closedKeyResults": 0
 }
 
-DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "keyResults": 0, "averageKeyResultCoverage": 0.00}
-KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "coveragePercentage": 0.00, "linkedProjects": 0}
+DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "keyResults": 0, "closedKeyResults": 0}
+KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "progressPercentage": 35, "linkedProjects": 0}
+PeriodComparisonResponse: {"basePeriod": "2026-1", "comparePeriod": "2026-2", "base": {}, "compare": {}}
 ConsolidatedReportResponse: {"general": {}, "departments": [], "keyResultRanking": []}
 ```
+
+- `KeyResultRankingResponse.progressPercentage` es el avance registrado manualmente (puede ser `null`); el ranking se ordena por ese valor de mayor a menor, con los `null` al final.
+- `PeriodComparisonResponse` entrega los dos reportes generales lado a lado, sin diferencias calculadas.
+- El CSV exporta conteos (`general,krsActivos`, `general,krsCerrados`, `departamentoProyectos`, `departamentoKRs`, `departamentoKRsCerrados`) y el avance registrado de cada KR en filas `krAvanceRegistrado`; no incluye promedios.
 
 ## Presentacion
 
@@ -723,7 +761,7 @@ ADMIN
 2. Volver a la carga separada de dashboard:
    - `/dashboard/summary`
    - `/dashboard/projects/by-status`
-   - `/dashboard/key-results/by-progress`
+   - `/dashboard/key-results/by-status`
    - `/dashboard/departments/summary`
    - `/dashboard/strategic-bets/summary`
    - `/dashboard/goals/summary`
