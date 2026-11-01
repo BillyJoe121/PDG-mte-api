@@ -16,7 +16,6 @@ import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
@@ -39,8 +38,6 @@ abstract class ProjectServiceTestSupport {
     protected DepartmentRepository departmentRepository;
     @Mock
     protected TrayectoriaProjectClient trayectoriaProjectClient;
-    @Mock
-    protected KeyResultProgressService keyResultProgressService;
     @Mock
     protected KeyResultRepository keyResultRepository;
     @Mock
@@ -70,7 +67,6 @@ abstract class ProjectServiceTestSupport {
                 progressRepository,
                 trayectoriaProjectClient,
                 integrationProperties,
-                keyResultProgressService,
                 keyResultRepository,
                 linkRepository,
                 projectTeacherRepository,

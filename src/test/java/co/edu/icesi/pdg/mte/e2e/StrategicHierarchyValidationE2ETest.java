@@ -62,12 +62,9 @@ class StrategicHierarchyValidationE2ETest extends StrategicHierarchyE2ETestSuppo
         doGet("/api/v1/key-results/" + keyResultId);
         mockMvc.perform(get("/api/v1/key-results/{id}", 99999L))
                 .andExpect(status().isNotFound());
-        doPatch("/api/v1/key-results/99999/current-value", """
-                {"currentValue": 10}
+        doPatch("/api/v1/key-results/99999/progress", """
+                {"currentValue": 10, "progressPercentage": 10}
                 """, 404);
-        doPatch("/api/v1/key-results/1/current-value", """
-                {"currentValue": null}
-                """, 400);
         doPatch("/api/v1/key-results/" + keyResultId + "/status", """
                 {"status": "CERRADO"}
                 """, 409);
@@ -75,6 +72,49 @@ class StrategicHierarchyValidationE2ETest extends StrategicHierarchyE2ETestSuppo
                 .andExpect(status().isBadRequest());
         mockMvc.perform(delete("/api/v1/key-results/{id}", 99999L))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void keyResultProgressRejectsOutOfRangeMissingValuesAndClosedKeyResults() throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units");
+        Long periodId = firstId("/api/v1/academic-periods");
+        Long betId = createStrategicBet("Apuesta avance " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta avance " + SEQUENCE.incrementAndGet(), unitId);
+        Long keyResultId = createKeyResult("KR avance " + SEQUENCE.incrementAndGet(), periodId, goalId, betId, unitId)
+                .get("id").asLong();
+        String progressPath = "/api/v1/key-results/" + keyResultId + "/progress";
+
+        doPatch(progressPath, """
+                {"currentValue": 10, "progressPercentage": -1}
+                """, 400);
+        doPatch(progressPath, """
+                {"currentValue": 10, "progressPercentage": 101}
+                """, 400);
+        doPatch(progressPath, """
+                {"progressPercentage": 20}
+                """, 400);
+        doPatch(progressPath, """
+                {"currentValue": 10}
+                """, 400);
+        JsonNode unchanged = doGet("/api/v1/key-results/" + keyResultId);
+        assertThat(unchanged.get("currentValue").decimalValue()).isEqualByComparingTo("0");
+        assertThat(unchanged.get("progressPercentage").decimalValue()).isEqualByComparingTo("0");
+
+        doPatch(progressPath, """
+                {"currentValue": 0, "progressPercentage": 100}
+                """, 200);
+        doPatch("/api/v1/key-results/" + keyResultId + "/status", """
+                {"status": "ACTIVO"}
+                """, 200);
+        doPatch("/api/v1/key-results/" + keyResultId + "/status", """
+                {"status": "CERRADO"}
+                """, 200);
+        doPatch(progressPath, """
+                {"currentValue": 5, "progressPercentage": 50}
+                """, 409);
+        JsonNode closed = doGet("/api/v1/key-results/" + keyResultId);
+        assertThat(closed.get("currentValue").decimalValue()).isEqualByComparingTo("0");
+        assertThat(closed.get("progressPercentage").decimalValue()).isEqualByComparingTo("100");
     }
 
     @Test

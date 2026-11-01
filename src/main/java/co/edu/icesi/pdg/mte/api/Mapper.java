@@ -20,8 +20,6 @@ import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.StrategicBet;
 import co.edu.icesi.pdg.mte.strategy.World;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 
@@ -171,7 +169,7 @@ public final class Mapper {
                 keyResult.getMetric(),
                 keyResult.getBaseValue(),
                 keyResult.getTargetValue(),
-                calculatedCurrentValue(keyResult),
+                keyResult.getCurrentValue(),
                 keyResult.getProgressPercentage(),
                 keyResult.getMeasurementUnit().getId(),
                 keyResult.getMeasurementUnit().getName(),
@@ -243,17 +241,6 @@ public final class Mapper {
                 projectTeacher.getJoinedAt(),
                 projectTeacher.getLeftAt()
         );
-    }
-
-    private static BigDecimal calculatedCurrentValue(KeyResult keyResult) {
-        BigDecimal baseValue = keyResult.getBaseValue() == null ? BigDecimal.ZERO : keyResult.getBaseValue();
-        BigDecimal targetValue = keyResult.getTargetValue() == null ? baseValue : keyResult.getTargetValue();
-        BigDecimal progress = keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
-        return targetValue.subtract(baseValue)
-                .multiply(progress)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .add(baseValue)
-                .setScale(2, RoundingMode.HALF_UP);
     }
 
     public static ProjectDtos.ProjectProgressResponse toResponse(ProjectProgressEntry entry) {

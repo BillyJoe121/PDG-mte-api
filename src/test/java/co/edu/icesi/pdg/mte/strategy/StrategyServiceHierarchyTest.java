@@ -25,7 +25,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
 
     @Test
     void strategicSummaryCountsCompletedKeyResultsWithBlankPeriodFilter() {
-        keyResult.setProgressPercentage(BigDecimal.valueOf(100));
+        keyResult.setStatus(KeyResultStatus.CERRADO);
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
@@ -121,7 +121,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         completedProject.setEndPeriod("2026-Q1");
         Project activeProject = project(2L, ProjectStatus.ACTIVO);
         activeProject.setEndPeriod("2026-Q2");
-        keyResult.setProgressPercentage(BigDecimal.valueOf(100));
+        keyResult.setStatus(KeyResultStatus.CERRADO);
 
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
@@ -243,30 +243,28 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
-    void keyResultProgressUsesTheDeclaredMetricValueInsteadOfProjectProgress() {
+    void strategicSummaryCountsOnlyClosedKeyResultsAsCompletedEvenWithFullRecordedProgress() {
+        keyResult.setStatus(KeyResultStatus.ACTIVO);
+        keyResult.setProgressPercentage(BigDecimal.valueOf(100));
+        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
+
+        var summary = service.getStrategicBet(1L, null).executionSummary();
+
+        assertThat(summary.completedKeyResults()).isZero();
+        assertThat(summary.inProgressKeyResults()).isEqualTo(1);
+    }
+
+    @Test
+    void keyResultKeepsRecordedValuesWithoutDerivingOneFromTheOther() {
         KeyResult metricKeyResult = TestFixtures.keyResult(1L, unit);
         metricKeyResult.setBaseValue(BigDecimal.TEN);
         metricKeyResult.setTargetValue(BigDecimal.valueOf(30));
         metricKeyResult.setCurrentValue(BigDecimal.valueOf(20));
+        metricKeyResult.setProgressPercentage(BigDecimal.valueOf(7));
 
-        metricKeyResult.recalculateProgress();
-
-        assertThat(metricKeyResult.getProgressPercentage()).isEqualByComparingTo("50.00");
-    }
-
-    @Test
-    void keyResultProgressDoesNotSumProjectWeightsByTheirOperationalProgress() {
-        KeyResult metricKeyResult = TestFixtures.keyResult(1L, unit);
-        metricKeyResult.setBaseValue(BigDecimal.ZERO);
-        metricKeyResult.setTargetValue(BigDecimal.valueOf(100));
-        metricKeyResult.setCurrentValue(BigDecimal.valueOf(25));
-        Project completed = project(1L, ProjectStatus.FINALIZADO);
-        completed.setGlobalProgress(BigDecimal.valueOf(100));
-        Project active = project(2L, ProjectStatus.ACTIVO);
-        active.setGlobalProgress(BigDecimal.valueOf(20));
-
-        metricKeyResult.recalculateProgress(List.of(link(metricKeyResult, completed, 45), link(metricKeyResult, active, 35)));
-
-        assertThat(metricKeyResult.getProgressPercentage()).isEqualByComparingTo("25.00");
+        assertThat(metricKeyResult.getCurrentValue()).isEqualByComparingTo("20");
+        assertThat(metricKeyResult.getProgressPercentage()).isEqualByComparingTo("7");
     }
 }

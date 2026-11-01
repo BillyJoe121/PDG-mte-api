@@ -27,9 +27,9 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handlesMissingResourcesAsNotFound() {
-        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/api/v1/key-results/1/current-value");
+        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/api/v1/key-results/1/progress");
 
-        var response = handler.handleNoResource(new NoResourceFoundException(HttpMethod.PATCH, "/api/v1/key-results/1/current-value"), request);
+        var response = handler.handleNoResource(new NoResourceFoundException(HttpMethod.PATCH, "/api/v1/key-results/1/progress"), request);
 
         assertThat(response.getStatusCode().value()).isEqualTo(404);
         assertThat(response.getBody().message()).isEqualTo("Recurso no encontrado.");

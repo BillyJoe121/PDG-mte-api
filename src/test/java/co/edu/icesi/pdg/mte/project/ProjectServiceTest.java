@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,7 +72,7 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
                 && link.getKeyResult().getId().equals(1L)
                 && link.getContributionWeight().compareTo(BigDecimal.valueOf(35)) == 0
                 && link.getContributionType() == ContributionType.SOPORTE));
-        verify(keyResultProgressService).recalculateKeyResult(1L);
+        verify(keyResultRepository, never()).save(any());
     }
 
     @Test
@@ -119,7 +118,8 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
                 .isEqualByComparingTo("45");
         assertThat(service.history(1L)).hasSize(1);
         assertThat(project.getActualEndDate()).isNotNull();
-        verify(keyResultProgressService, atLeastOnce()).recalculateKeyResultsForProject(1L);
+        assertThat(project.getGlobalProgress()).isEqualByComparingTo("45");
+        verify(keyResultRepository, never()).save(any());
     }
 
     @Test

@@ -24,6 +24,8 @@ import java.util.Set;
 @Service
 @Transactional
 public class KeyResultService {
+    private static final BigDecimal MAX_PROGRESS_PERCENTAGE = BigDecimal.valueOf(100);
+
     private final KeyResultRepository keyResultRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final StrategicBetRepository strategicBetRepository;
@@ -73,6 +75,9 @@ public class KeyResultService {
     public StrategyDtos.KeyResultResponse create(StrategyDtos.KeyResultRequest request) {
         KeyResult keyResult = new KeyResult();
         apply(keyResult, request);
+        // A new KR starts at its base value with no recorded progress; later edits keep the recorded values.
+        keyResult.setCurrentValue(request.baseValue());
+        keyResult.setProgressPercentage(BigDecimal.ZERO);
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
         auditService.record(AuditAction.CREATE, "KEY_RESULT", response.id(), "Key Result creado: " + response.name(), null, response);
         return response;
@@ -88,16 +93,20 @@ public class KeyResultService {
         return response;
     }
 
-    public StrategyDtos.KeyResultResponse updateCurrentValue(Long keyResultId, BigDecimal currentValue) {
+    public StrategyDtos.KeyResultResponse updateProgress(Long keyResultId, StrategyDtos.KeyResultProgressRequest request) {
         KeyResult keyResult = findKeyResult(keyResultId);
         requireMutable(keyResult);
+        BigDecimal currentValue = request.currentValue();
+        BigDecimal progressPercentage = request.progressPercentage();
         MeasurementValuePolicy.validateKeyResultCurrentValue(currentValue, keyResult.getMeasurementUnit());
+        validateProgressPercentage(progressPercentage);
         StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
         keyResult.setCurrentValue(currentValue);
-        keyResult.recalculateProgress();
+        keyResult.setProgressPercentage(progressPercentage);
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
-        auditService.record(AuditAction.UPDATE, "KEY_RESULT", keyResultId,
-                "Valor actual de Key Result actualizado.", before, response);
+        auditService.record(AuditAction.PROGRESS_REGISTERED, "KEY_RESULT", keyResultId,
+                "Avance de Key Result registrado: valor actual " + currentValue.toPlainString()
+                        + ", avance " + progressPercentage.toPlainString() + "%.", before, response);
         return response;
     }
 
@@ -144,14 +153,12 @@ public class KeyResultService {
         keyResult.setMetric(request.metric().trim());
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
-        keyResult.setCurrentValue(request.baseValue());
         keyResult.setMeasurementUnit(measurementUnit);
         keyResult.setAcademicPeriod(findPeriod(request.academicPeriodId()));
         keyResult.getGoals().clear();
         keyResult.getGoals().addAll(goals);
         keyResult.getStrategicBets().clear();
         keyResult.getStrategicBets().addAll(strategicBets);
-        keyResult.recalculateProgress();
     }
 
     private Set<InstitutionalGoal> resolveGoals(List<Long> ids) {
@@ -175,6 +182,14 @@ public class KeyResultService {
     private void requireMutable(KeyResult keyResult) {
         if (keyResult.getStatus() == KeyResultStatus.CERRADO) {
             throw new BusinessException(HttpStatus.CONFLICT, "El KR está cerrado y no admite cambios ordinarios.");
+        }
+    }
+
+    private static void validateProgressPercentage(BigDecimal progressPercentage) {
+        if (progressPercentage == null
+                || progressPercentage.signum() < 0
+                || progressPercentage.compareTo(MAX_PROGRESS_PERCENTAGE) > 0) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El porcentaje de avance debe estar entre 0 y 100.");
         }
     }
 

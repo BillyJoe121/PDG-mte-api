@@ -48,13 +48,13 @@ public class KeyResultController {
         return keyResultService.update(id, request);
     }
 
-    @PatchMapping("/{id}/current-value")
+    @PatchMapping("/{id}/progress")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    StrategyDtos.KeyResultResponse updateCurrentValue(
+    StrategyDtos.KeyResultResponse updateProgress(
             @PathVariable Long id,
-            @Valid @RequestBody StrategyDtos.KeyResultCurrentValueRequest request
+            @Valid @RequestBody StrategyDtos.KeyResultProgressRequest request
     ) {
-        return keyResultService.updateCurrentValue(id, request.currentValue());
+        return keyResultService.updateProgress(id, request);
     }
 
     @PatchMapping("/{id}/status")

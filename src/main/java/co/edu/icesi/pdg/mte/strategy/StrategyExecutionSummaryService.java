@@ -9,7 +9,6 @@ import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -250,8 +249,7 @@ class StrategyExecutionSummaryService {
         }
 
         private void addKeyResult(KeyResult keyResult) {
-            BigDecimal progress = keyResult.getProgressPercentage() == null ? BigDecimal.ZERO : keyResult.getProgressPercentage();
-            if (progress.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            if (keyResult.getStatus() == KeyResultStatus.CERRADO) {
                 completedKeyResults.add(keyResult.getId());
                 inProgressKeyResults.remove(keyResult.getId());
                 return;

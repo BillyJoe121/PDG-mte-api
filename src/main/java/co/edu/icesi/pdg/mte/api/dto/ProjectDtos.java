@@ -180,7 +180,6 @@ public final class ProjectDtos {
             int progressEntries,
             int linkedKeyResults,
             BigDecimal declaredContributionWeight,
-            BigDecimal appliedContribution,
             boolean completed,
             boolean overweightWarning
     ) {
@@ -258,7 +257,6 @@ public final class ProjectDtos {
             List<String> strategicBetNames,
             BigDecimal contributionWeight,
             ContributionType contributionType,
-            BigDecimal appliedContribution,
             boolean projectCompleted,
             String period
     ) {

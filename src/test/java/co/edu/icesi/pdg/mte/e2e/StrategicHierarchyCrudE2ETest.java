@@ -169,10 +169,13 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         assertThat(ids(doGet("/api/v1/key-results?strategicBetId=" + strategicBetId))).containsExactly(keyResultId);
         assertThat(ids(doGet("/api/v1/key-results?goalId=" + goalId)))
                 .containsExactly(keyResultId, betOnlyKr.get("id").asLong());
-        JsonNode measuredKr = doPatch("/api/v1/key-results/" + keyResultId + "/current-value", """
-                {"currentValue": 50}
+        JsonNode measuredKr = doPatch("/api/v1/key-results/" + keyResultId + "/progress", """
+                {"currentValue": 50, "progressPercentage": 35}
                 """, 200);
-        assertThat(measuredKr.get("progressPercentage").decimalValue()).isEqualByComparingTo("50.00");
+        assertThat(measuredKr.get("currentValue").decimalValue()).isEqualByComparingTo("50");
+        assertThat(measuredKr.get("progressPercentage").decimalValue()).isEqualByComparingTo("35");
+        JsonNode progressAudit = doGet("/api/v1/audit-logs?entityType=KEY_RESULT&entityId=" + keyResultId);
+        assertThat(progressAudit.findValues("action").stream().map(JsonNode::asText)).contains("PROGRESS_REGISTERED");
 
         mockMvc.perform(delete("/api/v1/key-results/{id}", betOnlyKr.get("id").asLong()))
                 .andExpect(status().isNoContent());
@@ -246,7 +249,8 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
 
         assertThat(link.get("overweightWarning").asBoolean()).isFalse();
         assertThat(links).hasSize(1);
-        assertThat(chainBefore.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(chainBefore.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("60");
+        assertThat(chainBefore.get("impacts").get(0).has("appliedContribution")).isFalse();
         JsonNode linkAudit = doGet("/api/v1/audit-logs?entityType=PROJECT_KEY_RESULT_LINK&entityId=" + link.get("id").asLong());
         assertThat(linkAudit.findValues("action").stream().map(JsonNode::asText)).contains("LINK_CREATED");
 
@@ -268,7 +272,7 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         assertThat(chainAfter.get("impacts").get(0).get("goalNames").get(0).asText()).startsWith("Meta ejecucion");
         assertThat(chainAfter.get("impacts").get(0).get("strategicBetNames").get(0).asText()).startsWith("Apuesta ejecucion");
         assertThat(keyResultAfter.get("progressPercentage").decimalValue()).isEqualByComparingTo("0.00");
-        assertThat(chainAfter.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("60.00");
+        assertThat(chainAfter.get("impacts").get(0).get("projectCompleted").asBoolean()).isTrue();
         assertThat(bet.get("executionSummary").get("completedProjects").asInt()).isEqualTo(1);
         assertThat(tree.findValues("completedProjects").stream().map(JsonNode::asInt)).contains(1);
     }

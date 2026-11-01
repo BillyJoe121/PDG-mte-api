@@ -11,7 +11,6 @@ import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,8 +37,6 @@ class ProjectKeyResultLinkServiceTest {
     @Mock
     private KeyResultRepository keyResultRepository;
     @Mock
-    private KeyResultProgressService progressService;
-    @Mock
     private AuditService auditService;
 
     private ProjectKeyResultLinkService service;
@@ -48,7 +45,7 @@ class ProjectKeyResultLinkServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, progressService, auditService);
+        service = new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, auditService);
         MeasurementUnit unit = TestFixtures.unit(1L);
         Department department = TestFixtures.department(1L);
         keyResult = TestFixtures.keyResult(
@@ -58,11 +55,19 @@ class ProjectKeyResultLinkServiceTest {
                 TestFixtures.goal(1L, unit),
                 TestFixtures.strategicBet(1L)
         );
+        keyResult.setCurrentValue(BigDecimal.valueOf(33));
+        keyResult.setProgressPercentage(BigDecimal.valueOf(44));
         project = project(1L, ProjectStatus.ACTIVO, "2026-Q1", "2026-Q2");
     }
 
+    private void assertRecordedKeyResultValuesUnchanged() {
+        assertThat(keyResult.getCurrentValue()).isEqualByComparingTo("33");
+        assertThat(keyResult.getProgressPercentage()).isEqualByComparingTo("44");
+        verify(keyResultRepository, never()).save(any());
+    }
+
     @Test
-    void linksProjectToKeyResultAndWarnsWhenWeightExceedsOneHundred() {
+    void linksProjectToKeyResultWarnsWhenWeightExceedsOneHundredAndKeepsRecordedValues() {
         ProjectKeyResultLink saved = link(project, keyResult, 60);
         ProjectKeyResultLink existing = link(project(2L, ProjectStatus.ACTIVO, "2026-Q1", "2026-Q2"), keyResult, 50);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
@@ -77,7 +82,7 @@ class ProjectKeyResultLinkServiceTest {
         assertThat(response.contributionType()).isEqualTo(ContributionType.DIRECTA);
         assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("110.00");
         assertThat(response.overweightWarning()).isTrue();
-        verify(progressService).recalculateKeyResult(1L);
+        assertRecordedKeyResultValuesUnchanged();
     }
 
     @Test
@@ -97,12 +102,12 @@ class ProjectKeyResultLinkServiceTest {
         assertThat(second.keyResultId()).isEqualTo(2L);
         verify(linkRepository).existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L);
         verify(linkRepository).existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 2L);
-        verify(progressService).recalculateKeyResult(1L);
-        verify(progressService).recalculateKeyResult(2L);
+        assertRecordedKeyResultValuesUnchanged();
+        assertThat(secondKeyResult.getProgressPercentage()).isEqualByComparingTo("25");
     }
 
     @Test
-    void updatesTheDeclaredWeightOfAnExistingProjectKeyResultLink() {
+    void updatesTheDeclaredWeightWithoutChangingTheRecordedKeyResultValues() {
         ProjectKeyResultLink existing = link(project, keyResult, 30);
         when(linkRepository.findById(9L)).thenReturn(Optional.of(existing));
         when(linkRepository.save(existing)).thenReturn(existing);
@@ -115,7 +120,7 @@ class ProjectKeyResultLinkServiceTest {
         assertThat(response.contributionWeight()).isEqualByComparingTo("55");
         assertThat(response.contributionType()).isEqualTo(ContributionType.INDIRECTA);
         assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("55.00");
-        verify(progressService).recalculateKeyResult(1L);
+        assertRecordedKeyResultValuesUnchanged();
         verify(auditService).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE), eq("PROJECT_KEY_RESULT_LINK"), eq(9L), anyString(), any(), any());
     }
 
@@ -148,7 +153,7 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
-    void unlinksAndRecalculatesKeyResult() {
+    void unlinksWithoutChangingTheRecordedKeyResultValues() {
         ProjectKeyResultLink link = link(project, keyResult, 35);
         when(linkRepository.findById(9L)).thenReturn(Optional.of(link));
 
@@ -156,11 +161,11 @@ class ProjectKeyResultLinkServiceTest {
 
         assertThat(link.isActive()).isFalse();
         verify(linkRepository).save(link);
-        verify(progressService).recalculateKeyResult(1L);
+        assertRecordedKeyResultValuesUnchanged();
     }
 
     @Test
-    void returnsImpactChainUsingProjectProgressAsAppliedContribution() {
+    void returnsImpactChainWithDeclaredWeightsOnly() {
         Project completed = project(2L, ProjectStatus.FINALIZADO, "2026-Q2", null);
         completed.setGlobalProgress(BigDecimal.valueOf(100));
         project.setGlobalProgress(BigDecimal.valueOf(20));
@@ -172,8 +177,10 @@ class ProjectKeyResultLinkServiceTest {
         var response = service.impactChain(1L);
 
         assertThat(response.impacts()).hasSize(2);
-        assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("7.00");
-        assertThat(response.impacts().get(1).appliedContribution()).isEqualByComparingTo("65.00");
+        assertThat(response.impacts().get(0).contributionWeight()).isEqualByComparingTo("35");
+        assertThat(response.impacts().get(0).projectCompleted()).isFalse();
+        assertThat(response.impacts().get(1).contributionWeight()).isEqualByComparingTo("65");
+        assertThat(response.impacts().get(1).projectCompleted()).isTrue();
         assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q2");
     }
 
@@ -189,10 +196,8 @@ class ProjectKeyResultLinkServiceTest {
 
         assertThat(response.impacts()).hasSize(2);
         assertThat(response.impacts().get(0).projectCompleted()).isFalse();
-        assertThat(response.impacts().get(0).appliedContribution()).isEqualByComparingTo("0.00");
         assertThat(response.impacts().get(0).period()).isNull();
         assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q1");
-        assertThat(response.impacts().get(1).appliedContribution()).isEqualByComparingTo("0.00");
     }
 
     @Test

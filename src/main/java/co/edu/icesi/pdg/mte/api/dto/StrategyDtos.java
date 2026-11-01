@@ -109,7 +109,10 @@ public final class StrategyDtos {
     ) {
     }
 
-    public record KeyResultCurrentValueRequest(@NotNull BigDecimal currentValue) {
+    public record KeyResultProgressRequest(
+            @NotNull BigDecimal currentValue,
+            @NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal progressPercentage
+    ) {
     }
 
     public record KeyResultResponse(

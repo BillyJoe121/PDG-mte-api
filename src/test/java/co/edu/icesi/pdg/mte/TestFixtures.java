@@ -108,7 +108,7 @@ public final class TestFixtures {
         keyResult.setCurrentValue(BigDecimal.valueOf(25));
         keyResult.setStatus(KeyResultStatus.ACTIVO);
         keyResult.setMeasurementUnit(unit);
-        keyResult.recalculateProgress();
+        keyResult.setProgressPercentage(BigDecimal.valueOf(25));
         return keyResult;
     }
 }

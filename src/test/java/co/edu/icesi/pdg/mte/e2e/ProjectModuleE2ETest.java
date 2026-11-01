@@ -188,7 +188,8 @@ class ProjectModuleE2ETest {
         JsonNode detail = doGet("/api/v1/projects/" + projectId + "/detail");
         JsonNode chainBefore = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
         assertThat(detail.get("linkedKeyResults")).hasSize(1);
-        assertThat(chainBefore.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(chainBefore.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("45");
+        assertThat(chainBefore.get("impacts").get(0).has("appliedContribution")).isFalse();
 
         doPost("/api/v1/projects/" + projectId + "/progress", """
                 {
@@ -197,13 +198,17 @@ class ProjectModuleE2ETest {
                 }
                 """, 201);
         JsonNode chainWithProgress = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
-        assertThat(chainWithProgress.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("45.00");
+        assertThat(chainWithProgress.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("45");
+        assertThat(chainWithProgress.get("impacts").get(0).get("projectCompleted").asBoolean()).isFalse();
 
         doPatch("/api/v1/projects/" + projectId + "/status", """
                 {"status": "FINALIZADO"}
                 """, 200);
         JsonNode chainAfter = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
-        assertThat(chainAfter.get("impacts").get(0).get("appliedContribution").decimalValue()).isEqualByComparingTo("45.00");
+        assertThat(chainAfter.get("impacts").get(0).get("projectCompleted").asBoolean()).isTrue();
+        JsonNode keyResultAfter = doGet("/api/v1/key-results/" + keyResultId);
+        assertThat(keyResultAfter.get("progressPercentage").decimalValue()).isEqualByComparingTo("0");
+        assertThat(keyResultAfter.get("currentValue").decimalValue()).isEqualByComparingTo("0");
 
         doPost("/api/v1/projects", projectPayloadWithImmediateLink(
                 "Proyecto KR inexistente " + SEQUENCE.incrementAndGet(),

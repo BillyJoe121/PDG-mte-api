@@ -6,7 +6,6 @@ import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -74,30 +73,6 @@ public class KeyResult {
 
     @OneToMany(mappedBy = "keyResult")
     private List<ProjectKeyResultLink> projectLinks = new ArrayList<>();
-
-    public void recalculateProgress() {
-        if (baseValue == null || targetValue == null || currentValue == null
-                || targetValue.compareTo(baseValue) == 0) {
-            progressPercentage = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-            return;
-        }
-        BigDecimal rawProgress = currentValue.subtract(baseValue)
-                .multiply(BigDecimal.valueOf(100))
-                .divide(targetValue.subtract(baseValue), 2, RoundingMode.HALF_UP);
-        progressPercentage = rawProgress.max(BigDecimal.ZERO)
-                .min(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    public void recalculateProgress(List<ProjectKeyResultLink> activeLinks) {
-        recalculateProgress();
-    }
-
-    @PrePersist
-    @PreUpdate
-    void beforeSave() {
-        recalculateProgress();
-    }
 
     public Long getId() {
         return id;

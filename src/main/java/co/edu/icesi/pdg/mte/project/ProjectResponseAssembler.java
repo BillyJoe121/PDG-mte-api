@@ -28,15 +28,10 @@ class ProjectResponseAssembler {
                 .map(ProjectKeyResultLink::getContributionWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
-        BigDecimal appliedContribution = links.stream()
-                .map(ProjectKeyResultLink::appliedContribution)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
         return new ProjectDtos.ProjectKpiResponse(
                 history.size(),
                 links.size(),
                 declaredContribution,
-                appliedContribution,
                 project.getStatus() == ProjectStatus.FINALIZADO,
                 declaredContribution.compareTo(BigDecimal.valueOf(100)) > 0
         );
@@ -127,7 +122,6 @@ class ProjectResponseAssembler {
                 Mapper.strategicBetNames(keyResult),
                 link.getContributionWeight(),
                 link.getContributionType(),
-                link.appliedContribution().setScale(2, RoundingMode.HALF_UP),
                 completed,
                 periodOf(link.getProject())
         );

@@ -14,11 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 public class SeedDataConfig {
@@ -91,7 +87,6 @@ public class SeedDataConfig {
                     progressRepository,
                     linkRepository
             );
-            synchronizeSeedProgress(jdbcTemplate);
             log.info("Demo seed data refresh completed.");
         };
     }
@@ -171,50 +166,4 @@ public class SeedDataConfig {
             "unit_of_measure",
             "world"
     );
-
-    private void synchronizeSeedProgress(JdbcTemplate jdbcTemplate) {
-        Map<Long, BigDecimal> progressByKeyResultId = jdbcTemplate.query(
-                """
-                        SELECT kr.id,
-                               COALESCE(SUM(l.contribution_weight * p.global_progress / 100), 0) AS progress
-                        FROM key_result kr
-                        LEFT JOIN project_key_result_link l
-                            ON l.key_result_id = kr.id
-                           AND l.active = TRUE
-                        LEFT JOIN project p
-                            ON p.id = l.project_id
-                        GROUP BY kr.id
-                        """,
-                resultSet -> {
-                    Map<Long, BigDecimal> progressById = new HashMap<>();
-                    while (resultSet.next()) {
-                        BigDecimal progress = resultSet.getBigDecimal("progress");
-                        progressById.put(resultSet.getLong("id"), normalizeProgress(progress));
-                    }
-                    return progressById;
-                }
-        );
-        progressByKeyResultId.forEach((keyResultId, progress) ->
-                updateKeyResultProgress(jdbcTemplate, keyResultId, progress)
-        );
-    }
-
-    private BigDecimal normalizeProgress(BigDecimal progress) {
-        if (progress == null) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        if (progress.compareTo(BigDecimal.valueOf(100)) > 0) {
-            progress = BigDecimal.valueOf(100);
-        }
-        return progress.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private void updateKeyResultProgress(JdbcTemplate jdbcTemplate, Long keyResultId, BigDecimal progressPercentage) {
-        jdbcTemplate.update(
-                "UPDATE key_result SET progress_percentage = ?, current_value = base_value + ((target_value - base_value) * ? / 100) WHERE id = ?",
-                progressPercentage,
-                progressPercentage,
-                keyResultId
-        );
-    }
 }

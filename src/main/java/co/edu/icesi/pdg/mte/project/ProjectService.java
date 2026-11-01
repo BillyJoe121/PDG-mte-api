@@ -17,7 +17,6 @@ import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,7 +38,6 @@ public class ProjectService {
     private final ProjectProgressEntryRepository progressRepository;
     private final TrayectoriaProjectClient trayectoriaProjectClient;
     private final IntegrationProperties integrationProperties;
-    private final KeyResultProgressService keyResultProgressService;
     private final KeyResultRepository keyResultRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final ProjectTeacherRepository projectTeacherRepository;
@@ -56,7 +54,6 @@ public class ProjectService {
             ProjectProgressEntryRepository progressRepository,
             TrayectoriaProjectClient trayectoriaProjectClient,
             IntegrationProperties integrationProperties,
-            KeyResultProgressService keyResultProgressService,
             KeyResultRepository keyResultRepository,
             ProjectKeyResultLinkRepository linkRepository,
             ProjectTeacherRepository projectTeacherRepository,
@@ -72,7 +69,6 @@ public class ProjectService {
         this.progressRepository = progressRepository;
         this.trayectoriaProjectClient = trayectoriaProjectClient;
         this.integrationProperties = integrationProperties;
-        this.keyResultProgressService = keyResultProgressService;
         this.keyResultRepository = keyResultRepository;
         this.linkRepository = linkRepository;
         this.projectTeacherRepository = projectTeacherRepository;
@@ -183,7 +179,6 @@ public class ProjectService {
             project.setActualEndDate(java.time.LocalDate.now());
         }
         Project saved = projectRepository.save(project);
-        keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
         ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(saved);
         auditService.record(AuditAction.STATUS_CHANGE, "PROJECT", response.id(), "Estado de proyecto actualizado a " + response.status(), before, response);
         return response;
@@ -201,7 +196,6 @@ public class ProjectService {
 
         project.setGlobalProgress(request.progressPercent());
         projectRepository.save(project);
-        keyResultProgressService.recalculateKeyResultsForProject(project.getId());
         ProjectDtos.ProjectProgressResponse response = Mapper.toResponse(progressRepository.save(entry));
         auditService.record(AuditAction.PROGRESS_REGISTERED, "PROJECT", id, "Avance de proyecto registrado: " + response.progressPercent() + "%", before, Mapper.toResponse(project));
         return response;
@@ -245,10 +239,7 @@ public class ProjectService {
                     warnings.add("Proyecto externo " + payload.externalProjectId() + " no fue importado porque el MER exige key_result_id.");
                     continue;
                 }
-                Project saved = projectRepository.save(project);
-                if (saved.getId() != null) {
-                    keyResultProgressService.recalculateKeyResultsForProject(saved.getId());
-                }
+                projectRepository.save(project);
                 if (exists) {
                     updated++;
                 } else {
@@ -280,7 +271,6 @@ public class ProjectService {
             link.setContributionWeight(request.contributionWeight());
             link.setContributionType(request.contributionType());
             linkRepository.save(link);
-            keyResultProgressService.recalculateKeyResult(keyResult.getId());
         }
     }
 

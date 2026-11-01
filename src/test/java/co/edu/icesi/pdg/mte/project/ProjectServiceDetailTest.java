@@ -47,13 +47,12 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
         assertThat(detail.kpis().progressEntries()).isEqualTo(1);
         assertThat(detail.kpis().linkedKeyResults()).isEqualTo(2);
         assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("110.00");
-        assertThat(detail.kpis().appliedContribution()).isEqualByComparingTo("110.00");
         assertThat(detail.kpis().completed()).isTrue();
         assertThat(detail.kpis().overweightWarning()).isTrue();
     }
 
     @Test
-    void returnsProjectDetailWithZeroAppliedContributionForActiveProjectAndNullExternalLinkProject() {
+    void returnsProjectDetailForActiveProjectAndNullExternalLinkProject() {
         Project project = localProject();
         ProjectKeyResultLink linkWithoutLocalProject = link(null, keyResult, 40);
 
@@ -65,7 +64,6 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
         var detail = service.detail(1L);
 
         assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("40.00");
-        assertThat(detail.kpis().appliedContribution()).isEqualByComparingTo("0.00");
         assertThat(detail.kpis().completed()).isFalse();
         assertThat(detail.kpis().overweightWarning()).isFalse();
         assertThat(detail.linkedKeyResults().get(0).projectId()).isNull();

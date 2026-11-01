@@ -9,7 +9,6 @@ import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
-import co.edu.icesi.pdg.mte.strategy.KeyResultProgressService;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,20 +25,17 @@ public class ProjectKeyResultLinkService {
     private final ProjectKeyResultLinkRepository linkRepository;
     private final ProjectRepository projectRepository;
     private final KeyResultRepository keyResultRepository;
-    private final KeyResultProgressService keyResultProgressService;
     private final AuditService auditService;
 
     public ProjectKeyResultLinkService(
             ProjectKeyResultLinkRepository linkRepository,
             ProjectRepository projectRepository,
             KeyResultRepository keyResultRepository,
-            KeyResultProgressService keyResultProgressService,
             AuditService auditService
     ) {
         this.linkRepository = linkRepository;
         this.projectRepository = projectRepository;
         this.keyResultRepository = keyResultRepository;
-        this.keyResultProgressService = keyResultProgressService;
         this.auditService = auditService;
     }
 
@@ -56,7 +52,6 @@ public class ProjectKeyResultLinkService {
         link.setContributionWeight(request.contributionWeight());
         link.setContributionType(request.contributionType());
         ProjectKeyResultLink saved = linkRepository.save(link);
-        keyResultProgressService.recalculateKeyResult(keyResult.getId());
         ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
         auditService.record(AuditAction.LINK_CREATED, "PROJECT_KEY_RESULT_LINK", response.id(), "Proyecto vinculado a Key Result.", null, response);
         return response;
@@ -74,7 +69,6 @@ public class ProjectKeyResultLinkService {
         link.setContributionWeight(request.contributionWeight());
         link.setContributionType(request.contributionType());
         ProjectKeyResultLink saved = linkRepository.save(link);
-        keyResultProgressService.recalculateKeyResult(saved.getKeyResult().getId());
 
         ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
         auditService.record(AuditAction.UPDATE, "PROJECT_KEY_RESULT_LINK", id,
@@ -110,7 +104,6 @@ public class ProjectKeyResultLinkService {
         ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
         link.setActive(false);
         linkRepository.save(link);
-        keyResultProgressService.recalculateKeyResult(link.getKeyResult().getId());
         auditService.record(AuditAction.LINK_REMOVED, "PROJECT_KEY_RESULT_LINK", id, "Proyecto desvinculado de Key Result.", before, toResponse(link));
     }
 
@@ -158,7 +151,6 @@ public class ProjectKeyResultLinkService {
                 Mapper.strategicBetNames(keyResult),
                 link.getContributionWeight(),
                 link.getContributionType(),
-                link.appliedContribution().setScale(2, RoundingMode.HALF_UP),
                 completed,
                 periodOf(link.getProject())
         );
