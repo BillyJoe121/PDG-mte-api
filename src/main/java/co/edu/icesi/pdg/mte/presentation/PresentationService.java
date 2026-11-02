@@ -34,7 +34,7 @@ public class PresentationService {
     public PresentationDtos.PresentationResponse presentation(String period) {
         String normalizedPeriod = resolvePeriod(period);
         var bets = strategyService.listStrategicBets(normalizedPeriod);
-        StrategyDtos.ExecutionSummaryResponse total = totalSummary(bets);
+        StrategyDtos.ExecutionSummaryResponse total = strategyService.portfolioExecutionSummary(normalizedPeriod);
         List<PresentationDtos.PresentationSlideResponse> slides = new ArrayList<>();
         slides.add(new PresentationDtos.PresentationSlideResponse(
                 1,
@@ -118,36 +118,5 @@ public class PresentationService {
         content.put("completedProjects", total.completedProjects());
         content.put("inProgressProjects", total.inProgressProjects());
         return content;
-    }
-
-    private StrategyDtos.ExecutionSummaryResponse totalSummary(List<StrategyDtos.StrategicBetResponse> bets) {
-        int completedKeyResults = 0;
-        int inProgressKeyResults = 0;
-        int completedProjects = 0;
-        int inProgressProjects = 0;
-        for (StrategyDtos.StrategicBetResponse bet : bets) {
-            StrategyDtos.ExecutionSummaryResponse summary = bet.executionSummary();
-            if (summary == null) {
-                continue;
-            }
-            completedKeyResults += summary.completedKeyResults();
-            inProgressKeyResults += summary.inProgressKeyResults();
-            completedProjects += summary.completedProjects();
-            inProgressProjects += summary.inProgressProjects();
-        }
-        return new StrategyDtos.ExecutionSummaryResponse(
-                "%d KRs completos, %d en desarrollo. %d proyectos completados, %d en desarrollo."
-                        .formatted(
-                                completedKeyResults,
-                                inProgressKeyResults,
-                                completedProjects,
-                                inProgressProjects
-                        ),
-                completedKeyResults,
-                inProgressKeyResults,
-                completedProjects,
-                inProgressProjects,
-                List.of()
-        );
     }
 }

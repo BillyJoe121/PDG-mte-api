@@ -62,6 +62,11 @@ class StrategyExecutionSummaryService {
         return buildAll(goalIds, keyResultsByGoal, periodFilter);
     }
 
+    StrategyDtos.ExecutionSummaryResponse forPortfolio(String periodFilter) {
+        List<KeyResult> keyResults = keyResultRepository.findAll();
+        return build(keyResults, periodFilter, linksByKeyResult(keyResults));
+    }
+
     StrategyDtos.ExecutionSummaryResponse empty() {
         return new StrategyDtos.ExecutionSummaryResponse(
                 SUMMARY_TEMPLATE.formatted(0, 0, 0, 0),

@@ -155,6 +155,36 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void portfolioSummaryCountsAKeyResultLinkedToTwoBetsOnce() {
+        keyResult.getStrategicBets().add(TestFixtures.strategicBet(2L));
+        Project sharedProject = project(1L, ProjectStatus.ACTIVO);
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
+                link(keyResult, sharedProject, 100)
+        ));
+
+        var portfolio = service.portfolioExecutionSummary(null);
+
+        assertThat(portfolio.inProgressKeyResults()).isEqualTo(1);
+        assertThat(portfolio.inProgressProjects()).isEqualTo(1);
+        assertThat(portfolio.completedKeyResults()).isZero();
+        assertThat(portfolio.completedProjects()).isZero();
+    }
+
+    @Test
+    void portfolioSummaryIncludesKeyResultsLinkedOnlyToAGoal() {
+        KeyResult goalOnly = TestFixtures.keyResult(2L, unit, period, goal, null);
+        goalOnly.setStatus(KeyResultStatus.CERRADO);
+        when(keyResultRepository.findAll()).thenReturn(List.of(goalOnly));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
+
+        var portfolio = service.portfolioExecutionSummary("2026-1");
+
+        assertThat(portfolio.completedKeyResults()).isEqualTo(1);
+        assertThat(portfolio.inProgressKeyResults()).isZero();
+    }
+
+    @Test
     void returnsEmptyStrategicBetSummaryWhenThereAreNoKeyResults() {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of());
