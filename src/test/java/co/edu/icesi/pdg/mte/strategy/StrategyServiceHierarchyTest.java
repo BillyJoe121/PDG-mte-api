@@ -138,6 +138,23 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void strategicSummaryCountsOnlyActiveKeyResultsAsInProgress() {
+        KeyResult draft = TestFixtures.keyResult(2L, unit, period, null, bet);
+        draft.setStatus(KeyResultStatus.BORRADOR);
+        KeyResult closed = TestFixtures.keyResult(3L, unit, period, null, bet);
+        closed.setStatus(KeyResultStatus.CERRADO);
+        when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult, draft, closed));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
+
+        var summary = service.getStrategicBet(1L, null).executionSummary();
+
+        assertThat(summary.inProgressKeyResults()).isEqualTo(1);
+        assertThat(summary.completedKeyResults()).isEqualTo(1);
+        assertThat(summary.summaryText()).startsWith("1 KRs completos, 1 en desarrollo.");
+    }
+
+    @Test
     void returnsEmptyStrategicBetSummaryWhenThereAreNoKeyResults() {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of());
