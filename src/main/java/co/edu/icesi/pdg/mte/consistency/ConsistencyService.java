@@ -56,21 +56,24 @@ public class ConsistencyService {
         Instant detectedAt = Instant.now();
         Instant staleLimit = detectedAt.minus(Duration.ofDays(normalizedStaleDays));
 
-        List<ConsistencyFindingResponse> findings = java.util.stream.Stream.of(
+        List<ConsistencyFindingResponse> allFindings = java.util.stream.Stream.of(
                         keyResultsWithoutActiveProjects(detectedAt).stream(),
                         activeProjectsWithoutKr(detectedAt).stream(),
                         activeProjectsWithoutRecentProgress(detectedAt, staleLimit, normalizedStaleDays).stream()
                 )
                 .flatMap(stream -> stream)
-                .filter(finding -> severityFilter == null || finding.severity() == severityFilter)
-                .filter(finding -> moduleFilter == null || finding.module() == moduleFilter)
                 .sorted(Comparator
                         .comparing(ConsistencyFindingResponse::severity, Comparator.comparingInt(this::severityRank))
                         .thenComparing(ConsistencyFindingResponse::module)
                         .thenComparing(ConsistencyFindingResponse::entityCode))
                 .toList();
+        // El resumen cubre todos los hallazgos; los filtros solo recortan la lista devuelta.
+        List<ConsistencyFindingResponse> findings = allFindings.stream()
+                .filter(finding -> severityFilter == null || finding.severity() == severityFilter)
+                .filter(finding -> moduleFilter == null || finding.module() == moduleFilter)
+                .toList();
 
-        return new ConsistencyDtos.ConsistencyCheckResponse(summary(findings), findings);
+        return new ConsistencyDtos.ConsistencyCheckResponse(summary(allFindings), findings);
     }
 
     public String csv(String severity, String module, Integer staleDays) {
