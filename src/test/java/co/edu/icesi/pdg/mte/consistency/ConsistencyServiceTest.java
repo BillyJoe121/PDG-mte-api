@@ -129,6 +129,24 @@ class ConsistencyServiceTest {
     }
 
     @Test
+    void summaryCoversAllFindingsWhileFiltersOnlyTrimTheList() {
+        when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
+        when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(staleProject));
+        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
+        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L)).thenReturn(Optional.empty());
+
+        var onlyHigh = service.check("ALTA", null, null);
+        var onlyProjects = service.check(null, "PROYECTOS", null);
+
+        assertThat(onlyHigh.findings()).hasSize(1);
+        assertThat(onlyHigh.summary().total()).isEqualTo(2);
+        assertThat(onlyHigh.summary().high()).isEqualTo(1);
+        assertThat(onlyHigh.summary().medium()).isEqualTo(1);
+        assertThat(onlyProjects.findings()).hasSize(1);
+        assertThat(onlyProjects.summary()).isEqualTo(onlyHigh.summary());
+    }
+
+    @Test
     void rejectsInvalidFilters() {
         assertThatThrownBy(() -> service.check("urgente", null, null))
                 .isInstanceOf(BusinessException.class)
