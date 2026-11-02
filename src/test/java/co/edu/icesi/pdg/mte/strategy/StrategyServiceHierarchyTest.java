@@ -185,6 +185,19 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
     }
 
     @Test
+    void portfolioSummaryExcludesArchivedKeyResults() {
+        KeyResult archived = TestFixtures.keyResult(2L, unit, period, goal, null);
+        archived.setArchived(true);
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult, archived));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of());
+
+        var portfolio = service.portfolioExecutionSummary(null);
+
+        assertThat(portfolio.inProgressKeyResults()).isEqualTo(1);
+        assertThat(portfolio.completedKeyResults()).isZero();
+    }
+
+    @Test
     void returnsEmptyStrategicBetSummaryWhenThereAreNoKeyResults() {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of());

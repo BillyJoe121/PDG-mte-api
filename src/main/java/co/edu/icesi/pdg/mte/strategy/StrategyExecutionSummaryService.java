@@ -63,7 +63,10 @@ class StrategyExecutionSummaryService {
     }
 
     StrategyDtos.ExecutionSummaryResponse forPortfolio(String periodFilter) {
-        List<KeyResult> keyResults = keyResultRepository.findAll();
+        List<KeyResult> keyResults = keyResultRepository.findAll()
+                .stream()
+                .filter(keyResult -> !keyResult.isArchived())
+                .toList();
         return build(keyResults, periodFilter, linksByKeyResult(keyResults));
     }
 
