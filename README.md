@@ -458,7 +458,7 @@ No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.
 
 ## Despliegue en Render
 
-El repositorio incluye `Dockerfile`, `.dockerignore`, `render.yaml` y el perfil `staging`.
+El repositorio incluye `Dockerfile`, `.dockerignore`, `render.yaml` y el perfil `staging`. Render solo despliega cuando pasan las pruebas de CI; ver [docs/ci.md](docs/ci.md).
 
 Flujo recomendado:
 

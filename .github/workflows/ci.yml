@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Tests run against in-memory H2; no database or secrets are needed.
+      # The JaCoCo coverage rule is bound to `verify` and is not enforced here.
+      # mvnw is stored without the executable bit, so it is run through sh.
+      - name: Test
+        run: sh ./mvnw -B test
