@@ -58,6 +58,11 @@ public class KeyResultController {
         return keyResultService.updateProgress(id, request);
     }
 
+    @GetMapping("/{id}/progress-records")
+    List<StrategyDtos.KeyResultProgressRecordResponse> progressRecords(@PathVariable Long id) {
+        return keyResultService.progressRecords(id);
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse setStatus(

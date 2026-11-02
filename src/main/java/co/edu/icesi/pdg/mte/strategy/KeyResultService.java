@@ -12,7 +12,9 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementValuePolicy;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.common.PlannerLinks;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
+import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class KeyResultService {
     private final AcademicPeriodRepository periodRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
     private final AuditService auditService;
+    private final KeyResultProgressRecordRepository progressRecordRepository;
 
     public KeyResultService(
             KeyResultRepository keyResultRepository,
@@ -43,8 +46,10 @@ public class KeyResultService {
             MeasurementUnitRepository unitRepository,
             AcademicPeriodRepository periodRepository,
             ProjectKeyResultLinkRepository linkRepository,
-            AuditService auditService
+            AuditService auditService,
+            KeyResultProgressRecordRepository progressRecordRepository
     ) {
+        this.progressRecordRepository = progressRecordRepository;
         this.keyResultRepository = keyResultRepository;
         this.goalRepository = goalRepository;
         this.strategicBetRepository = strategicBetRepository;
@@ -112,10 +117,44 @@ public class KeyResultService {
         keyResult.setCurrentValue(currentValue);
         keyResult.setProgressPercentage(progressPercentage);
         StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        progressRecordRepository.save(progressRecord(keyResultId, before, currentValue, progressPercentage));
         auditService.record(AuditAction.PROGRESS_REGISTERED, "KEY_RESULT", keyResultId,
                 "Avance de Key Result registrado: valor actual " + currentValue.toPlainString()
                         + ", avance " + progressPercentage.toPlainString() + "%.", before, response);
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<StrategyDtos.KeyResultProgressRecordResponse> progressRecords(Long keyResultId) {
+        findKeyResult(keyResultId);
+        return progressRecordRepository.findByKeyResultIdOrderByRecordedAtDescIdDesc(keyResultId).stream()
+                .map(record -> new StrategyDtos.KeyResultProgressRecordResponse(
+                        record.getId(), record.getKeyResultId(), record.getPreviousValue(), record.getCurrentValue(),
+                        record.getPreviousPercentage(), record.getProgressPercentage(),
+                        record.getAuthorName(), record.getAuthorEmail(), record.getRecordedAt()))
+                .toList();
+    }
+
+    private KeyResultProgressRecord progressRecord(
+            Long keyResultId,
+            StrategyDtos.KeyResultResponse before,
+            BigDecimal currentValue,
+            BigDecimal progressPercentage
+    ) {
+        KeyResultProgressRecord record = new KeyResultProgressRecord();
+        record.setKeyResultId(keyResultId);
+        record.setPreviousValue(before.currentValue());
+        record.setCurrentValue(currentValue);
+        record.setPreviousPercentage(before.progressPercentage());
+        record.setProgressPercentage(progressPercentage);
+        record.setRecordedAt(Instant.now());
+        if (SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof ExternalUserContext author) {
+            record.setAuthorName(author.professorName() != null && !author.professorName().isBlank()
+                    ? author.professorName() : author.username());
+            record.setAuthorEmail(author.email());
+        }
+        return record;
     }
 
     public StrategyDtos.KeyResultResponse setStatus(Long keyResultId, KeyResultStatus targetStatus) {

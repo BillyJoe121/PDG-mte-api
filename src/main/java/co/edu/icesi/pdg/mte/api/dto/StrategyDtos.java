@@ -140,6 +140,20 @@ public final class StrategyDtos {
     ) {
     }
 
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    public record KeyResultProgressRecordResponse(
+            Long id,
+            Long keyResultId,
+            BigDecimal previousValue,
+            BigDecimal currentValue,
+            BigDecimal previousPercentage,
+            BigDecimal progressPercentage,
+            String authorName,
+            String authorEmail,
+            Instant recordedAt
+    ) {
+    }
+
     public record KeyResultStatusRequest(@NotNull KeyResultStatus status) {
     }
 

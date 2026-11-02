@@ -40,6 +40,8 @@ abstract class StrategyServiceTestSupport {
     protected ProjectKeyResultLinkRepository linkRepository;
     @Mock
     protected AuditService auditService;
+    @Mock
+    protected KeyResultProgressRecordRepository progressRecordRepository;
 
     protected StrategyService service;
     protected KeyResultService keyResultService;
@@ -77,7 +79,8 @@ abstract class StrategyServiceTestSupport {
                 unitRepository,
                 periodRepository,
                 linkRepository,
-                auditService
+                auditService,
+                progressRecordRepository
         );
         unit = TestFixtures.unit(1L);
         period = TestFixtures.period(1L);
