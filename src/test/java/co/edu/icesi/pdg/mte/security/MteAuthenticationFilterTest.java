@@ -1,20 +1,36 @@
 package co.edu.icesi.pdg.mte.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class MteAuthenticationFilterTest {
-    private final AccessControlService accessControlService = new AccessControlService();
+    private final JwtDecoder jwtDecoder = mock(JwtDecoder.class);
+    private final AuthService authService = mock(AuthService.class);
+    private final MteAuthenticationFilter filter = new MteAuthenticationFilter(
+            jwtDecoder,
+            authService,
+            new AccessControlService(),
+            new RestAuthenticationEntryPoint(new ObjectMapper().registerModule(new JavaTimeModule()))
+    );
 
     @AfterEach
     void tearDown() {
@@ -23,155 +39,103 @@ class MteAuthenticationFilterTest {
 
     @Test
     void shouldNotFilterPublicRoutesAndOptionsRequests() {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-
         assertThat(filter.shouldNotFilter(request("GET", "/api/v1/health"))).isTrue();
+        assertThat(filter.shouldNotFilter(request("POST", "/api/v1/auth/login"))).isTrue();
+        assertThat(filter.shouldNotFilter(request("POST", "/api/v1/auth/set-password"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/swagger-ui/index.html"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/v3/api-docs"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/h2-console"))).isTrue();
         assertThat(filter.shouldNotFilter(request("OPTIONS", "/api/v1/key-results"))).isTrue();
         assertThat(filter.shouldNotFilter(request("GET", "/api/v1/key-results"))).isFalse();
+        assertThat(filter.shouldNotFilter(request("POST", "/api/v1/auth/password"))).isFalse();
     }
 
     @Test
-    void mockModeAuthenticatesWithDemoContext() throws Exception {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
+    void readsBearerTokensCaseInsensitively() {
+        assertThat(MteAuthenticationFilter.bearerToken("Bearer abc")).isEqualTo("abc");
+        assertThat(MteAuthenticationFilter.bearerToken("bearer abc ")).isEqualTo("abc");
+        assertThat(MteAuthenticationFilter.bearerToken("Basic abc")).isNull();
+        assertThat(MteAuthenticationFilter.bearerToken("Bearer   ")).isNull();
+        assertThat(MteAuthenticationFilter.bearerToken(null)).isNull();
+    }
+
+    @Test
+    void requestWithoutTokenContinuesUnauthenticated() throws Exception {
         FilterChain chain = mock(FilterChain.class);
 
         filter.doFilterInternal(request("GET", "/api/v1/key-results"), new MockHttpServletResponse(), chain);
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(chain).doFilter(any(), any());
+        verifyNoInteractions(jwtDecoder, authService);
+    }
+
+    @Test
+    void validTokenAuthenticatesWithTheRoleStoredForThePerson() throws Exception {
+        Jwt jwt = jwt();
+        when(jwtDecoder.decode("good")).thenReturn(jwt);
+        when(authService.resolve(jwt)).thenReturn(user("MANAGER"));
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilterInternal(withToken("good"), new MockHttpServletResponse(), chain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(authentication.getPrincipal()).isInstanceOf(ExternalUserContext.class);
+        assertThat(authentication.getAuthorities()).extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_MANAGER");
         verify(chain).doFilter(any(), any());
     }
 
     @Test
-    void mockModeMapsFrontendMockTokenRolesToSpringAuthorities() throws Exception {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-        MockHttpServletRequest request = request("PATCH", "/api/v1/key-results/1");
-        request.addHeader("Authorization", "Bearer mock-token-jefe");
+    void invalidTokenIsRejectedWithUnauthorizedJson() throws Exception {
+        when(jwtDecoder.decode("bad")).thenThrow(new BadJwtException("expired"));
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
+        filter.doFilterInternal(withToken("bad"), response, chain);
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
-                .extracting(Object::toString)
-                .containsExactly("ROLE_MANAGER");
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("Inicia sesión para continuar.")
+                .doesNotContain("expired");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verifyNoInteractions(chain);
     }
 
     @Test
-    void mockModeMapsNamedDemoUsersToRealRolesAndContext() throws Exception {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-        MockHttpServletRequest request = request("PUT", "/api/v1/strategic-bets/1");
-        request.addHeader("Authorization", "Bearer mock-token-ha");
+    void tokenOfUnknownOrInactivePersonIsRejected() throws Exception {
+        Jwt jwt = jwt();
+        when(jwtDecoder.decode("orphan")).thenReturn(jwt);
+        when(authService.resolve(jwt)).thenThrow(new DisabledException(AuthService.NO_ACCESS));
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
+        filter.doFilterInternal(withToken("orphan"), response, chain);
 
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        assertThat(authentication.getAuthorities())
-                .extracting(Object::toString)
-                .containsExactly("ROLE_MANAGER");
-        ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
-        assertThat(context.username()).isEqualTo("ha");
-        assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
-        assertThat(context.departmentName()).isEqualTo("Direcci\u00f3n TDI");
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains(AuthService.NO_ACCESS);
+        verifyNoInteractions(chain);
     }
 
-    @Test
-    void mockModeKeepsLegacyDirectorAliasMappedToHugo() throws Exception {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("mock", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-        MockHttpServletRequest request = request("GET", "/api/v1/dashboard/summary");
-        request.addHeader("Authorization", "Bearer mock-token-ar");
-
-        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
-
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        assertThat(authentication.getAuthorities())
-                .extracting(Object::toString)
-                .containsExactly("ROLE_MANAGER");
-        ExternalUserContext context = (ExternalUserContext) authentication.getPrincipal();
-        assertThat(context.professorName()).isEqualTo("Hugo Arboleda");
-        assertThat(context.email()).isEqualTo("hugo.arboleda@icesi.edu.co");
+    private static Jwt jwt() {
+        Instant now = Instant.now();
+        return Jwt.withTokenValue("token").header("alg", "ES256").subject(UUID.randomUUID().toString())
+                .issuedAt(now).expiresAt(now.plusSeconds(60)).build();
     }
 
-    @Test
-    void externalModeAuthenticatesWithBearerToken() throws Exception {
-        ExternalAuthClient client = mock(ExternalAuthClient.class);
-        when(client.introspect("Bearer token")).thenReturn(new ExternalUserContext(
-                1L,
-                "admin",
-                "admin@icesi.edu.co",
-                java.util.List.of("ROLE_ADMIN"),
-                java.util.List.of(),
-                null,
-                null,
-                null
-        ));
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
-                client,
-                accessControlService
-        );
+    private static ExternalUserContext user(String role) {
+        return new ExternalUserContext(7L, "persona@icesi.edu.co", "persona@icesi.edu.co", List.of(role),
+                List.of(), 7L, "Persona", "DCSI");
+    }
+
+    private static MockHttpServletRequest withToken(String token) {
         MockHttpServletRequest request = request("GET", "/api/v1/key-results");
-        request.addHeader("Authorization", "Bearer token");
-
-        filter.doFilterInternal(request, new MockHttpServletResponse(), mock(FilterChain.class));
-
-        assertThat(SecurityContextHolder.getContext().getAuthentication().isAuthenticated()).isTrue();
-        verify(client).introspect("Bearer token");
+        request.addHeader("Authorization", "Bearer " + token);
+        return request;
     }
 
-    @Test
-    void externalModeRejectsMissingBearerToken() {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-
-        assertThatThrownBy(() -> filter.doFilterInternal(
-                request("GET", "/api/v1/key-results"),
-                new MockHttpServletResponse(),
-                mock(FilterChain.class)
-        )).isInstanceOf(BadCredentialsException.class);
-    }
-
-    @Test
-    void externalModeRejectsMalformedAuthorizationHeader() {
-        MteAuthenticationFilter filter = new MteAuthenticationFilter(
-                new AuthProperties("external", "http://localhost", "/auth/me"),
-                mock(ExternalAuthClient.class),
-                accessControlService
-        );
-        MockHttpServletRequest request = request("GET", "/api/v1/key-results");
-        request.addHeader("Authorization", "Token nope");
-
-        assertThatThrownBy(() -> filter.doFilterInternal(
-                request,
-                new MockHttpServletResponse(),
-                mock(FilterChain.class)
-        )).isInstanceOf(BadCredentialsException.class);
-    }
-
-    private MockHttpServletRequest request(String method, String uri) {
-        return new MockHttpServletRequest(method, uri);
+    private static MockHttpServletRequest request(String method, String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.setRequestURI(path);
+        return request;
     }
 }

@@ -1,6 +1,8 @@
 package co.edu.icesi.pdg.mte.people;
 
 import co.edu.icesi.pdg.mte.api.dto.PeopleDtos;
+import co.edu.icesi.pdg.mte.api.dto.SecurityDtos;
+import co.edu.icesi.pdg.mte.security.AccountAccessService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,9 +14,11 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class PeopleController {
     private final PeopleService peopleService;
+    private final AccountAccessService accountAccessService;
 
-    public PeopleController(PeopleService peopleService) {
+    public PeopleController(PeopleService peopleService, AccountAccessService accountAccessService) {
         this.peopleService = peopleService;
+        this.accountAccessService = accountAccessService;
     }
 
     @GetMapping("/directory-users")
@@ -51,6 +55,12 @@ public class PeopleController {
             @Valid @RequestBody PeopleDtos.DirectoryUserActiveRequest request
     ) {
         return peopleService.updateDirectoryUserActive(id, request.active());
+    }
+
+    @PostMapping("/directory-users/{id}/access-link")
+    @PreAuthorize("hasRole('ADMIN')")
+    SecurityDtos.AccessLinkResponse createAccessLink(@PathVariable Long id) {
+        return accountAccessService.issueAccessLink(id);
     }
 
     @DeleteMapping("/directory-users/{id}")

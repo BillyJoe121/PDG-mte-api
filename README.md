@@ -106,7 +106,9 @@ $env:JPA_DDL_AUTO='validate'
 $env:FLYWAY_ENABLED='true'
 $env:FLYWAY_BASELINE_ON_MIGRATE='false'
 $env:MTE_SEED_ENABLED='true'
-$env:MTE_AUTH_MODE='mock'
+$env:SUPABASE_URL='https://<auth-project-ref>.supabase.co'
+$env:SUPABASE_SECRET_KEY='<server-side-secret-key>'
+$env:MTE_ACCESS_LINK_URL='http://localhost:5173/establecer-contrasena'
 $env:MTE_TRAYECTORIA_PROJECTS_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
@@ -115,7 +117,6 @@ Para produccion real, cambia:
 
 ```powershell
 $env:MTE_SEED_ENABLED='false'
-$env:MTE_AUTH_MODE='external'
 ```
 
 Hay una plantilla sin secretos en [supabase.env.example](supabase.env.example). Copiala a un archivo local no versionado si lo necesitas. Spring Boot no carga `.env` automaticamente; puedes exportar variables desde PowerShell, el IDE o la plataforma de despliegue.
@@ -144,8 +145,9 @@ DB_DRIVER=org.h2.Driver
 JPA_DDL_AUTO=create-drop
 FLYWAY_ENABLED=false
 MTE_SEED_ENABLED=true
-MTE_AUTH_MODE=mock
 ```
+
+Sin `SUPABASE_URL` y `SUPABASE_SECRET_KEY` la API arranca, pero rechaza todo token: para iniciar sesion en local configura un proyecto de Supabase Auth (ver [Autenticacion](#autenticacion)). Los tests no lo necesitan.
 
 H2 es solo un entorno efimero para desarrollo y tests. La base persistente del proyecto debe ser Supabase/PostgreSQL.
 
@@ -158,13 +160,11 @@ El perfil `supabase` vive en [application-supabase.yml](src/main/resources/appli
 - Activa Flyway.
 - Usa `JPA_DDL_AUTO=validate`.
 - Habilita seeds por defecto para el primer arranque controlado. Cada arranque con `MTE_SEED_ENABLED=true` limpia las tablas pobladas por seed y las repuebla.
-- Usa `MTE_AUTH_MODE=mock` por defecto para facilitar la primera validacion de base.
 
 Cuando la base ya este creada y el despliegue sea real, usa:
 
 ```powershell
 $env:MTE_SEED_ENABLED='false'
-$env:MTE_AUTH_MODE='external'
 ```
 
 ## PostgreSQL Local Opcional
@@ -191,7 +191,6 @@ $env:DB_DRIVER='org.postgresql.Driver'
 $env:JPA_DDL_AUTO='validate'
 $env:FLYWAY_ENABLED='true'
 $env:MTE_SEED_ENABLED='true'
-$env:MTE_AUTH_MODE='mock'
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -302,51 +301,33 @@ http://localhost:8081/swagger-ui.html
 
 ## Autenticacion
 
-Modo local/demo:
+El MTE usa Supabase Auth con correo y contrasena. El frontend nunca habla con Supabase: la API hace el inicio de sesion, valida los tokens y decide el rol.
 
 ```text
-MTE_AUTH_MODE=mock
+SUPABASE_URL=https://<auth-project-ref>.supabase.co
+SUPABASE_SECRET_KEY=<server-side-secret-key>
+MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
 ```
 
-En modo mock, el backend autentica como:
+- `SUPABASE_SECRET_KEY` es la clave de servidor (`sb_secret_...` o la `service_role` heredada). Solo vive en el backend.
+- Los tokens se validan con las llaves publicas del proyecto (JWKS, ES256 o RS256), el emisor `<SUPABASE_URL>/auth/v1` y la audiencia `authenticated`. Sin `SUPABASE_URL` y la clave, todo token se rechaza.
+- La persona se resuelve por el `sub` del token (`professor.auth_user_id`); en el primer acceso se vincula por correo. Una persona inactiva o fuera del directorio no entra.
+- El rol sale de `professor.access_role`: `ADMIN`, `MANAGER`, `CONTRIBUTOR` o `VISITOR`. `VISITOR` solo consulta; cualquier POST, PUT, PATCH o DELETE le responde 403.
+- Tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (`failed_login_attempts`, `locked_until`). El bloqueo queda en auditoria.
+- La contrasena tiene entre 10 y 72 caracteres. El MTE no guarda contrasenas ni refresh tokens.
+- No hay registro abierto: el administrador genera un enlace de acceso para cada persona del directorio. El enlace lleva a `MTE_ACCESS_LINK_URL` con `token_hash` y `type`, y alli la persona fija su contrasena.
+- Cerrar sesion revoca la sesion en Supabase, pero el token ya emitido sigue siendo valido hasta que vence (1 hora por defecto).
+
+Endpoints:
 
 ```text
-Usuario: demo.admin
-Roles:   ADMIN, DIRECTOR_ESCUELA
+POST /api/v1/auth/login                              publico
+POST /api/v1/auth/set-password                       publico, con token_hash del enlace
+POST /api/v1/auth/logout                             con sesion
+POST /api/v1/auth/password                           con sesion, pide la contrasena actual
+GET  /api/v1/auth/me                                 con sesion
+POST /api/v1/directory-users/{id}/access-link        solo ADMIN
 ```
-
-Modo externo:
-
-```text
-MTE_AUTH_MODE=external
-TRAYECTORIA_BASE_URL=https://<url-auth>/api/v1
-TRAYECTORIA_ME_PATH=/auth/me
-```
-
-SSO institucional (OAuth 2.0 / OpenID Connect con Authorization Code + PKCE):
-
-```text
-MTE_AUTH_MODE=external
-MTE_SSO_ENABLED=true
-MTE_SSO_PROVIDER_NAME=ICESI
-MTE_SSO_AUTHORIZATION_URI=https://<proveedor>/authorize
-MTE_SSO_TOKEN_URI=https://<proveedor>/token
-MTE_SSO_CLIENT_ID=<client-id-registrado>
-MTE_SSO_CLIENT_SECRET=<opcional-solo-en-backend>
-MTE_SSO_REDIRECT_URI=https://<frontend>/auth/callback
-MTE_SSO_SCOPES=openid,profile,email
-```
-
-El `redirect URI` debe registrarse de forma exacta en el proveedor. El frontend genera `state` y PKCE S256; el backend intercambia el código usando exclusivamente el redirect configurado y nunca publica el `token URI` ni el secreto. Después del intercambio, `/api/v1/auth/me` vuelve a validar el bearer contra `TRAYECTORIA_BASE_URL` antes de crear la sesión local.
-
-Endpoints públicos mínimos del handshake:
-
-```text
-GET  /api/v1/auth/sso/config
-POST /api/v1/auth/sso/exchange
-```
-
-El SSO solo se anuncia cuando `MTE_AUTH_MODE=external`, `MTE_SSO_ENABLED=true` y están presentes las URLs, client ID y redirect. No se guardan contraseñas ni refresh tokens en MTE.
 
 Cada request protegido debe incluir:
 
@@ -354,7 +335,7 @@ Cada request protegido debe incluir:
 Authorization: Bearer <token>
 ```
 
-Supabase Auth se integrara como proveedor de tokens/autenticacion. La tabla `professor` es dominio interno: guarda nombre, correo unico y departamento, no credenciales.
+Configuracion del proyecto de Supabase Auth: registro abierto desactivado, llaves de firma asimetricas y longitud minima de contrasena 10.
 
 ## Integracion de Proyectos Externos
 
@@ -467,16 +448,10 @@ DB_DRIVER=org.postgresql.Driver
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
 MTE_SEED_ENABLED=false
-MTE_AUTH_MODE=external
 MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
-MTE_SSO_ENABLED=true
-MTE_SSO_PROVIDER_NAME=ICESI
-MTE_SSO_AUTHORIZATION_URI=<url-authorize-del-proveedor>
-MTE_SSO_TOKEN_URI=<url-token-del-proveedor>
-MTE_SSO_CLIENT_ID=<client-id>
-MTE_SSO_CLIENT_SECRET=<secreto-opcional>
-MTE_SSO_REDIRECT_URI=<url-frontend>/auth/callback
-MTE_SSO_SCOPES=openid,profile,email
+SUPABASE_URL=https://<auth-project-ref>.supabase.co
+SUPABASE_SECRET_KEY=<server-side-secret-key>
+MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
 ```
 
 No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.example` no contiene secretos y sirve como plantilla.
@@ -494,6 +469,9 @@ Flujo recomendado:
 
 ```text
 SUPABASE_DB_PASSWORD=<password de Supabase>
+SUPABASE_URL=https://<auth-project-ref>.supabase.co
+SUPABASE_SECRET_KEY=<clave de servidor de Supabase Auth>
+MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
 MTE_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:4200
 ```
 
@@ -506,7 +484,6 @@ SUPABASE_DB_USERNAME=postgres.otqqavjfriyqxntpwcgm
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
 MTE_SEED_ENABLED=false
-MTE_AUTH_MODE=mock
 MTE_TRAYECTORIA_PROJECTS_MODE=mock
 ```
 
@@ -515,8 +492,6 @@ El health check de Render apunta a:
 ```text
 /api/v1/health
 ```
-
-Cuando el frontend y la autenticacion externa esten listos, cambia `MTE_AUTH_MODE=external` y configura `TRAYECTORIA_BASE_URL` / `TRAYECTORIA_ME_PATH` segun corresponda.
 
 Si el frontend ya esta desplegado, reemplaza o agrega su origen publico en `MTE_CORS_ALLOWED_ORIGINS`, por ejemplo:
 

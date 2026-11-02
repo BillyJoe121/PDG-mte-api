@@ -15,6 +15,7 @@ import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
+import co.edu.icesi.pdg.mte.security.TestUsers;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,7 +90,7 @@ abstract class ProjectServiceTestSupport {
         org.mockito.Mockito.lenient().when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         org.mockito.Mockito.lenient().when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                ExternalUserContext.mock(),
+                TestUsers.admin(),
                 null,
                 List.of()
         ));

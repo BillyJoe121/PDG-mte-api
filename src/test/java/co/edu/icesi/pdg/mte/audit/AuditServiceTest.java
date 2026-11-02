@@ -1,6 +1,6 @@
 package co.edu.icesi.pdg.mte.audit;
 
-import co.edu.icesi.pdg.mte.security.ExternalUserContext;
+import co.edu.icesi.pdg.mte.security.TestUsers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +43,7 @@ class AuditServiceTest {
     void recordsAuditLogWithActorAndSerializedSnapshots() {
         AuditService service = new AuditService(repository, new ObjectMapper());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                ExternalUserContext.mock(),
+                TestUsers.admin(),
                 null,
                 List.of()
         ));

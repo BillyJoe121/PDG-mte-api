@@ -13,7 +13,7 @@ import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
-import co.edu.icesi.pdg.mte.security.ExternalUserContext;
+import co.edu.icesi.pdg.mte.security.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -87,7 +87,7 @@ abstract class StrategyServiceTestSupport {
         org.mockito.Mockito.lenient().when(worldRepository.findAll()).thenReturn(List.of(TestFixtures.world(1L)));
         org.mockito.Mockito.lenient().when(worldRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.world(1L)));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                ExternalUserContext.mock(),
+                TestUsers.admin(),
                 null,
                 List.of()
         ));

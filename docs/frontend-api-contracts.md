@@ -1,6 +1,8 @@
 # Frontend API Contracts
 
-Estado leido del codigo actual despues del rollback a `0d3efe3` mediante `4dbe868`.
+Estado leido del codigo actual: autenticacion con Supabase Auth y cuatro roles de acceso (noviembre 2026).
+
+Este documento cubre convenciones, autenticacion, dashboard, catalogos, personas y estrategia. Proyectos, vinculos, reportes, presentacion, consistencia y auditoria estan en [frontend-api-contracts-operacion.md](frontend-api-contracts-operacion.md).
 
 Fuentes revisadas:
 - Controllers en `src/main/java/co/edu/icesi/pdg/mte/**/**Controller.java`
@@ -45,20 +47,22 @@ Autenticacion:
 Authorization: Bearer <token>
 ```
 
-En modo mock se aceptan tokens como:
+El token es el `accessToken` que devuelve `POST /api/v1/auth/login` (JWT de Supabase Auth, vence en 1 hora). No hay refresh token: al vencer, la API responde 401 y el usuario vuelve a iniciar sesion.
+
+Roles soportados (salen de `professor.access_role`, no del token):
 
 ```text
-mock-token-ad -> ADMIN
-mock-token-ha -> DIRECTOR_ESCUELA
-mock-token-rs -> JEFE_DPTO
-mock-token-lb -> PROFESOR
-mock-token-<role> -> rol normalizado desde el token
+ADMIN, MANAGER, CONTRIBUTOR, VISITOR
 ```
 
-Roles soportados:
+`VISITOR` solo consulta: cualquier POST, PUT, PATCH o DELETE responde 403. Las excepciones son `/auth/logout` y `/auth/password`, que solo piden sesion.
+
+Respuestas de seguridad:
 
 ```text
-ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
+401 {"message": "Inicia sesión para continuar."}        sin token, token invalido o vencido
+401 {"message": "Tu cuenta no tiene acceso al MTE..."}  persona inactiva o fuera del directorio
+403 {"message": "Acceso denegado."}                     el rol no permite la accion
 ```
 
 Formato de periodo:
@@ -91,7 +95,7 @@ ProjectSyncStatus: LOCAL_ONLY, SYNCED, SYNC_FAILED
 ContributionType: DIRECTA, INDIRECTA, SOPORTE
 KeyResultStatus: BORRADOR, ACTIVO, CERRADO
 StrategicStatus: ACTIVA, INACTIVA
-AuditAction: CREATE, UPDATE, STATUS_CHANGE, PROGRESS_REGISTERED, LINK_CREATED, LINK_REMOVED, EXTERNAL_SYNC
+AuditAction: CREATE, UPDATE, STATUS_CHANGE, PROGRESS_REGISTERED, LINK_CREATED, LINK_REMOVED, EXTERNAL_SYNC, ACCOUNT_LOCKED, ACCESS_LINK_CREATED, PASSWORD_CHANGED, PASSWORD_SET
 ConsistencySeverity: ALTA, MEDIA, BAJA
 ConsistencyModule: OKRS, INDICADORES, PROYECTOS
 ConsistencyFindingType: KR_WITHOUT_ACTIVE_PROJECTS, ACTIVE_PROJECT_WITHOUT_KR, ACTIVE_PROJECT_WITHOUT_RECENT_PROGRESS
@@ -102,7 +106,30 @@ ConsistencyEntityType: KEY_RESULT, PROJECT
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
-| GET | `/api/v1/auth/me` | - | - | `AuthMeResponse` | autenticado |
+| POST | `/api/v1/auth/login` | - | `LoginRequest` | `LoginResponse` | publico |
+| POST | `/api/v1/auth/set-password` | - | `SetPasswordRequest` | 204 | publico |
+| POST | `/api/v1/auth/logout` | - | - | 204 | con sesion |
+| POST | `/api/v1/auth/password` | - | `ChangePasswordRequest` | 204 | con sesion |
+| GET | `/api/v1/auth/me` | - | - | `AuthMeResponse` | con sesion |
+| POST | `/api/v1/directory-users/{id}/access-link` | - | - | `AccessLinkResponse` | ADMIN |
+
+Schemas:
+
+```json
+LoginRequest: {"email": "persona@icesi.edu.co", "password": "..."}
+LoginResponse: {"accessToken": "<jwt>", "tokenType": "Bearer", "expiresIn": 3600, "expiresAt": 1900000000}
+SetPasswordRequest: {"tokenHash": "<token_hash del enlace>", "type": "invite|recovery", "password": "10 a 72 caracteres"}
+ChangePasswordRequest: {"currentPassword": "...", "newPassword": "10 a 72 caracteres"}
+AccessLinkResponse: {"professorId": 1, "email": "persona@icesi.edu.co", "url": "<MTE_ACCESS_LINK_URL>?token_hash=...&type=invite", "accountCreated": true}
+```
+
+Reglas:
+
+- `login`: correo desconocido, persona inactiva, contrasena incorrecta y cuenta bloqueada responden el mismo 401, para no revelar cuales correos existen. Tras 5 fallos seguidos la cuenta se bloquea 15 minutos. Si Supabase no responde: 503.
+- `set-password`: la pagina `/establecer-contrasena` del frontend recibe `token_hash` y `type` en la URL y los envia con la nueva contrasena. Enlace vencido o usado: 400. Tambien desbloquea la cuenta.
+- `password`: valida la contrasena actual (un fallo cuenta para el bloqueo) y exige que la nueva sea distinta.
+- `access-link`: crea la cuenta en Supabase si no existe (`accountCreated: true`, enlace `invite`) o genera un enlace `recovery`. El administrador copia la URL y se la entrega a la persona.
+- `logout`: el token ya emitido sigue siendo valido hasta que vence; el frontend debe descartarlo.
 
 `AuthMeResponse`:
 
@@ -110,15 +137,15 @@ ConsistencyEntityType: KEY_RESULT, PROJECT
 {
   "user": {
     "externalUserId": 9004,
-    "username": "ad",
+    "username": "sistemas.mte@icesi.edu.co",
     "email": "sistemas.mte@icesi.edu.co",
     "roles": ["ADMIN"],
-    "permissions": ["MTE_READ", "MTE_WRITE"],
+    "permissions": [],
     "externalProfessorId": 9004,
     "professorName": "Sistemas MTE",
     "departmentName": "TI Institucional"
   },
-  "supportedRoles": ["ADMIN", "DECANO", "DIRECTOR_ESCUELA", "JEFE_DPTO", "PROFESOR"],
+  "supportedRoles": ["ADMIN", "MANAGER", "CONTRIBUTOR", "VISITOR"],
   "capabilities": {
     "viewDashboard": true,
     "viewStrategy": true,
@@ -135,6 +162,7 @@ ConsistencyEntityType: KEY_RESULT, PROJECT
     "linkProjectsToKeyResults": true,
     "viewReports": true,
     "viewPresentation": true,
+    "viewConsistency": true,
     "viewAuditLogs": true
   }
 }
@@ -151,7 +179,7 @@ ConsistencyEntityType: KEY_RESULT, PROJECT
 Acceso de todos los endpoints dashboard:
 
 ```text
-ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR
+ADMIN, MANAGER, CONTRIBUTOR, VISITOR
 ```
 
 | Metodo | Endpoint | Query | Body | Respuesta |
@@ -323,20 +351,20 @@ TeacherPositionResponse: {"positionId": 1, "positionName": "Tutor", "teacherId":
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
 | GET | `/api/v1/strategic-bets` | `period?` | - | `StrategicBetResponse[]` | autenticado |
-| POST | `/api/v1/strategic-bets` | - | `StrategicBetRequest` | `StrategicBetResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
+| POST | `/api/v1/strategic-bets` | - | `StrategicBetRequest` | `StrategicBetResponse` | ADMIN, MANAGER |
 | GET | `/api/v1/strategic-bets/{id}` | `period?` | - | `StrategicBetResponse` | autenticado |
-| PUT | `/api/v1/strategic-bets/{id}` | - | `StrategicBetRequest` | `StrategicBetResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
+| PUT | `/api/v1/strategic-bets/{id}` | - | `StrategicBetRequest` | `StrategicBetResponse` | ADMIN, MANAGER |
 
 ### Metas institucionales
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
 | GET | `/api/v1/goals` | `period?` | - | `GoalResponse[]` | autenticado |
-| POST | `/api/v1/goals` | - | `GoalRequest` | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
+| POST | `/api/v1/goals` | - | `GoalRequest` | `GoalResponse` | ADMIN, MANAGER |
 | GET | `/api/v1/goals/{id}` | `period?` | - | `GoalResponse` | autenticado |
-| PUT | `/api/v1/goals/{id}` | - | `GoalRequest` | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
-| POST | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
-| DELETE | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
+| PUT | `/api/v1/goals/{id}` | - | `GoalRequest` | `GoalResponse` | ADMIN, MANAGER |
+| POST | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, MANAGER |
+| DELETE | `/api/v1/goals/{id}/periods/{periodId}` | - | - | `GoalResponse` | ADMIN, MANAGER |
 
 ### Key results
 
@@ -345,10 +373,10 @@ TeacherPositionResponse: {"positionId": 1, "positionName": "Tutor", "teacherId":
 | GET | `/api/v1/key-results` | `goalId?`, `strategicBetId?`, `periodId?` | - | `KeyResultResponse[]` | autenticado |
 | POST | `/api/v1/key-results` | - | `KeyResultRequest` | `KeyResultResponse` (201) | ADMIN, MANAGER |
 | GET | `/api/v1/key-results/{id}` | - | - | `KeyResultResponse` | autenticado |
-| PUT | `/api/v1/key-results/{id}` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
+| PUT | `/api/v1/key-results/{id}` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, MANAGER |
 | PATCH | `/api/v1/key-results/{id}/progress` | - | `KeyResultProgressRequest` | `KeyResultResponse` | ADMIN, MANAGER |
 | PATCH | `/api/v1/key-results/{id}/status` | - | `KeyResultStatusRequest` | `KeyResultResponse` | ADMIN, MANAGER |
-| DELETE | `/api/v1/key-results/{id}` | - | - | 204 | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
+| DELETE | `/api/v1/key-results/{id}` | - | - | 204 | ADMIN, MANAGER |
 
 Registro de avance de un KR:
 
@@ -439,332 +467,3 @@ KeyResultResponse: {
   "periods": []
 }
 ```
-
-## Proyectos
-
-| Metodo | Endpoint | Query | Body | Respuesta | Acceso |
-|---|---|---|---|---|---|
-| POST | `/api/v1/projects` | - | `ProjectRequest` | `ProjectResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR |
-| GET | `/api/v1/projects` | `search?`, `status?`, `type?`, `departmentId?`, `period?` | - | `ProjectResponse[]` | autenticado |
-| GET | `/api/v1/projects/{id}` | - | - | `ProjectResponse` | autenticado |
-| GET | `/api/v1/projects/{id}/detail` | - | - | `ProjectDetailResponse` | autenticado |
-| PUT | `/api/v1/projects/{id}` | - | `ProjectUpdateRequest` | `ProjectResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| PATCH | `/api/v1/projects/{id}/status` | - | `ProjectStatusRequest` | `ProjectResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
-| POST | `/api/v1/projects/{id}/progress` | - | `ProjectProgressRequest` | `ProjectProgressResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO, PROFESOR |
-| GET | `/api/v1/projects/{id}/history` | - | - | `ProjectProgressResponse[]` | autenticado |
-| GET | `/api/v1/projects/{id}/impact-chain` | - | - | `ImpactChainResponse` | autenticado |
-| GET | `/api/v1/projects/{id}/contribution-chain` | - | - | `ImpactChainResponse` | autenticado |
-| GET | `/api/v1/projects/{id}/teachers` | - | - | `ProjectTeacherResponse[]` | autenticado |
-| POST | `/api/v1/projects/{id}/teachers` | - | `ProjectTeacherRequest` | `ProjectTeacherResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| DELETE | `/api/v1/projects/{id}/teachers/{teacherId}/roles/{roleId}` | - | - | 204 | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| POST | `/api/v1/projects/sync/trayectoria` | - | - | `ProjectSyncResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
-
-Schemas:
-
-```json
-ProjectRequest: {
-  "name": "Proyecto",
-  "description": "...",
-  "type": "INVESTIGACION",
-  "departmentId": 1,
-  "status": "ACTIVO",
-  "startPeriod": "2026-1",
-  "endPeriod": "2026-2",
-  "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "keyResultId": 1,
-  "contributionWeight": 50,
-  "linkStatus": "ACTIVE",
-  "jiraKey": "ABC-123",
-  "tutors": ["Tutor"],
-  "keyResultLinks": [{"keyResultId": 1, "contributionWeight": 50, "contributionType": "DIRECTA"}]
-}
-
-ProjectUpdateRequest: {
-  "name": "Proyecto",
-  "description": "...",
-  "type": "INVESTIGACION",
-  "departmentId": 1,
-  "startPeriod": "2026-1",
-  "endPeriod": "2026-2",
-  "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "actualEndDate": null,
-  "keyResultId": 1,
-  "contributionWeight": 50,
-  "linkStatus": "ACTIVE",
-  "jiraKey": "ABC-123",
-  "tutors": ["Tutor"]
-}
-
-ProjectStatusRequest: {"status": "ACTIVO"}
-ProjectProgressRequest: {"progressPercent": 75, "comment": "Avance", "milestones": "..."}
-ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "leftAt": null}
-```
-
-`ProjectResponse`:
-
-```json
-{
-  "id": 1,
-  "externalProjectId": null,
-  "externalSource": null,
-  "name": "Proyecto",
-  "description": "...",
-  "type": "INVESTIGACION",
-  "departmentId": 1,
-  "departmentName": "DCSI",
-  "status": "ACTIVO",
-  "startPeriod": "2026-1",
-  "endPeriod": "2026-2",
-  "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "actualEndDate": null,
-  "globalProgress": 75,
-  "keyResultId": 1,
-  "keyResultName": "KR",
-  "contributionWeight": 50,
-  "linkStatus": "ACTIVE",
-  "jiraKey": "ABC-123",
-  "tutors": [],
-  "linkedKeyResults": [],
-  "origin": "LOCAL",
-  "syncStatus": "LOCAL_ONLY",
-  "lastSyncedAt": null,
-  "createdAt": "2026-05-26T00:00:00Z",
-  "updatedAt": "2026-05-26T00:00:00Z"
-}
-```
-
-`ImpactChainResponse` (`/impact-chain` y `/contribution-chain`) muestra solo el peso de contribucion declarado en cada vinculo:
-
-```json
-{
-  "projectId": 1,
-  "projectName": "Proyecto",
-  "globalProgress": 75,
-  "status": "ACTIVO",
-  "impacts": [{
-    "linkId": 1,
-    "keyResultId": 1,
-    "keyResultDescription": "KR",
-    "goalNames": ["Meta"],
-    "strategicBetNames": ["Apuesta"],
-    "contributionWeight": 50,
-    "contributionType": "DIRECTA",
-    "projectCompleted": false,
-    "period": "2026-1"
-  }]
-}
-```
-
-## Vinculos Proyecto-KR
-
-| Metodo | Endpoint | Query | Body | Respuesta | Acceso |
-|---|---|---|---|---|---|
-| POST | `/api/v1/project-key-result-links` | - | `ProjectKeyResultLinkRequest` | `ProjectKeyResultLinkResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-| GET | `/api/v1/project-key-result-links` | `projectId?`, `keyResultId?` | - | `ProjectKeyResultLinkResponse[]` | autenticado |
-| DELETE | `/api/v1/project-key-result-links/{id}` | - | - | 204 | ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO |
-
-Schemas:
-
-```json
-ProjectKeyResultLinkRequest: {"projectId": 1, "keyResultId": 1, "contributionWeight": 50, "contributionType": "DIRECTA"}
-ProjectKeyResultLinkResponse: {
-  "id": 1,
-  "projectId": 1,
-  "projectName": "Proyecto",
-  "keyResultId": 1,
-  "keyResultDescription": "KR",
-  "contributionWeight": 50,
-  "contributionType": "DIRECTA",
-  "totalWeightForKeyResult": 100,
-  "overweightWarning": false,
-  "active": true,
-  "createdAt": "2026-05-26T00:00:00Z"
-}
-```
-
-## Reportes
-
-Acceso:
-
-```text
-ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO
-```
-
-| Metodo | Endpoint | Query | Body | Respuesta |
-|---|---|---|---|---|
-| GET | `/api/v1/reports/general` | `period?`, `departmentId?` | - | `GeneralReportResponse` |
-| GET | `/api/v1/reports/departments` | `period?` | - | `DepartmentReportResponse[]` |
-| GET | `/api/v1/reports/key-results/ranking` | `period?`, `departmentId?` | - | `KeyResultRankingResponse[]` |
-| GET | `/api/v1/reports/period-comparison` | `basePeriod`, `comparePeriod`, `departmentId?` | - | `PeriodComparisonResponse` |
-| GET | `/api/v1/reports` | `period?`, `departmentId?` | - | `ConsolidatedReportResponse` |
-| GET | `/api/v1/reports/export.csv` | `period?`, `departmentId?` | - | `text/csv`, attachment `msp-report.csv` |
-| GET | `/api/v1/reports/export.pdf` | `period?`, `departmentId?` | - | `application/pdf`, attachment `msp-report.pdf` |
-
-`basePeriod` y `comparePeriod` son obligatorios en `/period-comparison`.
-
-Schemas:
-
-```json
-GeneralReportResponse: {
-  "period": "2026-1",
-  "departmentId": 1,
-  "totalProjects": 0,
-  "activeProjects": 0,
-  "completedProjects": 0,
-  "totalKeyResults": 0,
-  "activeKeyResults": 0,
-  "closedKeyResults": 0
-}
-
-DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "keyResults": 0, "closedKeyResults": 0}
-KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "progressPercentage": 35, "linkedProjects": 0}
-PeriodComparisonResponse: {"basePeriod": "2026-1", "comparePeriod": "2026-2", "base": {}, "compare": {}}
-ConsolidatedReportResponse: {"general": {}, "departments": [], "keyResultRanking": []}
-```
-
-- `KeyResultRankingResponse.progressPercentage` es el avance registrado manualmente (puede ser `null`); el ranking se ordena por ese valor de mayor a menor, con los `null` al final.
-- `PeriodComparisonResponse` entrega los dos reportes generales lado a lado, sin diferencias calculadas.
-- El CSV exporta conteos (`general,krsActivos`, `general,krsCerrados`, `departamentoProyectos`, `departamentoKRs`, `departamentoKRsCerrados`) y el avance registrado de cada KR en filas `krAvanceRegistrado`; no incluye promedios.
-
-## Presentacion
-
-| Metodo | Endpoint | Query | Body | Respuesta | Acceso |
-|---|---|---|---|---|---|
-| GET | `/api/v1/presentation` | `period?` | - | `PresentationResponse` | ADMIN, DECANO, DIRECTOR_ESCUELA |
-
-`PresentationResponse`:
-
-```json
-{
-  "period": "2026-1",
-  "title": "Modo presentacion MSP",
-  "controls": {
-    "fullscreenEnabled": true,
-    "keyboardNavigationEnabled": true,
-    "nextKeys": ["ArrowRight", "Space"],
-    "previousKeys": ["ArrowLeft"],
-    "exitKeys": ["Escape"]
-  },
-  "slides": [
-    {
-      "order": 1,
-      "type": "COVER",
-      "title": "Seguimiento estrategico MSP",
-      "subtitle": "Periodo 2026-1",
-      "content": {}
-    }
-  ]
-}
-```
-
-Tipos de slide generados por el servicio:
-
-```text
-COVER, STRATEGIC_BET, CLOSING
-```
-
-## Consistencia
-
-Acceso:
-
-```text
-ADMIN, DECANO, DIRECTOR_ESCUELA, JEFE_DPTO
-```
-
-| Metodo | Endpoint | Query | Body | Respuesta |
-|---|---|---|---|---|
-| GET | `/api/v1/consistency/check` | `severity?`, `module?`, `staleDays?` | - | `ConsistencyCheckResponse` |
-| GET | `/api/v1/consistency/check/export.csv` | `severity?`, `module?`, `staleDays?` | - | `text/csv`, attachment `msp-consistency-findings.csv` |
-
-Reglas:
-
-```text
-severity: ALTA, MEDIA, BAJA
-module: OKRS, INDICADORES, PROYECTOS
-staleDays: entero >= 1; default 15
-```
-
-`ConsistencyCheckResponse`:
-
-```json
-{
-  "summary": {"total": 0, "high": 0, "medium": 0, "low": 0},
-  "findings": [
-    {
-      "id": "KR_WITHOUT_ACTIVE_PROJECTS-KR-1",
-      "type": "KR_WITHOUT_ACTIVE_PROJECTS",
-      "severity": "ALTA",
-      "module": "INDICADORES",
-      "entityType": "KEY_RESULT",
-      "entityId": 1,
-      "entityCode": "KR-1",
-      "entityName": "KR",
-      "description": "...",
-      "recommendedAction": "...",
-      "actionLabel": "Abrir KR",
-      "actionUrl": "/krs?keyResultId=1",
-      "detectedAt": "2026-05-26T00:00:00Z"
-    }
-  ]
-}
-```
-
-## Auditoria
-
-Acceso:
-
-```text
-ADMIN
-```
-
-| Metodo | Endpoint | Query | Body | Respuesta |
-|---|---|---|---|---|
-| GET | `/api/v1/audit-logs` | `action?`, `entityType?`, `entityId?`, `from?`, `to?` | - | `AuditLogResponse[]` |
-| GET | `/api/v1/audit-logs/summary` | `action?`, `entityType?`, `entityId?`, `from?`, `to?` | - | `AuditSummaryResponse` |
-
-`from` y `to` usan `Instant` ISO date-time. Si `from > to`, responde 400.
-
-`AuditLogResponse`:
-
-```json
-{
-  "id": 1,
-  "action": "CREATE",
-  "entityType": "PROJECT",
-  "entityId": "1",
-  "summary": "...",
-  "actorExternalUserId": 9004,
-  "actorUsername": "ad",
-  "actorRoles": "ADMIN",
-  "beforeSnapshot": null,
-  "afterSnapshot": "{}",
-  "createdAt": "2026-05-26T00:00:00Z"
-}
-```
-
-`AuditSummaryResponse`:
-
-```json
-{
-  "totalEvents": 1,
-  "byAction": [{"key": "CREATE", "count": 1}],
-  "byEntityType": [{"key": "PROJECT", "count": 1}]
-}
-```
-
-## Acciones Requeridas En Frontend Por El Rollback
-
-1. Reemplazar `dashboardApi.consolidated(period)` si llama `/dashboard`.
-2. Volver a la carga separada de dashboard:
-   - `/dashboard/summary`
-   - `/dashboard/projects/by-status`
-   - `/dashboard/key-results/by-status`
-   - `/dashboard/departments/summary`
-   - `/dashboard/strategic-bets/summary`
-   - `/dashboard/goals/summary`
-3. Mantener `period` como query param opcional en cada llamada.
-4. No depender de `periods` dentro de una respuesta consolidada de dashboard: ese campo no existe en el backend actual.
-

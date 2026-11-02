@@ -16,15 +16,16 @@ public class AccessControlService {
     public static final String ADMIN = "ADMIN";
     public static final String MANAGER = "MANAGER";
     public static final String CONTRIBUTOR = "CONTRIBUTOR";
+    public static final String VISITOR = "VISITOR";
 
-    public static final List<String> SUPPORTED_ROLES = List.of(ADMIN, MANAGER, CONTRIBUTOR);
+    public static final List<String> SUPPORTED_ROLES = List.of(ADMIN, MANAGER, CONTRIBUTOR, VISITOR);
 
     public Map<String, Boolean> capabilities(Collection<String> roles) {
         Set<String> normalizedRoles = normalize(roles);
         Map<String, Boolean> capabilities = new LinkedHashMap<>();
-        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
-        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
-        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("viewDashboard", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR, VISITOR));
+        capabilities.put("viewStrategy", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR, VISITOR));
+        capabilities.put("viewProjects", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR, VISITOR));
         capabilities.put("manageCatalogs", hasAny(normalizedRoles, ADMIN));
         capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN, MANAGER));
@@ -36,7 +37,7 @@ public class AccessControlService {
         capabilities.put("syncExternalProjects", hasAny(normalizedRoles, ADMIN));
         capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, MANAGER));
-        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR, VISITOR));
         capabilities.put("viewConsistency", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("viewAuditLogs", hasAny(normalizedRoles, ADMIN));
         return capabilities;
@@ -82,6 +83,7 @@ public class AccessControlService {
             case "ADMINISTRADOR" -> ADMIN;
             case "USUARIO", "USER", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO" -> MANAGER;
             case "TUTOR", "PROFESOR" -> CONTRIBUTOR;
+            case "VISITANTE" -> VISITOR;
             default -> role;
         };
     }

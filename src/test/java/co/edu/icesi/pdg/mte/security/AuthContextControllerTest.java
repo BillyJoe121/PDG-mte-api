@@ -16,7 +16,7 @@ class AuthContextControllerTest {
 
         assertThat(response.user().externalUserId()).isNull();
         assertThat(response.user().roles()).isEmpty();
-        assertThat(response.supportedRoles()).containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR");
+        assertThat(response.supportedRoles()).containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR", "VISITOR");
         assertThat(response.capabilities()).allSatisfy((key, value) -> assertThat(value).isFalse());
     }
 

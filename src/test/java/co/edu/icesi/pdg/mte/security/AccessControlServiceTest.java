@@ -12,8 +12,8 @@ class AccessControlServiceTest {
     private final AccessControlService service = new AccessControlService();
 
     @Test
-    void exposesExactlyThreeSupportedRoles() {
-        assertThat(AccessControlService.SUPPORTED_ROLES).containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR");
+    void exposesExactlyFourSupportedRoles() {
+        assertThat(AccessControlService.SUPPORTED_ROLES).containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR", "VISITOR");
     }
 
     @Test
@@ -67,8 +67,8 @@ class AccessControlServiceTest {
 
     @Test
     void normalizesRolesByTrimmingUppercasingRemovingPrefixAndDeduplicating() {
-        assertThat(service.normalizeToList(Arrays.asList(" role_admin ", "ADMIN", "", " manager ", "ROLE_CONTRIBUTOR", null)))
-                .containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR");
+        assertThat(service.normalizeToList(Arrays.asList(" role_admin ", "ADMIN", "", " manager ", "ROLE_CONTRIBUTOR", "visitor", null)))
+                .containsExactly("ADMIN", "MANAGER", "CONTRIBUTOR", "VISITOR");
     }
 
     @Test

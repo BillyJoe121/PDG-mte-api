@@ -18,12 +18,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.Clock;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class, SsoProperties.class})
+@EnableConfigurationProperties({CorsProperties.class, SupabaseProperties.class})
 public class SecurityConfig {
     private final CorsProperties corsProperties;
 
@@ -32,7 +33,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, MteAuthenticationFilter filter) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            MteAuthenticationFilter filter,
+            RestAuthenticationEntryPoint entryPoint
+    ) throws Exception {
         return http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**").disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -44,10 +49,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/sso/config").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/sso/exchange").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/set-password").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").authenticated()
+                        // Visitors only read: every write needs a working role.
+                        .requestMatchers(HttpMethod.POST, "/**").hasAnyRole("ADMIN", "MANAGER", "CONTRIBUTOR")
+                        .requestMatchers(HttpMethod.PUT, "/**").hasAnyRole("ADMIN", "MANAGER", "CONTRIBUTOR")
+                        .requestMatchers(HttpMethod.PATCH, "/**").hasAnyRole("ADMIN", "MANAGER", "CONTRIBUTOR")
+                        .requestMatchers(HttpMethod.DELETE, "/**").hasAnyRole("ADMIN", "MANAGER", "CONTRIBUTOR")
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(entryPoint))
                 .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -64,6 +77,11 @@ public class SecurityConfig {
         return username -> {
             throw new UsernameNotFoundException(username);
         };
+    }
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
     }
 
     @Bean

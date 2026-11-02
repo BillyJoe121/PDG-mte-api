@@ -53,5 +53,6 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody().message()).isEqualTo("La solicitud tiene un cuerpo invalido.");
+        assertThat(response.getBody().details()).noneMatch(detail -> detail.contains("enum invalido"));
     }
 }

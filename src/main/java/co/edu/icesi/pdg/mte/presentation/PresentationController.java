@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/presentation")
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR','VISITOR')")
 public class PresentationController {
     private final PresentationService presentationService;
 

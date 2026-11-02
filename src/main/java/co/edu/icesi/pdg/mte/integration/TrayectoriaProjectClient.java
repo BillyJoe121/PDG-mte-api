@@ -26,7 +26,8 @@ public class TrayectoriaProjectClient {
 
     public List<ExternalProjectPayload> fetchProjects(String bearerToken) {
         if ("mock".equalsIgnoreCase(properties.getMode())) {
-            return mockProjects();
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "La sincronización con Trayectoria no está configurada en este ambiente.");
         }
         if (bearerToken == null || bearerToken.isBlank()) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Se requiere token Bearer para sincronizar proyectos externos.");
@@ -39,39 +40,6 @@ public class TrayectoriaProjectClient {
                 .bodyToMono(JsonNode.class)
                 .block();
         return parseProjectList(payload);
-    }
-
-    private List<ExternalProjectPayload> mockProjects() {
-        return List.of(
-                new ExternalProjectPayload(
-                        9001L,
-                        "Observatorio de indicadores TDI",
-                        "Proyecto sincronizado de demostracion para validar seguimiento estrategico.",
-                        "EN_CURSO",
-                        "investigacion",
-                        "Departamento de Computaci\u00f3n y Sistemas inteligentes.",
-                        "2026-1",
-                        "2026-2",
-                        LocalDate.of(2026, 1, 15),
-                        LocalDate.of(2026, 11, 30),
-                        List.of("Ana Torres", "Luis Rojas"),
-                        "{\"mock\":true,\"id_proyecto\":9001}"
-                ),
-                new ExternalProjectPayload(
-                        9002L,
-                        "Laboratorio de experiencias digitales",
-                        "Proyecto externo simulado para probar sincronizacion sin depender del otro backend.",
-                        "BORRADOR",
-                        "extension",
-                        "Departamento de Dise\u00f1o e Innovaci\u00f3n",
-                        "2026-1",
-                        "2026-1",
-                        LocalDate.of(2026, 2, 1),
-                        LocalDate.of(2026, 6, 20),
-                        List.of("Marta Gomez"),
-                        "{\"mock\":true,\"id_proyecto\":9002}"
-                )
-        );
     }
 
     private List<ExternalProjectPayload> parseProjectList(JsonNode payload) {

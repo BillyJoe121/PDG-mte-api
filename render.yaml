@@ -28,8 +28,12 @@ services:
         value: "false"
       - key: MTE_SEED_ENABLED
         value: "false"
-      - key: MTE_AUTH_MODE
-        value: mock
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: MTE_ACCESS_LINK_URL
+        sync: false
       - key: MTE_TRAYECTORIA_PROJECTS_MODE
         value: mock
       - key: MTE_CORS_ALLOWED_ORIGINS

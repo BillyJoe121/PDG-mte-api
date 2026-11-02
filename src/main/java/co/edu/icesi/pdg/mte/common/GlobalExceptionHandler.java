@@ -52,10 +52,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> handleMessageNotReadable(HttpMessageNotReadableException exception, HttpServletRequest request) {
-        String detail = exception.getMostSpecificCause() == null
-                ? "Cuerpo de solicitud invalido."
-                : exception.getMostSpecificCause().getMessage();
-        return build(HttpStatus.BAD_REQUEST, "La solicitud tiene un cuerpo invalido.", List.of(detail), request);
+        // The parser message can quote submitted values, passwords included, so it is never echoed.
+        return build(HttpStatus.BAD_REQUEST, "La solicitud tiene un cuerpo invalido.",
+                List.of("Revisa el formato y los valores enviados."), request);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

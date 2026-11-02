@@ -1,23 +1,37 @@
 package co.edu.icesi.pdg.mte.e2e;
 
+import co.edu.icesi.pdg.mte.integration.TrayectoriaProjectClient;
+import co.edu.icesi.pdg.mte.support.TrayectoriaFixtures;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "mte.integration.trayectoria.mode=mock")
+@SpringBootTest
 @AutoConfigureMockMvc
 class ProjectModuleE2ETest {
+
+    @MockitoBean
+    private TrayectoriaProjectClient trayectoriaProjectClient;
+
+    @BeforeEach
+    void stubTrayectoria() {
+        when(trayectoriaProjectClient.fetchProjects(any())).thenReturn(TrayectoriaFixtures.projects());
+    }
 
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 

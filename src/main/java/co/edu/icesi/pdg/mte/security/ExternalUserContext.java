@@ -12,16 +12,4 @@ public record ExternalUserContext(
         String professorName,
         String departmentName
 ) {
-    public static ExternalUserContext mock() {
-        return new ExternalUserContext(
-                1L,
-                "demo.admin",
-                "demo.admin@icesi.edu.co",
-                List.of("ADMIN"),
-                List.of("MTE_ADMIN", "MTE_WRITE", "MTE_READ"),
-                1L,
-                "Usuario Demo",
-                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
-        );
-    }
 }

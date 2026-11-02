@@ -164,6 +164,7 @@ public class PeopleService {
         if (existing.isPresent() && !existing.get().getId().equals(id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un profesor con ese correo.");
         }
+        rejectEmailChangeForLinkedAccount(professor, email);
         professor.setName(request.name().trim());
         professor.setEmail(email);
         professor.setDepartment(findDepartment(request.departmentId()));
@@ -222,6 +223,7 @@ public class PeopleService {
                 .ifPresent(existing -> {
                     throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese correo.");
                 });
+        rejectEmailChangeForLinkedAccount(professor, email);
         applyDirectoryUser(professor, request, email);
         PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
         auditService.record(AuditAction.UPDATE, "DIRECTORY_USER", response.id(), "Usuario actualizado: " + response.email(), before, response);
@@ -258,12 +260,20 @@ public class PeopleService {
         }
     }
 
+    private void rejectEmailChangeForLinkedAccount(Professor professor, String email) {
+        if (professor.getAuthUserId() != null && !professor.getEmail().equalsIgnoreCase(email)) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el correo de una persona que ya tiene cuenta de acceso.");
+        }
+    }
+
     private String normalizeAccessRole(String role) {
         String normalized = role.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
             case AccessControlService.ADMIN, "ADMINISTRADOR" -> AccessControlService.ADMIN;
             case AccessControlService.MANAGER, "GESTOR", "DECANO", "DIRECTOR", "DIRECTOR_ESCUELA", "JEFE", "JEFE_DPTO", "USER", "USUARIO" -> AccessControlService.MANAGER;
             case AccessControlService.CONTRIBUTOR, "COLABORADOR", "PROFESOR", "TUTOR" -> AccessControlService.CONTRIBUTOR;
+            case AccessControlService.VISITOR, "VISITANTE" -> AccessControlService.VISITOR;
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "El rol de acceso no es valido.");
         };
     }

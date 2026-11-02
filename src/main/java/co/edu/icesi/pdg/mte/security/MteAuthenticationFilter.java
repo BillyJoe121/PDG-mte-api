@@ -5,30 +5,53 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Validates the Supabase access token on each request and loads the MTE person and role behind
+ * it. Requests without a token continue unauthenticated and are rejected by the authorization
+ * rules unless the endpoint is public.
+ */
 @Component
 public class MteAuthenticationFilter extends OncePerRequestFilter {
+    private static final String BEARER_PREFIX = "Bearer ";
 
-    private final AuthProperties properties;
-    private final ExternalAuthClient externalAuthClient;
+    private final JwtDecoder jwtDecoder;
+    private final AuthService authService;
     private final AccessControlService accessControlService;
+    private final RestAuthenticationEntryPoint entryPoint;
 
     public MteAuthenticationFilter(
-            AuthProperties properties,
-            ExternalAuthClient externalAuthClient,
-            AccessControlService accessControlService
+            JwtDecoder jwtDecoder,
+            AuthService authService,
+            AccessControlService accessControlService,
+            RestAuthenticationEntryPoint entryPoint
     ) {
-        this.properties = properties;
-        this.externalAuthClient = externalAuthClient;
+        this.jwtDecoder = jwtDecoder;
+        this.authService = authService;
         this.accessControlService = accessControlService;
+        this.entryPoint = entryPoint;
+    }
+
+    /** Returns the token of an {@code Authorization: Bearer} header, or null when there is none. */
+    public static String bearerToken(String authorization) {
+        if (authorization == null || !authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            return null;
+        }
+        String token = authorization.substring(BEARER_PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
     }
 
     @Override
@@ -36,7 +59,8 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return "OPTIONS".equalsIgnoreCase(request.getMethod())
                 || path.equals("/api/v1/health")
-                || path.startsWith("/api/v1/auth/sso/")
+                || path.equals("/api/v1/auth/login")
+                || path.equals("/api/v1/auth/set-password")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/h2-console");
@@ -45,111 +69,33 @@ public class MteAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        ExternalUserContext userContext = properties.externalMode()
-                ? validateExternal(request)
-                : mockContext(request);
+        String token = bearerToken(request.getHeader(HttpHeaders.AUTHORIZATION));
+        if (token == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        ExternalUserContext userContext;
+        try {
+            Jwt jwt = jwtDecoder.decode(token);
+            userContext = authService.resolve(jwt);
+        } catch (JwtException exception) {
+            SecurityContextHolder.clearContext();
+            entryPoint.commence(request, response, new BadCredentialsException("Token inválido.", exception));
+            return;
+        } catch (AuthenticationException exception) {
+            SecurityContextHolder.clearContext();
+            entryPoint.commence(request, response, exception);
+            return;
+        }
 
         List<SimpleGrantedAuthority> authorities = accessControlService.normalizeToList(userContext.roles())
                 .stream()
                 .map(role -> "ROLE_" + role)
                 .map(SimpleGrantedAuthority::new)
                 .toList();
-
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                userContext,
-                null,
-                authorities
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userContext, null, authorities));
         filterChain.doFilter(request, response);
-    }
-
-    private ExternalUserContext validateExternal(HttpServletRequest request) {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Bearer token requerido.");
-        }
-        return externalAuthClient.introspect(authorization);
-    }
-
-    private ExternalUserContext mockContext(HttpServletRequest request) {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith("Bearer mock-token-")) {
-            return ExternalUserContext.mock();
-        }
-        String tokenRole = authorization.substring("Bearer mock-token-".length());
-        ExternalUserContext demoUser = demoUserContext(tokenRole);
-        if (demoUser != null) {
-            return demoUser;
-        }
-        List<String> roles = accessControlService.normalizeToList(List.of(tokenRole));
-        return new ExternalUserContext(
-                1L,
-                "demo." + tokenRole,
-                "demo." + tokenRole + "@icesi.edu.co",
-                roles.isEmpty() ? ExternalUserContext.mock().roles() : roles,
-                List.of("MTE_READ", "MTE_WRITE"),
-                1L,
-                "Usuario Demo",
-                "Departamento de Computaci\u00f3n y Sistemas inteligentes."
-        );
-    }
-
-    private ExternalUserContext demoUserContext(String token) {
-        return switch (token.toLowerCase(java.util.Locale.ROOT)) {
-            case "ha", "ar" -> demoUser(
-                    9001L,
-                    "ha",
-                    "hugo.arboleda@icesi.edu.co",
-                    List.of(AccessControlService.MANAGER),
-                    "Hugo Arboleda",
-                    "Direcci\u00f3n TDI"
-            );
-            case "rs" -> demoUser(
-                    9002L,
-                    "rs",
-                    "rocio.segovia@icesi.edu.co",
-                    List.of(AccessControlService.CONTRIBUTOR),
-                    "Roc\u00edo Segovia",
-                    "DCSI"
-            );
-            case "lb" -> demoUser(
-                    9003L,
-                    "lb",
-                    "leonardo.bustamante@icesi.edu.co",
-                    List.of(AccessControlService.CONTRIBUTOR),
-                    "Leonardo Bustamante",
-                    "DCSI"
-            );
-            case "ad" -> demoUser(
-                    9004L,
-                    "ad",
-                    "sistemas.mte@icesi.edu.co",
-                    List.of(AccessControlService.ADMIN),
-                    "Sistemas MTE",
-                    "TI Institucional"
-            );
-            default -> null;
-        };
-    }
-
-    private ExternalUserContext demoUser(
-            Long id,
-            String username,
-            String email,
-            List<String> roles,
-            String professorName,
-            String departmentName
-    ) {
-        return new ExternalUserContext(
-                id,
-                username,
-                email,
-                roles,
-                List.of("MTE_READ", "MTE_WRITE"),
-                id,
-                professorName,
-                departmentName
-        );
     }
 }

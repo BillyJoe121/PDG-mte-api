@@ -4,6 +4,7 @@ import co.edu.icesi.pdg.mte.catalog.Department;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "professor", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
@@ -29,6 +30,14 @@ public class Professor {
     private boolean active = true;
 
     private Instant lastAccessAt;
+
+    @Column(unique = true)
+    private UUID authUserId;
+
+    @Column(nullable = false)
+    private int failedLoginAttempts = 0;
+
+    private Instant lockedUntil;
 
     public Long getId() {
         return id;
@@ -84,5 +93,29 @@ public class Professor {
 
     public void setLastAccessAt(Instant lastAccessAt) {
         this.lastAccessAt = lastAccessAt;
+    }
+
+    public UUID getAuthUserId() {
+        return authUserId;
+    }
+
+    public void setAuthUserId(UUID authUserId) {
+        this.authUserId = authUserId;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Instant lockedUntil) {
+        this.lockedUntil = lockedUntil;
     }
 }

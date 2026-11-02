@@ -4,6 +4,7 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
@@ -25,14 +26,14 @@ class TrayectoriaProjectClientTest {
     }
 
     @Test
-    void returnsMockProjectsWhenModeIsMock() {
+    void mockModeReportsThatSyncIsNotConfigured() {
         IntegrationProperties properties = new IntegrationProperties();
         properties.setMode("mock");
+        TrayectoriaProjectClient client = new TrayectoriaProjectClient(properties, WebClient.builder());
 
-        var projects = new TrayectoriaProjectClient(properties, WebClient.builder()).fetchProjects(null);
-
-        assertThat(projects).hasSize(2);
-        assertThat(projects.get(0).externalProjectId()).isEqualTo(9001L);
+        assertThatThrownBy(() -> client.fetchProjects("Bearer token"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
     }
 
     @Test
