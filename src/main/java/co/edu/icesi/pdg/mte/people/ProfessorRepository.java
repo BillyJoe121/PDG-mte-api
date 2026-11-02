@@ -13,4 +13,6 @@ public interface ProfessorRepository extends JpaRepository<Professor, Long> {
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByDepartmentId(Long departmentId);
+
+    long countByAccessRoleAndActiveTrue(String accessRole);
 }
