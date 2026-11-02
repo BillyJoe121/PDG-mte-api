@@ -257,7 +257,8 @@ class StrategyExecutionSummaryService {
                 inProgressKeyResults.remove(keyResult.getId());
                 return;
             }
-            if (!completedKeyResults.contains(keyResult.getId())) {
+            // Solo un KR ACTIVO cuenta como en desarrollo; un BORRADOR no cuenta en ninguna categoria.
+            if (keyResult.getStatus() == KeyResultStatus.ACTIVO && !completedKeyResults.contains(keyResult.getId())) {
                 inProgressKeyResults.add(keyResult.getId());
             }
         }
