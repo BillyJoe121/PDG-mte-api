@@ -9,7 +9,9 @@ import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.project.ProjectTeacherRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
+import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -178,6 +180,7 @@ public class PeopleService {
         if (teacherPositionRepository.existsByTeacher_Id(id) || projectTeacherRepository.existsByTeacher_Id(id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un profesor en uso.");
         }
+        guardAdminRemoval(professor, "No puedes eliminar tu propia cuenta.");
         professorRepository.delete(professor);
     }
 
@@ -224,6 +227,13 @@ public class PeopleService {
                     throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese correo.");
                 });
         rejectEmailChangeForLinkedAccount(professor, email);
+        String newRole = normalizeAccessRole(request.accessRole());
+        boolean newActive = request.active() == null ? professor.isActive() : request.active();
+        if (!newActive) {
+            guardAdminRemoval(professor, "No puedes desactivar tu propia cuenta.");
+        } else if (!AccessControlService.ADMIN.equals(newRole)) {
+            guardAdminRemoval(professor, "No puedes quitarte a ti mismo el rol de administrador.");
+        }
         applyDirectoryUser(professor, request, email);
         PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
         auditService.record(AuditAction.UPDATE, "DIRECTORY_USER", response.id(), "Usuario actualizado: " + response.email(), before, response);
@@ -233,6 +243,9 @@ public class PeopleService {
     public PeopleDtos.DirectoryUserResponse updateDirectoryUserActive(Long id, boolean active) {
         Professor professor = findProfessor(id);
         PeopleDtos.DirectoryUserResponse before = Mapper.toDirectoryUserResponse(professor);
+        if (!active) {
+            guardAdminRemoval(professor, "No puedes desactivar tu propia cuenta.");
+        }
         professor.setActive(active);
         PeopleDtos.DirectoryUserResponse response = Mapper.toDirectoryUserResponse(professorRepository.save(professor));
         auditService.record(AuditAction.STATUS_CHANGE, "DIRECTORY_USER", response.id(),
@@ -246,8 +259,34 @@ public class PeopleService {
         if (teacherPositionRepository.existsByTeacher_Id(id) || projectTeacherRepository.existsByTeacher_Id(id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un usuario con responsabilidades asignadas.");
         }
+        guardAdminRemoval(professor, "No puedes eliminar tu propia cuenta.");
         professorRepository.delete(professor);
         auditService.record(AuditAction.DELETE, "DIRECTORY_USER", id, "Usuario eliminado: " + before.email(), before, null);
+    }
+
+    /**
+     * Called when a change would stop {@code target} from being an active administrator
+     * (deactivation, demotion or deletion). Refuses it for the acting administrator's own account
+     * and when it would leave the directory without an active administrator.
+     */
+    private void guardAdminRemoval(Professor target, String selfMessage) {
+        if (!target.isActive() || !AccessControlService.ADMIN.equals(target.getAccessRole())) {
+            return;
+        }
+        if (target.getId() != null && target.getId().equals(actingUserId())) {
+            throw new BusinessException(HttpStatus.CONFLICT, selfMessage);
+        }
+        if (professorRepository.countByAccessRoleAndActiveTrue(AccessControlService.ADMIN) <= 1) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Debe quedar al menos un administrador activo.");
+        }
+    }
+
+    private Long actingUserId() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof ExternalUserContext context) {
+            return context.externalUserId();
+        }
+        return null;
     }
 
     private void applyDirectoryUser(Professor professor, PeopleDtos.DirectoryUserRequest request, String email) {
