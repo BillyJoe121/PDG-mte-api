@@ -24,7 +24,7 @@ class PresentationServiceTest {
         StrategyService strategyService = mock(StrategyService.class);
         AcademicPeriodRepository periodRepository = mock(AcademicPeriodRepository.class);
         var executionSummary = new StrategyDtos.ExecutionSummaryResponse(
-                "1 KR completo",
+                "1 KRs completos, 0 en desarrollo. 1 proyectos completados, 0 en desarrollo.",
                 1,
                 0,
                 1,
@@ -32,17 +32,11 @@ class PresentationServiceTest {
                 List.of()
         );
         when(strategyService.listStrategicBets("2026-1")).thenReturn(List.of(
-                new StrategyDtos.StrategicBetResponse(
-                        1L,
-                        "Apuesta",
-                        "Descripcion",
-                        null,
-                        null,
-                        StrategicStatus.ACTIVA,
-                        Instant.now(),
-                        executionSummary
-                )
+                bet(1L, executionSummary),
+                bet(2L, executionSummary)
         ));
+        // El mismo KR y proyecto estan ligados a las dos apuestas: el portafolio los cuenta una sola vez.
+        when(strategyService.portfolioExecutionSummary("2026-1")).thenReturn(executionSummary);
 
         var response = new PresentationService(strategyService, periodRepository).presentation("2026-1");
 
@@ -52,13 +46,28 @@ class PresentationServiceTest {
         assertThat(response.controls().nextKeys()).contains("ArrowRight", "Space");
         assertThat(response.controls().previousKeys()).contains("ArrowLeft");
         assertThat(response.controls().exitKeys()).contains("Escape");
-        assertThat(response.slides()).hasSize(3);
-        assertThat(response.slides().stream().map(slide -> slide.type())).containsExactly("COVER", "STRATEGIC_BET", "CLOSING");
+        assertThat(response.slides()).hasSize(4);
+        assertThat(response.slides().stream().map(slide -> slide.type())).containsExactly("COVER", "STRATEGIC_BET", "STRATEGIC_BET", "CLOSING");
         assertThat(response.slides().get(0).content()).containsEntry("institution", "Escuela TDI");
+        assertThat(response.slides().get(0).content()).containsEntry("strategicBets", 2);
         assertThat(response.slides().get(0).content()).containsEntry("completedKeyResults", 1);
+        assertThat(response.slides().get(0).content()).containsEntry("completedProjects", 1);
         assertThat(response.slides().get(0).content()).doesNotContainKeys("completedObjectives", "inProgressObjectives");
         assertThat(response.slides().get(1).content()).containsKey("executionSummary");
-        assertThat(response.slides().get(2).content()).containsEntry("summaryText", "1 KRs completos, 0 en desarrollo. 1 proyectos completados, 0 en desarrollo.");
+        assertThat(response.slides().get(3).content()).containsEntry("summaryText", "1 KRs completos, 0 en desarrollo. 1 proyectos completados, 0 en desarrollo.");
+    }
+
+    private static StrategyDtos.StrategicBetResponse bet(Long id, StrategyDtos.ExecutionSummaryResponse summary) {
+        return new StrategyDtos.StrategicBetResponse(
+                id,
+                "Apuesta " + id,
+                "Descripcion",
+                null,
+                null,
+                StrategicStatus.ACTIVA,
+                Instant.now(),
+                summary
+        );
     }
 
     @Test
@@ -68,6 +77,8 @@ class PresentationServiceTest {
         when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO))
                 .thenReturn(Optional.of(TestFixtures.period(1L)));
         when(strategyService.listStrategicBets("2026-1")).thenReturn(List.of());
+        when(strategyService.portfolioExecutionSummary("2026-1")).thenReturn(new StrategyDtos.ExecutionSummaryResponse(
+                "0 KRs completos, 0 en desarrollo. 0 proyectos completados, 0 en desarrollo.", 0, 0, 0, 0, List.of()));
 
         var response = new PresentationService(strategyService, periodRepository).presentation(" ");
 

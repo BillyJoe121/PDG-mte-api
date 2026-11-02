@@ -84,6 +84,12 @@ public class StrategyService {
         worldRepository.delete(world);
     }
 
+    /** Totales del portafolio: cada KR y cada proyecto se cuentan una sola vez, sin importar a cuantas apuestas u objetivos esten ligados. */
+    @Transactional(readOnly = true)
+    public StrategyDtos.ExecutionSummaryResponse portfolioExecutionSummary(String period) {
+        return executionSummaryService.forPortfolio(period);
+    }
+
     @Transactional(readOnly = true)
     public List<StrategyDtos.StrategicBetResponse> listStrategicBets(String period) {
         return listStrategicBets(period, false);
