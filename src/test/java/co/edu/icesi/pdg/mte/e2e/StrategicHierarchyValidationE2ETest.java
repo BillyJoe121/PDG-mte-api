@@ -70,7 +70,9 @@ class StrategicHierarchyValidationE2ETest extends StrategicHierarchyE2ETestSuppo
                 """, 409);
         mockMvc.perform(get("/api/v1/key-results").param("goalId", "abc"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(delete("/api/v1/key-results/{id}", 99999L))
+        mockMvc.perform(patch("/api/v1/key-results/{id}/active", 99999L)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"active\": false}"))
                 .andExpect(status().isNotFound());
     }
 

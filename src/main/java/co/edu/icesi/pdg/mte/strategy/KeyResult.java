@@ -50,6 +50,11 @@ public class KeyResult {
     @Column(length = 2048)
     private String plannerUrl;
 
+    @Column(nullable = false)
+    private boolean archived = false;
+
+    private Instant archivedAt;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_of_measure_id")
     private MeasurementUnit measurementUnit;
@@ -163,6 +168,22 @@ public class KeyResult {
 
     public void setPlannerUrl(String plannerUrl) {
         this.plannerUrl = plannerUrl;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
+    }
+
+    public Instant getArchivedAt() {
+        return archivedAt;
+    }
+
+    public void setArchivedAt(Instant archivedAt) {
+        this.archivedAt = archivedAt;
     }
 
     public MeasurementUnit getMeasurementUnit() {

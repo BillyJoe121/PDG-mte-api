@@ -185,7 +185,9 @@ public final class Mapper {
                         .toList(),
                 keyResult.getStatus(),
                 keyResult.getCreatedAt(),
-                keyResult.getPlannerUrl()
+                keyResult.getPlannerUrl(),
+                keyResult.isArchived(),
+                keyResult.getArchivedAt()
         );
     }
 

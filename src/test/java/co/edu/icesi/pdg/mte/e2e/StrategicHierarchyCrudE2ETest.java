@@ -177,8 +177,10 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         JsonNode progressAudit = doGet("/api/v1/audit-logs?entityType=KEY_RESULT&entityId=" + keyResultId);
         assertThat(progressAudit.findValues("action").stream().map(JsonNode::asText)).contains("PROGRESS_REGISTERED");
 
-        mockMvc.perform(delete("/api/v1/key-results/{id}", betOnlyKr.get("id").asLong()))
-                .andExpect(status().isNoContent());
+        JsonNode archivedKr = doPatch("/api/v1/key-results/" + betOnlyKr.get("id").asLong() + "/active", """
+                {"active": false}
+                """, 200);
+        assertThat(archivedKr.get("archived").asBoolean()).isTrue();
 
         mockMvc.perform(delete("/api/v1/goals/{id}/periods/{periodId}", goalId, periodId))
                 .andExpect(status().isOk());

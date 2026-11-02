@@ -98,6 +98,7 @@ public class ConsistencyService {
     private List<ConsistencyFindingResponse> keyResultsWithoutActiveProjects(Instant detectedAt) {
         return keyResultRepository.findAll()
                 .stream()
+                .filter(keyResult -> !keyResult.isArchived())
                 .filter(keyResult -> !hasActiveProject(keyResult))
                 .map(keyResult -> finding(
                         ConsistencyFindingType.KR_WITHOUT_ACTIVE_PROJECTS,

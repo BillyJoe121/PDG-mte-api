@@ -18,6 +18,7 @@ import co.edu.icesi.pdg.mte.people.RoleRepository;
 import co.edu.icesi.pdg.mte.security.AccessControlService;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
+import co.edu.icesi.pdg.mte.strategy.KeyResultArchivePolicy;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -162,7 +163,7 @@ public class ProjectService {
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), request.actualEndDate(), request.tutors());
         if (request.keyResultId() != null) {
-            project.setKeyResult(findKeyResult(request.keyResultId()));
+            project.setKeyResult(resolveKeyResultForUpdate(project, request.keyResultId()));
         }
         project.setContributionWeight(request.contributionWeight());
         project.setLinkStatus(request.linkStatus());
@@ -237,7 +238,7 @@ public class ProjectService {
                         .orElseGet(Project::new);
                 fieldMapper.applyExternalPayload(project, payload);
                 if (project.getKeyResult() == null) {
-                    keyResultRepository.findAll().stream().findFirst().ifPresent(project::setKeyResult);
+                    keyResultRepository.findAll().stream().filter(keyResult -> !keyResult.isArchived()).findFirst().ifPresent(project::setKeyResult);
                 }
                 if (project.getKeyResult() == null) {
                     failed++;
@@ -267,6 +268,7 @@ public class ProjectService {
         for (ProjectDtos.ProjectKeyResultDraftRequest request : links) {
             KeyResult keyResult = keyResultRepository.findById(request.keyResultId())
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
+            KeyResultArchivePolicy.requireNotArchived(keyResult);
             if (linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(project.getId(), keyResult.getId())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "El proyecto ya esta vinculado a este Key Result.");
             }
@@ -327,9 +329,9 @@ public class ProjectService {
         ProjectDtos.ProjectKeyResultDraftRequest primaryLink = draftLinks == null || draftLinks.isEmpty() ? null : draftLinks.get(0);
         Long resolvedKeyResultId = keyResultId != null ? keyResultId : primaryLink == null ? null : primaryLink.keyResultId();
         if (resolvedKeyResultId == null) {
-            keyResultRepository.findAll().stream().findFirst().ifPresent(project::setKeyResult);
+            keyResultRepository.findAll().stream().filter(keyResult -> !keyResult.isArchived()).findFirst().ifPresent(project::setKeyResult);
         } else {
-            project.setKeyResult(findKeyResult(resolvedKeyResultId));
+            project.setKeyResult(findLinkableKeyResult(resolvedKeyResultId));
         }
         if (project.getKeyResult() == null) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "El MER exige asociar el proyecto a un Key Result.");
@@ -347,6 +349,21 @@ public class ProjectService {
     private KeyResult findKeyResult(Long id) {
         return keyResultRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Key Result no encontrado."));
+    }
+
+    private KeyResult findLinkableKeyResult(Long id) {
+        KeyResult keyResult = findKeyResult(id);
+        KeyResultArchivePolicy.requireNotArchived(keyResult);
+        return keyResult;
+    }
+
+    /** Keeping the project's current Key Result is not a new link, so only a change of target is checked. */
+    private KeyResult resolveKeyResultForUpdate(Project project, Long keyResultId) {
+        KeyResult current = project.getKeyResult();
+        if (current != null && current.getId().equals(keyResultId)) {
+            return current;
+        }
+        return findLinkableKeyResult(keyResultId);
     }
 
     private Long currentExternalUserId() {

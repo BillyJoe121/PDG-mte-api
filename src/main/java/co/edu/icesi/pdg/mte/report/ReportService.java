@@ -171,6 +171,7 @@ public class ReportService {
                 .toList();
         List<KeyResult> keyResults = keyResultRepository.findAll()
                 .stream()
+                .filter(keyResult -> !keyResult.isArchived())
                 .filter(keyResult -> periodMatches(keyResult, period))
                 .toList();
         Map<Long, List<ProjectKeyResultLink>> linksByKeyResult = linksByKeyResult(keyResults);

@@ -79,6 +79,9 @@ class StrategyExecutionSummaryService {
     ) {
         Map<Long, List<KeyResult>> keyResultsByOwner = new LinkedHashMap<>();
         for (KeyResult keyResult : keyResultRepository.findAll()) {
+            if (keyResult.isArchived()) {
+                continue;
+            }
             for (Long ownerId : ownersOf.apply(keyResult)) {
                 if (ownerIds.contains(ownerId)) {
                     keyResultsByOwner.computeIfAbsent(ownerId, ignored -> new ArrayList<>()).add(keyResult);

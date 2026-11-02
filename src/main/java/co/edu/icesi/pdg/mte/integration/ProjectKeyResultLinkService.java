@@ -9,6 +9,7 @@ import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
+import co.edu.icesi.pdg.mte.strategy.KeyResultArchivePolicy;
 import co.edu.icesi.pdg.mte.strategy.KeyResultRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class ProjectKeyResultLinkService {
     public ProjectDtos.ProjectKeyResultLinkResponse link(ProjectDtos.ProjectKeyResultLinkRequest request) {
         Project project = findProject(request.projectId());
         KeyResult keyResult = findKeyResult(request.keyResultId());
+        KeyResultArchivePolicy.requireNotArchived(keyResult);
         if (linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(project.getId(), keyResult.getId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "El proyecto ya esta vinculado a este Key Result.");
         }

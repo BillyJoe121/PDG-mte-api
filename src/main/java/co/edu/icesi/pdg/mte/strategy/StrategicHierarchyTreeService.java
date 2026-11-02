@@ -42,6 +42,7 @@ class StrategicHierarchyTreeService {
     List<StrategyDtos.StrategicHierarchyNodeResponse> tree(String period) {
         AcademicPeriod selectedPeriod = StrategyPeriodScope.resolve(period, periodRepository);
         List<KeyResult> keyResults = keyResultRepository.findAll().stream()
+                .filter(keyResult -> !keyResult.isArchived())
                 .filter(keyResult -> StrategyPeriodScope.matches(keyResult, selectedPeriod))
                 .toList();
         List<StrategicBet> bets = strategicBetRepository.findAll().stream()

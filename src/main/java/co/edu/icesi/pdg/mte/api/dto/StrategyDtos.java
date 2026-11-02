@@ -134,7 +134,9 @@ public final class StrategyDtos {
             List<StrategyLinkResponse> strategicBets,
             KeyResultStatus status,
             Instant createdAt,
-            @JsonInclude(JsonInclude.Include.ALWAYS) String plannerUrl
+            @JsonInclude(JsonInclude.Include.ALWAYS) String plannerUrl,
+            boolean archived,
+            @JsonInclude(JsonInclude.Include.ALWAYS) Instant archivedAt
     ) {
     }
 

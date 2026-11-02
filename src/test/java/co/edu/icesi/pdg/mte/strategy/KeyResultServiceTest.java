@@ -153,15 +153,15 @@ class KeyResultServiceTest extends StrategyServiceTestSupport {
         KeyResult otherBetOtherPeriod = TestFixtures.keyResult(3L, unit, otherPeriod, null, otherBet);
         when(keyResultRepository.findAll()).thenReturn(List.of(otherBetOtherPeriod, goalOnly, keyResult));
 
-        assertThat(keyResultService.list(null, null, null)).extracting(StrategyDtos.KeyResultResponse::id)
+        assertThat(keyResultService.list(null, null, null, false)).extracting(StrategyDtos.KeyResultResponse::id)
                 .containsExactly(1L, 2L, 3L);
-        assertThat(keyResultService.list(1L, null, null)).extracting(StrategyDtos.KeyResultResponse::id)
+        assertThat(keyResultService.list(1L, null, null, false)).extracting(StrategyDtos.KeyResultResponse::id)
                 .containsExactly(1L, 2L);
-        assertThat(keyResultService.list(null, 2L, null)).extracting(StrategyDtos.KeyResultResponse::id)
+        assertThat(keyResultService.list(null, 2L, null, false)).extracting(StrategyDtos.KeyResultResponse::id)
                 .containsExactly(3L);
-        assertThat(keyResultService.list(null, null, 2L)).extracting(StrategyDtos.KeyResultResponse::id)
+        assertThat(keyResultService.list(null, null, 2L, false)).extracting(StrategyDtos.KeyResultResponse::id)
                 .containsExactly(3L);
-        assertThat(keyResultService.list(1L, 1L, 1L)).extracting(StrategyDtos.KeyResultResponse::id)
+        assertThat(keyResultService.list(1L, 1L, 1L, false)).extracting(StrategyDtos.KeyResultResponse::id)
                 .containsExactly(1L);
     }
 
@@ -208,32 +208,10 @@ class KeyResultServiceTest extends StrategyServiceTestSupport {
         assertThatThrownBy(() -> keyResultService.updateProgress(1L, progressRequest("10", "10")))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cerrado");
-        assertThatThrownBy(() -> keyResultService.delete(1L))
+        assertThatThrownBy(() -> keyResultService.setActive(1L, false))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("cerrado");
         verify(keyResultRepository, never()).save(any());
-        verify(keyResultRepository, never()).delete(any());
-    }
-
-    @Test
-    void deletesKeyResultWhenItHasNoActiveProjectLinks() {
-        when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
-        when(linkRepository.countByKeyResultIdAndActiveTrue(1L)).thenReturn(0L);
-
-        keyResultService.delete(1L);
-
-        verify(keyResultRepository).delete(keyResult);
-    }
-
-    @Test
-    void rejectsKeyResultDeletionWhenItHasActiveProjectLinks() {
-        when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
-        when(linkRepository.countByKeyResultIdAndActiveTrue(1L)).thenReturn(1L);
-
-        assertThatThrownBy(() -> keyResultService.delete(1L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("proyectos vinculados");
-        verify(keyResultRepository, never()).delete(any());
     }
 
     @Test

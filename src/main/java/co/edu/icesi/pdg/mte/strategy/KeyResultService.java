@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -54,9 +55,15 @@ public class KeyResultService {
     }
 
     @Transactional(readOnly = true)
-    public List<StrategyDtos.KeyResultResponse> list(Long goalId, Long strategicBetId, Long periodId) {
+    public List<StrategyDtos.KeyResultResponse> list(
+            Long goalId,
+            Long strategicBetId,
+            Long periodId,
+            boolean includeArchived
+    ) {
         return keyResultRepository.findAll()
                 .stream()
+                .filter(keyResult -> includeArchived || !keyResult.isArchived())
                 .filter(keyResult -> goalId == null
                         || keyResult.getGoals().stream().anyMatch(goal -> goal.getId().equals(goalId)))
                 .filter(keyResult -> strategicBetId == null
@@ -131,13 +138,24 @@ public class KeyResultService {
         return response;
     }
 
-    public void delete(Long keyResultId) {
+    public StrategyDtos.KeyResultResponse setActive(Long keyResultId, boolean active) {
         KeyResult keyResult = findKeyResult(keyResultId);
-        requireMutable(keyResult);
-        if (linkRepository.countByKeyResultIdAndActiveTrue(keyResultId) > 0) {
-            throw new BusinessException(HttpStatus.CONFLICT, "No se puede eliminar un KR con proyectos vinculados.");
+        if (keyResult.isArchived() == !active) {
+            return Mapper.toResponse(keyResult);
         }
-        keyResultRepository.delete(keyResult);
+        if (!active) {
+            requireNotClosed(keyResult);
+            if (linkRepository.countByKeyResultIdAndActiveTrue(keyResultId) > 0) {
+                throw new BusinessException(HttpStatus.CONFLICT, "No se puede archivar un KR con proyectos vinculados.");
+            }
+        }
+        StrategyDtos.KeyResultResponse before = Mapper.toResponse(keyResult);
+        keyResult.setArchived(!active);
+        keyResult.setArchivedAt(active ? null : Instant.now());
+        StrategyDtos.KeyResultResponse response = Mapper.toResponse(keyResultRepository.save(keyResult));
+        auditService.record(AuditAction.STATUS_CHANGE, "KEY_RESULT", keyResultId,
+                active ? "Key Result restaurado." : "Key Result archivado.", before, response);
+        return response;
     }
 
     private void apply(KeyResult keyResult, StrategyDtos.KeyResultRequest request) {
@@ -183,6 +201,11 @@ public class KeyResultService {
     }
 
     private void requireMutable(KeyResult keyResult) {
+        KeyResultArchivePolicy.requireNotArchived(keyResult);
+        requireNotClosed(keyResult);
+    }
+
+    private void requireNotClosed(KeyResult keyResult) {
         if (keyResult.getStatus() == KeyResultStatus.CERRADO) {
             throw new BusinessException(HttpStatus.CONFLICT, "El KR está cerrado y no admite cambios ordinarios.");
         }

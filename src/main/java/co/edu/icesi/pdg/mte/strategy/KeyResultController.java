@@ -22,9 +22,10 @@ public class KeyResultController {
     List<StrategyDtos.KeyResultResponse> list(
             @RequestParam(required = false) Long goalId,
             @RequestParam(required = false) Long strategicBetId,
-            @RequestParam(required = false) Long periodId
+            @RequestParam(required = false) Long periodId,
+            @RequestParam(defaultValue = "false") boolean includeArchived
     ) {
-        return keyResultService.list(goalId, strategicBetId, periodId);
+        return keyResultService.list(goalId, strategicBetId, periodId, includeArchived);
     }
 
     @PostMapping
@@ -66,10 +67,12 @@ public class KeyResultController {
         return keyResultService.setStatus(id, request.status());
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PatchMapping("/{id}/active")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    void delete(@PathVariable Long id) {
-        keyResultService.delete(id);
+    StrategyDtos.KeyResultResponse setActive(
+            @PathVariable Long id,
+            @RequestBody StrategyDtos.ActiveStateRequest request
+    ) {
+        return keyResultService.setActive(id, request.active());
     }
 }

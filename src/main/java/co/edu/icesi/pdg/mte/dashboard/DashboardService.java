@@ -275,6 +275,7 @@ public class DashboardService {
     private List<KeyResult> filteredKeyResults(String period) {
         return keyResultRepository.findAll()
                 .stream()
+                .filter(keyResult -> !keyResult.isArchived())
                 .filter(keyResult -> periodMatches(keyResult, period))
                 .toList();
     }
