@@ -164,10 +164,10 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
 
         var created = service.create(new ProjectDtos.ProjectRequest(
                 "Proyecto borrador", "Descripcion", ProjectType.GRADO, 1L, null, "2026-1", null, null, null,
-                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, null));
+                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, null, null));
         var updated = service.update(1L, new ProjectDtos.ProjectUpdateRequest(
                 "Proyecto actualizado", "Descripcion", ProjectType.EXTENSION, 1L, "2026-1", null, null, null, null,
-                1L, BigDecimal.valueOf(25), "ACTIVO", null, new ArrayList<>()));
+                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, new ArrayList<>()));
         var active = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.ACTIVO));
         project.setActualEndDate(LocalDate.of(2026, 12, 1));
         var finalized = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.FINALIZADO));

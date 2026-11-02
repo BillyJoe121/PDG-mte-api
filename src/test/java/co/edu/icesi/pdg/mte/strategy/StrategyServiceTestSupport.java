@@ -103,6 +103,16 @@ abstract class StrategyServiceTestSupport {
             List<Long> goalIds,
             List<Long> strategicBetIds
     ) {
+        return keyResultRequest(name, targetValue, goalIds, strategicBetIds, null);
+    }
+
+    protected StrategyDtos.KeyResultRequest keyResultRequest(
+            String name,
+            BigDecimal targetValue,
+            List<Long> goalIds,
+            List<Long> strategicBetIds,
+            String plannerUrl
+    ) {
         return new StrategyDtos.KeyResultRequest(
                 name,
                 "Descripcion KR",
@@ -112,7 +122,8 @@ abstract class StrategyServiceTestSupport {
                 1L,
                 1L,
                 goalIds,
-                strategicBetIds
+                strategicBetIds,
+                plannerUrl
         );
     }
 

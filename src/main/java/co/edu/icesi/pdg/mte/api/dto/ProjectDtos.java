@@ -5,6 +5,7 @@ import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectSyncStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
@@ -31,6 +32,7 @@ public final class ProjectDtos {
             @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
+            String plannerUrl,
             List<@NotBlank String> tutors,
             List<@Valid ProjectKeyResultDraftRequest> keyResultLinks
     ) {
@@ -48,7 +50,7 @@ public final class ProjectDtos {
                 List<ProjectKeyResultDraftRequest> keyResultLinks
         ) {
             this(name, description, type, departmentId, status, startPeriod, endPeriod, startDate, endDate,
-                    null, null, null, null, tutors, keyResultLinks);
+                    null, null, null, null, null, tutors, keyResultLinks);
         }
     }
 
@@ -66,6 +68,7 @@ public final class ProjectDtos {
             @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
+            String plannerUrl,
             List<@NotBlank String> tutors
     ) {
         public ProjectUpdateRequest(
@@ -81,7 +84,7 @@ public final class ProjectDtos {
                 List<String> tutors
         ) {
             this(name, description, type, departmentId, startPeriod, endPeriod, startDate, endDate, actualEndDate,
-                    null, null, null, null, tutors);
+                    null, null, null, null, null, tutors);
         }
     }
 
@@ -118,6 +121,7 @@ public final class ProjectDtos {
             BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
+            @JsonInclude(JsonInclude.Include.ALWAYS) String plannerUrl,
             List<String> tutors,
             List<ProjectLinkedKeyResultResponse> linkedKeyResults,
             ProjectOrigin origin,
@@ -152,7 +156,7 @@ public final class ProjectDtos {
         ) {
             this(id, externalProjectId, externalSource, name, description, type, departmentId, departmentName, status,
                     startPeriod, endPeriod, startDate, endDate, actualEndDate, globalProgress, null, null, null, null,
-                    null, tutors, linkedKeyResults, origin, syncStatus, lastSyncedAt, createdAt, updatedAt);
+                    null, null, tutors, linkedKeyResults, origin, syncStatus, lastSyncedAt, createdAt, updatedAt);
         }
     }
 

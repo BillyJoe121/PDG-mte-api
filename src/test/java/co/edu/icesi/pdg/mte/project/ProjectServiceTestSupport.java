@@ -111,6 +111,7 @@ abstract class ProjectServiceTestSupport {
                 BigDecimal.valueOf(25),
                 "ACTIVO",
                 null,
+                null,
                 List.of(" Tutora Uno ", ""),
                 List.of()
         );
@@ -130,6 +131,7 @@ abstract class ProjectServiceTestSupport {
                 keyResultId,
                 BigDecimal.valueOf(25),
                 "ACTIVO",
+                null,
                 null,
                 List.of(),
                 List.of(new ProjectDtos.ProjectKeyResultDraftRequest(

@@ -10,6 +10,7 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnitRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementValuePolicy;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.PlannerLinks;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -140,6 +141,7 @@ public class KeyResultService {
     }
 
     private void apply(KeyResult keyResult, StrategyDtos.KeyResultRequest request) {
+        String plannerUrl = PlannerLinks.normalize(request.plannerUrl());
         Set<InstitutionalGoal> goals = resolveGoals(request.goalIds());
         Set<StrategicBet> strategicBets = resolveStrategicBets(request.strategicBetIds());
         if (goals.isEmpty() && strategicBets.isEmpty()) {
@@ -151,6 +153,7 @@ public class KeyResultService {
         keyResult.setName(request.name().trim());
         keyResult.setDescription(request.description().trim());
         keyResult.setMetric(request.metric().trim());
+        keyResult.setPlannerUrl(plannerUrl);
         keyResult.setBaseValue(request.baseValue());
         keyResult.setTargetValue(request.targetValue());
         keyResult.setMeasurementUnit(measurementUnit);

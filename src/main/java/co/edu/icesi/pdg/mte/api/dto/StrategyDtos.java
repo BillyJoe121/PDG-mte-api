@@ -2,6 +2,7 @@ package co.edu.icesi.pdg.mte.api.dto;
 
 import co.edu.icesi.pdg.mte.strategy.KeyResultStatus;
 import co.edu.icesi.pdg.mte.strategy.StrategicStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -105,7 +106,8 @@ public final class StrategyDtos {
             @NotNull Long measurementUnitId,
             @NotNull Long academicPeriodId,
             List<@NotNull Long> goalIds,
-            List<@NotNull Long> strategicBetIds
+            List<@NotNull Long> strategicBetIds,
+            String plannerUrl
     ) {
     }
 
@@ -131,7 +133,8 @@ public final class StrategyDtos {
             List<StrategyLinkResponse> goals,
             List<StrategyLinkResponse> strategicBets,
             KeyResultStatus status,
-            Instant createdAt
+            Instant createdAt,
+            @JsonInclude(JsonInclude.Include.ALWAYS) String plannerUrl
     ) {
     }
 

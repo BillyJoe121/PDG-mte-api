@@ -101,6 +101,7 @@ class ProjectResponseAssembler {
                 base.contributionWeight(),
                 base.linkStatus(),
                 base.jiraKey(),
+                base.plannerUrl(),
                 base.tutors(),
                 linkedKeyResults,
                 base.origin(),

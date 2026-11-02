@@ -55,6 +55,9 @@ public class Project {
 
     private String jiraKey;
 
+    @Column(length = 2048)
+    private String plannerUrl;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private KeyResult keyResult;
 
@@ -214,6 +217,14 @@ public class Project {
 
     public void setJiraKey(String jiraKey) {
         this.jiraKey = jiraKey;
+    }
+
+    public String getPlannerUrl() {
+        return plannerUrl;
+    }
+
+    public void setPlannerUrl(String plannerUrl) {
+        this.plannerUrl = plannerUrl;
     }
 
     public KeyResult getKeyResult() {

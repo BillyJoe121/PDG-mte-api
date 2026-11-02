@@ -5,6 +5,7 @@ import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.audit.AuditAction;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.PlannerLinks;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
@@ -82,10 +83,12 @@ public class ProjectService {
     }
 
     public ProjectDtos.ProjectResponse create(ProjectDtos.ProjectRequest request) {
+        String plannerUrl = PlannerLinks.normalize(request.plannerUrl());
         Project project = new Project();
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), null, request.tutors());
         applyDirectKeyResult(project, request.keyResultId(), request.contributionWeight(), request.linkStatus(), request.jiraKey(), request.keyResultLinks());
+        project.setPlannerUrl(plannerUrl);
         project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
         project.setOrigin(ProjectOrigin.LOCAL);
         project.setSyncStatus(ProjectSyncStatus.LOCAL_ONLY);
@@ -153,6 +156,7 @@ public class ProjectService {
     }
 
     public ProjectDtos.ProjectResponse update(Long id, ProjectDtos.ProjectUpdateRequest request) {
+        String plannerUrl = PlannerLinks.normalize(request.plannerUrl());
         Project project = findProject(id);
         ProjectDtos.ProjectResponse before = Mapper.toResponse(project);
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
@@ -163,6 +167,7 @@ public class ProjectService {
         project.setContributionWeight(request.contributionWeight());
         project.setLinkStatus(request.linkStatus());
         project.setJiraKey(request.jiraKey());
+        project.setPlannerUrl(plannerUrl);
         ProjectDtos.ProjectResponse response = responseAssembler.toProjectResponse(projectRepository.save(project));
         auditService.record(AuditAction.UPDATE, "PROJECT", response.id(), "Proyecto actualizado: " + response.name(), before, response);
         return response;

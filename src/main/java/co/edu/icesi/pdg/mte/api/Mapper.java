@@ -184,7 +184,8 @@ public final class Mapper {
                         .sorted(Comparator.comparing(StrategyDtos.StrategyLinkResponse::name))
                         .toList(),
                 keyResult.getStatus(),
-                keyResult.getCreatedAt()
+                keyResult.getCreatedAt(),
+                keyResult.getPlannerUrl()
         );
     }
 
@@ -220,6 +221,7 @@ public final class Mapper {
                 project.getContributionWeight(),
                 project.getLinkStatus(),
                 project.getJiraKey(),
+                project.getPlannerUrl(),
                 project.getTutors().stream().toList(),
                 List.of(),
                 project.getOrigin(),

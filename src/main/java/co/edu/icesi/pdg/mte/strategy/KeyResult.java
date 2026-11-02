@@ -47,6 +47,9 @@ public class KeyResult {
 
     private Instant createdAt = Instant.now();
 
+    @Column(length = 2048)
+    private String plannerUrl;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_of_measure_id")
     private MeasurementUnit measurementUnit;
@@ -152,6 +155,14 @@ public class KeyResult {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getPlannerUrl() {
+        return plannerUrl;
+    }
+
+    public void setPlannerUrl(String plannerUrl) {
+        this.plannerUrl = plannerUrl;
     }
 
     public MeasurementUnit getMeasurementUnit() {
