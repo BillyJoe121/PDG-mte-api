@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     branch: develop
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/health
