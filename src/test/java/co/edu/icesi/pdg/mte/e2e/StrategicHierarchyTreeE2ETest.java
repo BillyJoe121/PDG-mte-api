@@ -55,8 +55,15 @@ class StrategicHierarchyTreeE2ETest extends StrategicHierarchyE2ETestSupport {
                 {"name": "Unidad sin tipo"}
                 """, 400);
         doPost("/api/v1/academic-periods", """
-                {"name": "Periodo malo", "startDate": "2026-06-01", "endDate": "2026-01-01", "status": "ACTIVO"}
+                {"name": "2026-2", "startDate": "2026-06-01", "endDate": "2026-01-01", "status": "ACTIVO"}
                 """, 400);
+        for (String invalidName : java.util.List.of("Periodo 2026", "2026-3", "26-1", "2026-Q1")) {
+            JsonNode error = doPost("/api/v1/academic-periods", """
+                    {"name": "%s", "startDate": "2031-01-01", "endDate": "2031-06-01", "status": "PLANIFICACION"}
+                    """.formatted(invalidName), 400);
+            assertThat(error.get("details").get(0).asText())
+                    .isEqualTo("name: El nombre del periodo debe tener formato AAAA-1 o AAAA-2.");
+        }
         doPost("/api/v1/academic-periods", """
                 {"name": "2026-1", "startDate": "2026-01-01", "endDate": "2026-06-01", "status": "ACTIVO"}
                 """, 409);
@@ -75,8 +82,8 @@ class StrategicHierarchyTreeE2ETest extends StrategicHierarchyE2ETestSupport {
                 {"name": "Unidad usada %d", "type": "PORCENTAJE", "description": "Uso en meta"}
                 """.formatted(SEQUENCE.incrementAndGet()), 201).get("id").asLong();
         Long usedPeriodId = doPost("/api/v1/academic-periods", """
-                {"name": "2299-%d", "startDate": "2299-01-01", "endDate": "2299-06-01", "status": "PLANIFICACION"}
-                """.formatted(SEQUENCE.incrementAndGet()), 201).get("id").asLong();
+                {"name": "%d-1", "startDate": "2299-01-01", "endDate": "2299-06-01", "status": "PLANIFICACION"}
+                """.formatted(4000 + SEQUENCE.incrementAndGet()), 201).get("id").asLong();
         Long goalId = createGoal("Meta catalogos " + SEQUENCE.incrementAndGet(), usedUnitId);
         mockMvc.perform(post("/api/v1/goals/{id}/periods/{periodId}", goalId, usedPeriodId))
                 .andExpect(status().isOk());
@@ -92,11 +99,16 @@ class StrategicHierarchyTreeE2ETest extends StrategicHierarchyE2ETestSupport {
         doDelete("/api/v1/measurement-units/99999", 404);
 
         doPut("/api/v1/academic-periods/99999", """
-                {"name": "No existe", "startDate": "2026-01-01", "endDate": "2026-06-01", "status": "ACTIVO"}
+                {"name": "2026-2", "startDate": "2026-01-01", "endDate": "2026-06-01", "status": "ACTIVO"}
                 """, 404);
         doPut("/api/v1/academic-periods/" + usedPeriodId, """
-                {"name": "Periodo fecha mala", "startDate": "2026-06-01", "endDate": "2026-01-01", "status": "ACTIVO"}
+                {"name": "2026-2", "startDate": "2026-06-01", "endDate": "2026-01-01", "status": "ACTIVO"}
                 """, 400);
+        JsonNode renameError = doPut("/api/v1/academic-periods/" + usedPeriodId, """
+                {"name": "Periodo renombrado", "startDate": "2299-01-01", "endDate": "2299-06-01", "status": "PLANIFICACION"}
+                """, 400);
+        assertThat(renameError.get("details").get(0).asText())
+                .isEqualTo("name: El nombre del periodo debe tener formato AAAA-1 o AAAA-2.");
         doPut("/api/v1/academic-periods/" + usedPeriodId, """
                 {"name": "2026-1", "startDate": "2026-01-01", "endDate": "2026-06-01", "status": "ACTIVO"}
                 """, 409);

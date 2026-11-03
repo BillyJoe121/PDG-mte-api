@@ -77,8 +77,12 @@ class DashboardE2ETest {
         expectGet("/api/v1/reports/export.pdf?period=2026-1", 200);
 
         assertThat(summary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(1);
-        assertThat(globalSummary.hasNonNull("period")).isFalse();
-        assertThat(globalSummary.get("completedProjects").asLong()).isGreaterThanOrEqualTo(summary.get("completedProjects").asLong());
+        String activePeriod = activePeriodName();
+        JsonNode activePeriodSummary = doGet("/api/v1/dashboard/summary?period=" + activePeriod, 200);
+        assertThat(globalSummary.get("period").asText()).isEqualTo(activePeriod);
+        assertThat(globalSummary.get("completedProjects").asLong()).isEqualTo(activePeriodSummary.get("completedProjects").asLong());
+        assertThat(globalSummary.get("closedKeyResults").asLong()).isEqualTo(activePeriodSummary.get("closedKeyResults").asLong());
+        assertThat(doGet("/api/v1/reports/general", 200).get("period").asText()).isEqualTo(activePeriod);
         assertThat(summary.get("closedKeyResults").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(summary.has("averageKeyResultCoverage")).isFalse();
         assertThat(keyResultAfterProjectClosure.get("progressPercentage").decimalValue()).isEqualByComparingTo("0");
@@ -250,6 +254,20 @@ class DashboardE2ETest {
                   "strategicBetIds": [%d]
                 }
                 """.formatted(SEQUENCE.incrementAndGet(), unitId, periodId, goalId, betId);
+    }
+
+    private String activePeriodName() throws Exception {
+        JsonNode latest = null;
+        for (JsonNode period : doGet("/api/v1/academic-periods", 200)) {
+            if ("ACTIVO".equals(period.get("status").asText())
+                    && (latest == null || period.get("startDate").asText().compareTo(latest.get("startDate").asText()) > 0)) {
+                latest = period;
+            }
+        }
+        if (latest == null) {
+            throw new IllegalStateException("No hay periodo activo sembrado.");
+        }
+        return latest.get("name").asText();
     }
 
     private Long periodIdByName(String name) throws Exception {

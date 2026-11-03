@@ -2,9 +2,11 @@ package co.edu.icesi.pdg.mte.dashboard;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
+import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
@@ -27,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +51,8 @@ class DashboardServiceTest {
     private InstitutionalGoalRepository goalRepository;
     @Mock
     private ProjectKeyResultLinkRepository linkRepository;
+    @Mock
+    private AcademicPeriodRepository periodRepository;
 
     private DashboardService service;
     private Department department;
@@ -61,7 +66,7 @@ class DashboardServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DashboardService(projectRepository, keyResultRepository, departmentRepository, strategicBetRepository, goalRepository, linkRepository);
+        service = new DashboardService(projectRepository, keyResultRepository, departmentRepository, strategicBetRepository, goalRepository, linkRepository, periodRepository);
         MeasurementUnit unit = TestFixtures.unit(1L);
         period = TestFixtures.period(1L);
         department = TestFixtures.department(1L);
@@ -113,6 +118,9 @@ class DashboardServiceTest {
         var departments = service.departments("2026-1");
         var bets = service.strategicBets("2026-1");
         var goals = service.goals("2026-1");
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO))
+                .thenReturn(Optional.of(laterPeriod), Optional.empty());
+        var activePeriodSummary = service.summary(null);
         var globalSummary = service.summary(null);
 
         assertThat(summary.activeProjects()).isEqualTo(2);
@@ -124,6 +132,12 @@ class DashboardServiceTest {
         assertThat(summary.draftKeyResults()).isEqualTo(1);
         assertThat(summary.activeKeyResults()).isEqualTo(3);
         assertThat(summary.closedKeyResults()).isEqualTo(1);
+        assertThat(activePeriodSummary.period()).isEqualTo("2026-2");
+        assertThat(activePeriodSummary.activeProjects()).isEqualTo(2);
+        assertThat(activePeriodSummary.completedProjects()).isZero();
+        assertThat(activePeriodSummary.archivedProjects()).isEqualTo(1);
+        assertThat(activePeriodSummary.activeKeyResults()).isEqualTo(1);
+        assertThat(activePeriodSummary.closedKeyResults()).isZero();
         assertThat(globalSummary.period()).isNull();
         assertThat(globalSummary.activeProjects()).isEqualTo(3);
         assertThat(globalSummary.archivedProjects()).isEqualTo(1);
@@ -189,6 +203,50 @@ class DashboardServiceTest {
         assertThat(service.departments(null)).isEmpty();
         assertThat(service.strategicBets(null)).isEmpty();
         assertThat(service.goals(null)).isEmpty();
+    }
+
+    @Test
+    void withoutPeriodUsesTheMostRecentActivePeriodForEveryEndpoint() {
+        AcademicPeriod laterPeriod = TestFixtures.period(2L);
+        laterPeriod.setName("2026-2");
+        KeyResult laterKr = keyResult(6L, TestFixtures.unit(1L), BigDecimal.valueOf(10));
+        laterKr.setAcademicPeriod(laterPeriod);
+        Project earlier = project(1L, ProjectStatus.ACTIVO, department, "2026-1", null);
+        Project later = project(2L, ProjectStatus.ACTIVO, department, "2026-2", null);
+        earlier.setKeyResult(lowKr);
+        later.setKeyResult(laterKr);
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)).thenReturn(Optional.of(laterPeriod));
+        when(projectRepository.findAll()).thenReturn(List.of(earlier, later));
+        when(keyResultRepository.findAll()).thenReturn(List.of(lowKr, laterKr));
+        when(departmentRepository.findAll()).thenReturn(List.of(department));
+        when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
+        when(goalRepository.findAll()).thenReturn(List.of(goal));
+
+        assertThat(service.summary("  ").period()).isEqualTo("2026-2");
+        assertThat(service.projectsByStatus(null)).extracting("count").containsExactly(0L, 1L, 0L, 0L, 0L);
+        assertThat(service.keyResultsByStatus(null)).extracting("count").containsExactly(0L, 1L, 0L);
+        assertThat(service.departments(null).get(0)).satisfies(item -> {
+            assertThat(item.activeProjects()).isEqualTo(1);
+            assertThat(item.keyResults()).isEqualTo(1);
+        });
+        assertThat(service.strategicBets(null).get(0).keyResults()).isEqualTo(1);
+        assertThat(service.goals(null).get(0).keyResults()).isEqualTo(1);
+        assertThat(service.summary("2026-1").period()).isEqualTo("2026-1");
+    }
+
+    @Test
+    void withoutPeriodCountsAllPeriodsWhenTheActivePeriodNameIsNotValid() {
+        AcademicPeriod legacyPeriod = TestFixtures.period(3L);
+        legacyPeriod.setName("Periodo heredado");
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)).thenReturn(Optional.of(legacyPeriod));
+        when(projectRepository.findAll()).thenReturn(List.of(project(1L, ProjectStatus.ACTIVO, department, "2025-1", null)));
+        when(keyResultRepository.findAll()).thenReturn(List.of(lowKr));
+
+        var summary = service.summary(null);
+
+        assertThat(summary.period()).isNull();
+        assertThat(summary.activeProjects()).isEqualTo(1);
+        assertThat(summary.activeKeyResults()).isEqualTo(1);
     }
 
     @Test

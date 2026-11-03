@@ -102,7 +102,7 @@ class PeopleServiceAdminGuardTest {
     void refusesToDeactivateLastActiveAdmin() {
         Professor last = user(OTHER_ID, "ADMIN", true);
         when(professorRepository.findById(OTHER_ID)).thenReturn(Optional.of(last));
-        when(professorRepository.countByAccessRoleAndActiveTrue("ADMIN")).thenReturn(1L);
+        when(professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc("ADMIN")).thenReturn(List.of(last));
 
         assertConflict(() -> service.updateDirectoryUserActive(OTHER_ID, false), "al menos un administrador activo");
         assertThat(last.isActive()).isTrue();
@@ -114,7 +114,7 @@ class PeopleServiceAdminGuardTest {
         Professor last = user(OTHER_ID, "ADMIN", true);
         when(professorRepository.findById(OTHER_ID)).thenReturn(Optional.of(last));
         when(professorRepository.findByEmailIgnoreCase("ana@icesi.edu.co")).thenReturn(Optional.empty());
-        when(professorRepository.countByAccessRoleAndActiveTrue("ADMIN")).thenReturn(1L);
+        when(professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc("ADMIN")).thenReturn(List.of(last));
 
         assertConflict(() -> service.updateDirectoryUser(OTHER_ID, request("MANAGER", true)), "al menos un administrador activo");
         assertThat(last.getAccessRole()).isEqualTo("ADMIN");
@@ -125,7 +125,7 @@ class PeopleServiceAdminGuardTest {
     void refusesToDeleteLastActiveAdmin() {
         Professor last = user(OTHER_ID, "ADMIN", true);
         when(professorRepository.findById(OTHER_ID)).thenReturn(Optional.of(last));
-        when(professorRepository.countByAccessRoleAndActiveTrue("ADMIN")).thenReturn(1L);
+        when(professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc("ADMIN")).thenReturn(List.of(last));
 
         assertConflict(() -> service.deleteDirectoryUser(OTHER_ID), "al menos un administrador activo");
         verify(professorRepository, never()).delete(any());
@@ -135,7 +135,7 @@ class PeopleServiceAdminGuardTest {
     void allowsRemovingAnotherAdminWhenOthersRemainActive() {
         Professor other = user(OTHER_ID, "ADMIN", true);
         when(professorRepository.findById(OTHER_ID)).thenReturn(Optional.of(other));
-        when(professorRepository.countByAccessRoleAndActiveTrue("ADMIN")).thenReturn(2L);
+        when(professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc("ADMIN")).thenReturn(List.of(user(ACTING_ID, "ADMIN", true), other));
         when(professorRepository.save(other)).thenReturn(other);
 
         assertThat(service.updateDirectoryUserActive(OTHER_ID, false).active()).isFalse();
@@ -164,7 +164,7 @@ class PeopleServiceAdminGuardTest {
         when(professorRepository.findById(3L)).thenReturn(Optional.of(inactiveAdmin));
         service.deleteDirectoryUser(3L);
         verify(professorRepository).delete(inactiveAdmin);
-        verify(professorRepository, never()).countByAccessRoleAndActiveTrue(any());
+        verify(professorRepository, never()).findByAccessRoleAndActiveTrueOrderByIdAsc(any());
     }
 
     @Test
@@ -185,7 +185,7 @@ class PeopleServiceAdminGuardTest {
     void refusesToDeleteLastActiveAdminThroughProfessorEndpoint() {
         Professor last = user(OTHER_ID, "ADMIN", true);
         when(professorRepository.findById(OTHER_ID)).thenReturn(Optional.of(last));
-        when(professorRepository.countByAccessRoleAndActiveTrue("ADMIN")).thenReturn(1L);
+        when(professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc("ADMIN")).thenReturn(List.of(last));
 
         assertConflict(() -> service.deleteProfessor(OTHER_ID), "al menos un administrador activo");
         verify(professorRepository, never()).delete(any());

@@ -85,8 +85,8 @@ class RoleAccessE2ETest {
                 {"name":"Unidad admin %d","type":"NUMERICA"}
                 """.formatted(SEQUENCE.incrementAndGet()), "test-admin", 201);
         JsonNode period = postJson("/api/v1/academic-periods", """
-                {"name":"Periodo admin %d","startDate":"2030-01-01","endDate":"2030-06-30","status":"PLANIFICACION"}
-                """.formatted(SEQUENCE.incrementAndGet()), "test-admin", 201);
+                {"name":"%d-1","startDate":"2030-01-01","endDate":"2030-06-30","status":"PLANIFICACION"}
+                """.formatted(5000 + SEQUENCE.incrementAndGet()), "test-admin", 201);
         JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId, createScenarioAsAdmin().keyResultId()),
                 "test-admin", 201);
         JsonNode bet = postJson("/api/v1/strategic-bets", """

@@ -1,8 +1,11 @@
 package co.edu.icesi.pdg.mte.dashboard;
 
 import co.edu.icesi.pdg.mte.api.dto.DashboardDtos;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
+import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
@@ -42,6 +45,7 @@ public class DashboardService {
     private final StrategicBetRepository strategicBetRepository;
     private final InstitutionalGoalRepository goalRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
+    private final AcademicPeriodRepository periodRepository;
 
     public DashboardService(
             ProjectRepository projectRepository,
@@ -49,7 +53,8 @@ public class DashboardService {
             DepartmentRepository departmentRepository,
             StrategicBetRepository strategicBetRepository,
             InstitutionalGoalRepository goalRepository,
-            ProjectKeyResultLinkRepository linkRepository
+            ProjectKeyResultLinkRepository linkRepository,
+            AcademicPeriodRepository periodRepository
     ) {
         this.projectRepository = projectRepository;
         this.keyResultRepository = keyResultRepository;
@@ -57,6 +62,7 @@ public class DashboardService {
         this.strategicBetRepository = strategicBetRepository;
         this.goalRepository = goalRepository;
         this.linkRepository = linkRepository;
+        this.periodRepository = periodRepository;
     }
 
     public DashboardDtos.DashboardSummaryResponse summary(String period) {
@@ -304,13 +310,25 @@ public class DashboardService {
 
     private String resolvePeriod(String period) {
         if (period == null || period.isBlank()) {
-            return null;
+            return activePeriodName();
         }
         String trimmed = period.trim();
         if (!PERIOD_PATTERN.matcher(trimmed).matches()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "El periodo debe tener formato YYYY-Q1..Q4 o YYYY-1..2.");
         }
         return trimmed;
+    }
+
+    /**
+     * Sin periodo explicito el tablero usa el periodo activo mas reciente; solo cuando no hay
+     * un periodo activo con nombre valido se cuentan todos los periodos.
+     */
+    private String activePeriodName() {
+        return periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)
+                .map(AcademicPeriod::getName)
+                .map(String::trim)
+                .filter(name -> PERIOD_PATTERN.matcher(name).matches())
+                .orElse(null);
     }
 
     private PeriodRange parsePeriod(String period) {
