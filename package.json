@@ -4,8 +4,9 @@
   "description": "REST API del Modulo de Trazabilidad Estrategica (MTE) de la Escuela TDI.",
   "scripts": {
     "postman:generate": "portman -u http://localhost:8081/v3/api-docs -b http://localhost:8081 -c postman/portman-config.json -s postman/postman-config.json -o postman/mte.generated.postman_collection.json --collectionName \"PDG MTE API - Generated\"",
+    "postman:auth": "node postman/local-auth-server.cjs",
     "postman:normalize": "node postman/normalize-collection.cjs",
-    "postman:test": "newman run postman/mte.normalized.postman_collection.json --env-var baseUrl=http://localhost:8081 --reporters cli,json --reporter-json-export postman/newman-report.json",
+    "postman:test": "newman run postman/mte.normalized.postman_collection.json -e postman/mte.local.postman_environment.json --reporters cli,json --reporter-json-export postman/newman-report.json",
     "postman:all": "npm run postman:generate && npm run postman:normalize && npm run postman:test"
   },
   "repository": {
