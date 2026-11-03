@@ -2,8 +2,11 @@ package co.edu.icesi.pdg.mte.report;
 
 import co.edu.icesi.pdg.mte.api.Mapper;
 import co.edu.icesi.pdg.mte.api.dto.ReportDtos;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
+import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
@@ -38,29 +41,32 @@ public class ReportService {
     private final KeyResultRepository keyResultRepository;
     private final DepartmentRepository departmentRepository;
     private final ProjectKeyResultLinkRepository linkRepository;
+    private final AcademicPeriodRepository periodRepository;
 
     public ReportService(
             ProjectRepository projectRepository,
             KeyResultRepository keyResultRepository,
             DepartmentRepository departmentRepository,
-            ProjectKeyResultLinkRepository linkRepository
+            ProjectKeyResultLinkRepository linkRepository,
+            AcademicPeriodRepository periodRepository
     ) {
         this.projectRepository = projectRepository;
         this.keyResultRepository = keyResultRepository;
         this.departmentRepository = departmentRepository;
         this.linkRepository = linkRepository;
+        this.periodRepository = periodRepository;
     }
 
     public ReportDtos.GeneralReportResponse general(String period, Long departmentId) {
-        return general(snapshot(normalizePeriod(period)), departmentId);
+        return general(snapshot(resolvePeriod(period)), departmentId);
     }
 
     public List<ReportDtos.DepartmentReportResponse> departments(String period) {
-        return departments(snapshot(normalizePeriod(period)), null);
+        return departments(snapshot(resolvePeriod(period)), null);
     }
 
     public List<ReportDtos.KeyResultRankingResponse> keyResultRanking(String period, Long departmentId) {
-        return keyResultRanking(snapshot(normalizePeriod(period)), departmentId);
+        return keyResultRanking(snapshot(resolvePeriod(period)), departmentId);
     }
 
     public ReportDtos.PeriodComparisonResponse periodComparison(String basePeriod, String comparePeriod, Long departmentId) {
@@ -72,7 +78,7 @@ public class ReportService {
     }
 
     public ReportDtos.ConsolidatedReportResponse consolidated(String period, Long departmentId) {
-        Snapshot snapshot = snapshot(normalizePeriod(period));
+        Snapshot snapshot = snapshot(resolvePeriod(period));
         return new ReportDtos.ConsolidatedReportResponse(
                 general(snapshot, departmentId),
                 departments(snapshot, departmentId),
@@ -260,6 +266,23 @@ public class ReportService {
 
     private long countByStatus(List<KeyResult> keyResults, KeyResultStatus status) {
         return keyResults.stream().filter(keyResult -> keyResult.getStatus() == status).count();
+    }
+
+    private String resolvePeriod(String period) {
+        String normalized = normalizePeriod(period);
+        return normalized == null ? activePeriodName() : normalized;
+    }
+
+    /**
+     * Sin periodo explicito los reportes usan el periodo activo mas reciente; solo cuando no hay
+     * un periodo activo con nombre valido se cuentan todos los periodos.
+     */
+    private String activePeriodName() {
+        return periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)
+                .map(AcademicPeriod::getName)
+                .map(String::trim)
+                .filter(name -> PERIOD_PATTERN.matcher(name).matches())
+                .orElse(null);
     }
 
     private String normalizePeriod(String period) {

@@ -1,8 +1,10 @@
 package co.edu.icesi.pdg.mte.report;
 
 import co.edu.icesi.pdg.mte.TestFixtures;
+import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
+import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
@@ -21,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,6 +40,8 @@ class ReportServiceTest {
     private DepartmentRepository departmentRepository;
     @Mock
     private ProjectKeyResultLinkRepository linkRepository;
+    @Mock
+    private AcademicPeriodRepository periodRepository;
 
     private ReportService service;
     private Department department;
@@ -44,7 +49,7 @@ class ReportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReportService(projectRepository, keyResultRepository, departmentRepository, linkRepository);
+        service = new ReportService(projectRepository, keyResultRepository, departmentRepository, linkRepository, periodRepository);
         var unit = TestFixtures.unit(1L);
         department = TestFixtures.department(1L);
         keyResult = TestFixtures.keyResult(
@@ -160,6 +165,66 @@ class ReportServiceTest {
         assertThat(comparison.base().closedKeyResults()).isZero();
         assertThat(comparison.compare().closedKeyResults()).isEqualTo(1);
         assertThat(csv).contains("\"Depto \"\"Especial\"\"\"");
+    }
+
+    @Test
+    void withoutPeriodReportsAndExportsUseTheMostRecentActivePeriod() {
+        var activePeriod = TestFixtures.period(2L);
+        activePeriod.setName("2026-2");
+        KeyResult activeKeyResult = TestFixtures.keyResult(
+                2L,
+                TestFixtures.unit(1L),
+                activePeriod,
+                TestFixtures.goal(2L, TestFixtures.unit(1L)),
+                null
+        );
+        activeKeyResult.setStatus(KeyResultStatus.CERRADO);
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)).thenReturn(Optional.of(activePeriod));
+        when(projectRepository.findAll()).thenReturn(List.of(
+                project(1L, ProjectStatus.ACTIVO, department, "2026-1", null),
+                project(2L, ProjectStatus.FINALIZADO, department, "2026-2", null)
+        ));
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult, activeKeyResult));
+        when(departmentRepository.findAll()).thenReturn(List.of(department));
+
+        var general = service.general(null, null);
+        var ranking = service.keyResultRanking("  ", null);
+        var departments = service.departments(null);
+        String csv = service.csv(null, null);
+        byte[] pdf = service.pdf("", null);
+
+        assertThat(general.period()).isEqualTo("2026-2");
+        assertThat(general.totalProjects()).isEqualTo(1);
+        assertThat(general.completedProjects()).isEqualTo(1);
+        assertThat(general.totalKeyResults()).isEqualTo(1);
+        assertThat(general.closedKeyResults()).isEqualTo(1);
+        assertThat(ranking).extracting(item -> item.keyResultId()).containsExactly(2L);
+        assertThat(departments).singleElement().satisfies(item -> assertThat(item.projects()).isEqualTo(1));
+        assertThat(csv).contains("filtro,periodo,2026-2", "general,totalProyectos,1", "general,totalKRs,1");
+        assertThat(new String(pdf)).contains("filtro  periodo  2026-2");
+        assertThat(service.general("2026-1", null).period()).isEqualTo("2026-1");
+        assertThatThrownBy(() -> service.periodComparison(" ", "2026-1", null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("basePeriod");
+    }
+
+    @Test
+    void withoutPeriodCountsAllPeriodsWhenThereIsNoValidActivePeriod() {
+        var legacyPeriod = TestFixtures.period(3L);
+        legacyPeriod.setName("Periodo heredado");
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO))
+                .thenReturn(Optional.empty(), Optional.of(legacyPeriod));
+        when(projectRepository.findAll()).thenReturn(List.of(project(1L, ProjectStatus.ACTIVO, department, "2025-1", null)));
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
+
+        var withoutActivePeriod = service.general(null, null);
+        var withLegacyActivePeriod = service.general(null, null);
+
+        assertThat(withoutActivePeriod.period()).isNull();
+        assertThat(withoutActivePeriod.totalProjects()).isEqualTo(1);
+        assertThat(withoutActivePeriod.totalKeyResults()).isEqualTo(1);
+        assertThat(withLegacyActivePeriod.period()).isNull();
+        assertThat(withLegacyActivePeriod.totalProjects()).isEqualTo(1);
     }
 
     @Test

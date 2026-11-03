@@ -165,7 +165,7 @@ ADMIN, MANAGER
 | GET | `/api/v1/reports/export.csv` | `period?`, `departmentId?` | - | `text/csv`, attachment `msp-report.csv` |
 | GET | `/api/v1/reports/export.pdf` | `period?`, `departmentId?` | - | `application/pdf`, attachment `msp-report.pdf` |
 
-`basePeriod` y `comparePeriod` son obligatorios en `/period-comparison`.
+`basePeriod` y `comparePeriod` son obligatorios en `/period-comparison`. En los demas reportes y exportaciones, sin `period` se usa el periodo academico `ACTIVO` mas reciente (visible en `general.period` y en la fila `filtro,periodo` del CSV/PDF); solo sin periodo activo valido se cuentan todos los periodos.
 
 Schemas:
 

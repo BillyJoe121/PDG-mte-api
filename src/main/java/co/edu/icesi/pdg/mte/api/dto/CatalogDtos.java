@@ -4,6 +4,7 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementUnitType;
 import co.edu.icesi.pdg.mte.catalog.PeriodStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 
@@ -28,7 +29,9 @@ public final class CatalogDtos {
     }
 
     public record AcademicPeriodRequest(
-            @NotBlank String name,
+            @NotBlank
+            @Pattern(regexp = "^\\s*\\d{4}-[12]\\s*$", message = "El nombre del periodo debe tener formato AAAA-1 o AAAA-2.")
+            String name,
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate,
             @NotNull PeriodStatus status

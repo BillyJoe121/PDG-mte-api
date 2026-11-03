@@ -31,7 +31,7 @@ GET /api/v1/dashboard/strategic-bets/summary
 GET /api/v1/dashboard/goals/summary
 ```
 
-Cada uno acepta `period` opcional con formato `YYYY-Q1..Q4` o `YYYY-1..2`. Si no se envia `period`, el backend usa el periodo activo mas reciente cuando el servicio lo requiere.
+Cada uno acepta `period` opcional con formato `YYYY-Q1..Q4` o `YYYY-1..2`. Si no se envia `period` (o llega vacio), el backend usa el periodo academico `ACTIVO` con fecha de inicio mas reciente y lo devuelve en `DashboardSummaryResponse.period`; solo cuando no hay un periodo activo con nombre valido se cuentan todos los periodos y `period` llega en `null`.
 
 ## Convenciones Generales
 
@@ -306,6 +306,8 @@ SchoolResponse: {"id": 1, "name": "Escuela TDI", "description": "..."}
 DepartmentRequest: {"name": "DCSI", "description": "...", "schoolId": 1, "externalDepartmentId": 123}
 DepartmentResponse: {"id": 1, "name": "DCSI", "description": "...", "schoolId": 1, "schoolName": "Escuela TDI", "externalDepartmentId": 123}
 ```
+
+`AcademicPeriodRequest.name` debe tener formato `AAAA-1` o `AAAA-2` (por ejemplo `2026-2`) tanto al crear como al actualizar. Otro valor responde `400` con `details` = `["name: El nombre del periodo debe tener formato AAAA-1 o AAAA-2."]`.
 
 ## Personas
 
