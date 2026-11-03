@@ -350,6 +350,35 @@ Ultima verificacion conocida:
 Tests run: 160, Failures: 0, Errors: 0, Skipped: 0
 ```
 
+## Postman
+
+La coleccion se genera desde el contrato OpenAPI con Portman y se ejecuta con Newman. `postman/normalize-collection.cjs` agrega datos validos por endpoint (`collection-requests.cjs`), pruebas de codigo y forma de cada respuesta, y los flujos de `collection-flows.cjs`: usuarios y sesion, permisos por rol, casos negativos, archivo de KR y enlace de Planner. Cada corrida crea sus propios registros con un `runId`, asi que puede repetirse sobre la misma base.
+
+```powershell
+npm ci
+npm run postman:generate   # requiere la API arriba en http://localhost:8081
+npm run postman:normalize
+npm run postman:test       # usa postman/mte.local.postman_environment.json
+```
+
+Variables: `baseUrl`, `accessToken` (sesion ADMIN), `managerToken`, `visitorToken` y opcionalmente `authMockUrl` con `adminEmail`, `managerEmail` y `visitorEmail`. Si `authMockUrl` esta definido y un token esta vacio, la coleccion lo pide con `POST {{authMockUrl}}/mock/token`. Los tokens de MANAGER y VISITOR que falten se toman del login del flujo de usuarios. No guardes tokens reales en el archivo de entorno.
+
+En local, `npm run postman:auth` levanta un sustituto de Supabase Auth en `http://localhost:9998` (solo 127.0.0.1, datos en memoria). Arranca la API contra una base desechable apuntando a el:
+
+```powershell
+$env:SUPABASE_URL = "http://localhost:9998"
+$env:SUPABASE_SECRET_KEY = "local-placeholder-key"
+$env:MTE_SEED_ENABLED = "true"
+```
+
+La semilla deja a todas las personas como `CONTRIBUTOR`, asi que en esa base desechable hay que promover la cuenta de `adminEmail` antes de correr la coleccion:
+
+```sql
+UPDATE professor SET access_role = 'ADMIN' WHERE email = 'demo.profesor@icesi.edu.co';
+```
+
+Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. El reporte `postman/newman-report.json` no se versiona.
+
 ## Cobertura
 
 El proyecto usa JaCoCo.
