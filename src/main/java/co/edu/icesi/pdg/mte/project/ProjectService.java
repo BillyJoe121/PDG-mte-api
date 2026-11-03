@@ -328,14 +328,11 @@ public class ProjectService {
     ) {
         ProjectDtos.ProjectKeyResultDraftRequest primaryLink = draftLinks == null || draftLinks.isEmpty() ? null : draftLinks.get(0);
         Long resolvedKeyResultId = keyResultId != null ? keyResultId : primaryLink == null ? null : primaryLink.keyResultId();
+        // The main KR is always the user's explicit choice; it is never picked on their behalf.
         if (resolvedKeyResultId == null) {
-            keyResultRepository.findAll().stream().filter(keyResult -> !keyResult.isArchived()).findFirst().ifPresent(project::setKeyResult);
-        } else {
-            project.setKeyResult(findLinkableKeyResult(resolvedKeyResultId));
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecciona al menos un Key Result para la iniciativa.");
         }
-        if (project.getKeyResult() == null) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "El MER exige asociar el proyecto a un Key Result.");
-        }
+        project.setKeyResult(findLinkableKeyResult(resolvedKeyResultId));
         project.setContributionWeight(contributionWeight != null ? contributionWeight : primaryLink == null ? null : primaryLink.contributionWeight());
         project.setLinkStatus(linkStatus == null || linkStatus.isBlank() ? "ACTIVO" : linkStatus.trim());
         project.setJiraKey(jiraKey);

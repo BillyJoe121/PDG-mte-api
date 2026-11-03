@@ -54,7 +54,7 @@ class RoleAccessE2ETest {
         postJson("/api/v1/strategic-bets", """
                 {"name":"Apuesta manager %d","description":"Autorizada"}
                 """.formatted(SEQUENCE.incrementAndGet()), "test-manager", 201);
-        postJson("/api/v1/projects", projectPayload(departmentId), "test-manager", 201);
+        postJson("/api/v1/projects", projectPayload(departmentId, createScenarioAsAdmin().keyResultId()), "test-manager", 201);
         getJson("/api/v1/audit-logs", "test-manager", 403);
     }
 
@@ -87,7 +87,8 @@ class RoleAccessE2ETest {
         JsonNode period = postJson("/api/v1/academic-periods", """
                 {"name":"Periodo admin %d","startDate":"2030-01-01","endDate":"2030-06-30","status":"PLANIFICACION"}
                 """.formatted(SEQUENCE.incrementAndGet()), "test-admin", 201);
-        JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId), "test-admin", 201);
+        JsonNode project = postJson("/api/v1/projects", projectPayload(departmentId, createScenarioAsAdmin().keyResultId()),
+                "test-admin", 201);
         JsonNode bet = postJson("/api/v1/strategic-bets", """
                 {"name":"Apuesta admin %d","description":"Administrada"}
                 """.formatted(SEQUENCE.incrementAndGet()), "test-admin", 201);
@@ -138,9 +139,10 @@ class RoleAccessE2ETest {
         Long goalId = postJson("/api/v1/goals", """
                 {"name":"Meta rol %d","description":"Base","expectedValue":100,"measurementUnitId":%d}
                 """.formatted(SEQUENCE.incrementAndGet(), unitId), "test-admin", 201).get("id").asLong();
-        Long projectId = postJson("/api/v1/projects", projectPayload(departmentId), "test-admin", 201).get("id").asLong();
-        Scenario scenario = new Scenario(null, unitId, periodId, goalId, betId, projectId);
+        Scenario scenario = new Scenario(null, unitId, periodId, goalId, betId, null);
         Long keyResultId = postJson("/api/v1/key-results", keyResultPayload("KR rol inicial", scenario), "test-admin", 201)
+                .get("id").asLong();
+        Long projectId = postJson("/api/v1/projects", projectPayload(departmentId, keyResultId), "test-admin", 201)
                 .get("id").asLong();
         return new Scenario(keyResultId, unitId, periodId, goalId, betId, projectId);
     }
@@ -153,11 +155,11 @@ class RoleAccessE2ETest {
                 scenario.goalId(), scenario.betId());
     }
 
-    private String projectPayload(Long departmentId) {
+    private String projectPayload(Long departmentId, Long keyResultId) {
         return """
                 {"name":"Proyecto rol %d","description":"Permisos","type":"INVESTIGACION","departmentId":%d,
-                 "status":"ACTIVO","startPeriod":"2026-1","endPeriod":"2026-1"}
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId);
+                 "keyResultId":%d,"status":"ACTIVO","startPeriod":"2026-1","endPeriod":"2026-1"}
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId);
     }
 
     private Long firstId(String url, String token) throws Exception {
