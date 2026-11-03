@@ -158,7 +158,7 @@ public final class StrategyDtos {
     }
 
     public record ActiveStateRequest(
-            boolean active
+            @NotNull Boolean active
     ) {
     }
 

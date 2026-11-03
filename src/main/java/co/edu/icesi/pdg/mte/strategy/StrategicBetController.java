@@ -51,7 +51,7 @@ public class StrategicBetController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.StrategicBetResponse setActive(
             @PathVariable Long id,
-            @RequestBody StrategyDtos.ActiveStateRequest request
+            @Valid @RequestBody StrategyDtos.ActiveStateRequest request
     ) {
         return strategyService.setStrategicBetActive(id, request.active());
     }
