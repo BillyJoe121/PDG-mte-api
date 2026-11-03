@@ -268,6 +268,8 @@ public class PeopleService {
      * Called when a change would stop {@code target} from being an active administrator
      * (deactivation, demotion or deletion). Refuses it for the acting administrator's own account
      * and when it would leave the directory without an active administrator.
+     * The active administrators stay locked until the caller's transaction ends, so concurrent
+     * removals of different administrators run one after the other and cannot remove the last one.
      */
     private void guardAdminRemoval(Professor target, String selfMessage) {
         if (!target.isActive() || !AccessControlService.ADMIN.equals(target.getAccessRole())) {
@@ -276,7 +278,7 @@ public class PeopleService {
         if (target.getId() != null && target.getId().equals(actingUserId())) {
             throw new BusinessException(HttpStatus.CONFLICT, selfMessage);
         }
-        if (professorRepository.countByAccessRoleAndActiveTrue(AccessControlService.ADMIN) <= 1) {
+        if (professorRepository.findByAccessRoleAndActiveTrueOrderByIdAsc(AccessControlService.ADMIN).size() <= 1) {
             throw new BusinessException(HttpStatus.CONFLICT, "Debe quedar al menos un administrador activo.");
         }
     }
