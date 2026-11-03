@@ -19,7 +19,7 @@ Continuacion de [frontend-api-contracts.md](frontend-api-contracts.md), donde es
 | GET | `/api/v1/projects/{id}/teachers` | - | - | `ProjectTeacherResponse[]` | autenticado |
 | POST | `/api/v1/projects/{id}/teachers` | - | `ProjectTeacherRequest` | `ProjectTeacherResponse` | ADMIN, MANAGER |
 | DELETE | `/api/v1/projects/{id}/teachers/{teacherId}/roles/{roleId}` | - | - | 204 | ADMIN, MANAGER |
-| POST | `/api/v1/projects/sync/trayectoria` | - | - | `ProjectSyncResponse` | ADMIN |
+| POST | `/api/v1/projects/sync/trayectoria` | - | - | `ProjectSyncResponse`; `503` si la integracion esta en modo `mock` (`MTE_TRAYECTORIA_PROJECTS_MODE`) | ADMIN |
 
 Schemas:
 

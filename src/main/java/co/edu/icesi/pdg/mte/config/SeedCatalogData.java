@@ -145,6 +145,8 @@ final class SeedCatalogData {
         createProfessor(repository, departmentRepository, "Mariana Torres", "mariana.torres@icesi.edu.co", DESIGN_DEPARTMENT);
         createProfessor(repository, departmentRepository, "Felipe Arango", "felipe.arango@icesi.edu.co", COMPUTING_DEPARTMENT);
         createProfessor(repository, departmentRepository, "Valentina Ruiz", "valentina.ruiz@icesi.edu.co", DESIGN_DEPARTMENT);
+        // Same initial administrator as migration V11_1: the seed wipes people, so it must recreate one ADMIN.
+        createProfessor(repository, departmentRepository, "Sistemas MTE", "sistemas.mte@icesi.edu.co", "Dirección TDI", "ADMIN");
     }
 
     private static void createProfessor(
@@ -154,6 +156,17 @@ final class SeedCatalogData {
             String email,
             String departmentName
     ) {
+        createProfessor(repository, departmentRepository, name, email, departmentName, "CONTRIBUTOR");
+    }
+
+    private static void createProfessor(
+            ProfessorRepository repository,
+            DepartmentRepository departmentRepository,
+            String name,
+            String email,
+            String departmentName,
+            String accessRole
+    ) {
         if (repository.existsByEmailIgnoreCase(email)) {
             return;
         }
@@ -162,6 +175,7 @@ final class SeedCatalogData {
             professor.setName(name);
             professor.setEmail(email);
             professor.setDepartment(department);
+            professor.setAccessRole(accessRole);
             repository.save(professor);
         });
     }

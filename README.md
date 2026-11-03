@@ -166,7 +166,7 @@ $env:MTE_SEED_ENABLED='true'
 .\mvnw.cmd spring-boot:run
 ```
 
-Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, metas, apuestas, catalogos base y personas antes de poblar de nuevo. Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
+Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, metas, apuestas, catalogos base y personas antes de poblar de nuevo; entre las personas recrea el administrador inicial (`sistemas.mte@icesi.edu.co`). Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
 
 Para borrar esa base local:
 
@@ -346,10 +346,10 @@ Compilar tests sin ejecutarlos:
 .\mvnw.cmd '-DskipTests' test-compile
 ```
 
-Ultima verificacion conocida:
+Ultima verificacion conocida (2 nov 2026, `mvnw -B test`):
 
 ```text
-Tests run: 160, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 359, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Postman
@@ -371,13 +371,10 @@ En local, `npm run postman:auth` levanta un sustituto de Supabase Auth en `http:
 $env:SUPABASE_URL = "http://localhost:9998"
 $env:SUPABASE_SECRET_KEY = "local-placeholder-key"
 $env:MTE_SEED_ENABLED = "true"
+$env:MTE_ACCESS_LINK_URL = "http://localhost:5173/acceso"   # sin ella, los enlaces de acceso responden 503
 ```
 
-La semilla deja a todas las personas como `CONTRIBUTOR`, asi que en esa base desechable hay que promover la cuenta de `adminEmail` antes de correr la coleccion:
-
-```sql
-UPDATE professor SET access_role = 'ADMIN' WHERE email = 'demo.profesor@icesi.edu.co';
-```
+La semilla deja a las personas como `CONTRIBUTOR` y recrea el administrador inicial de la migracion V11_1 (`sistemas.mte@icesi.edu.co`, `ADMIN`), que es el `adminEmail` del entorno local.
 
 Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. Los periodos que crea usan un año lejano derivado del `runId` (`AAAA-1` y `AAAA-2`, entre 3000 y 9999). La coleccion solo se ha probado contra este sustituto local de autenticacion, no contra Supabase real. El reporte `postman/newman-report.json` no se versiona.
 

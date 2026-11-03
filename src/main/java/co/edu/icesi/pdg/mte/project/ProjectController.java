@@ -1,7 +1,11 @@
 package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
+import co.edu.icesi.pdg.mte.common.ApiError;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkService;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -116,6 +120,10 @@ public class ProjectController {
 
     @PostMapping("/sync/trayectoria")
     @PreAuthorize("hasRole('ADMIN')")
+    @ApiResponse(responseCode = "200", description = "Proyectos sincronizados desde Trayectoria.",
+            content = @Content(schema = @Schema(implementation = ProjectDtos.ProjectSyncResponse.class)))
+    @ApiResponse(responseCode = "503", description = "La integracion con Trayectoria no esta configurada (modo mock).",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     public ProjectDtos.ProjectSyncResponse syncTrayectoria(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader
     ) {
