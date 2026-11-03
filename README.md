@@ -47,39 +47,9 @@ H2 console: http://localhost:8081/h2-console
 
 ## Modelo de Datos
 
-La migracion inicial [V1__initial_schema.sql](src/main/resources/db/migration/V1__initial_schema.sql) crea las 16 entidades fisicas del MER:
-
-```text
-unit_of_measure
-goal_period
-role
-objective
-school
-department
-position
-professor
-teacher_position
-period
-world
-strategic_bet
-goal
-key_result
-project
-project_teacher
-```
+El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V14`) esta en [docs/database-schema.md](docs/database-schema.md).
 
 [V10__retire_objective_links.sql](src/main/resources/db/migration/V10__retire_objective_links.sql) retira el Objetivo como nivel de la jerarquia: crea `key_result_goal` y `key_result_strategic_bet` (vinculos N:M del KR con Metas y Apuestas), traslada los vinculos de cada objetivo a sus KRs y vuelve opcional `key_result.objective_id`. La tabla `objective` queda como legado y ningun codigo la usa.
-
-Tambien se conservan tablas operativas del backend:
-
-```text
-audit_log
-project_progress_entry
-project_key_result_link
-project_tutor
-```
-
-Nota importante: como todavia no hay base productiva aplicada, `V1` representa el esquema canonical para Supabase. No conectes una base compartida hasta que estes listo para que Flyway aplique este esquema.
 
 ## Supabase como Base Persistente
 
@@ -210,15 +180,7 @@ Las migraciones viven en:
 src/main/resources/db/migration
 ```
 
-Migraciones actuales:
-
-```text
-V1__initial_schema.sql
-V2__complete_msp_story_fields.sql
-V3__rename_future_period_status.sql
-```
-
-`V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de aplicar Supabase.
+Las migraciones actuales van de `V1` a `V14`; la lista con lo que cambia cada una esta en [docs/database-schema.md](docs/database-schema.md#historial-de-migraciones). `V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de aplicar Supabase.
 
 Reglas:
 
