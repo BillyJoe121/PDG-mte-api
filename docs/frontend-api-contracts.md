@@ -172,7 +172,14 @@ Reglas:
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
-| GET | `/api/v1/health` | - | - | `{status, service, timestamp}` | publico |
+| GET | `/api/v1/health` | - | - | `{status, database, service, timestamp}` | publico |
+
+El endpoint obtiene una conexion de la base de datos y la valida con un timeout corto:
+
+- `200`: `{"status":"UP","database":"UP","service":"pdg-mte-api","timestamp":"..."}`.
+- `503`: `{"status":"DOWN","database":"DOWN","service":"pdg-mte-api","timestamp":"..."}` cuando la base no responde. La respuesta no incluye mensajes de error ni detalles de conexion.
+
+Render usa esta ruta como `healthCheckPath` (`render.yaml`), asi que una caida de la base de datos marca el servicio como no saludable.
 
 ## Dashboard
 

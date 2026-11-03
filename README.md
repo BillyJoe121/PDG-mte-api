@@ -45,6 +45,8 @@ Health:     http://localhost:8081/api/v1/health
 H2 console: http://localhost:8081/h2-console
 ```
 
+`GET /api/v1/health` es publico y valida la conexion a la base de datos: responde `200` con `{"status":"UP","database":"UP",...}` o `503` con `{"status":"DOWN","database":"DOWN",...}` si la base no responde.
+
 ## Modelo de Datos
 
 El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V14`) esta en [docs/database-schema.md](docs/database-schema.md).
@@ -454,6 +456,8 @@ El health check de Render apunta a:
 ```text
 /api/v1/health
 ```
+
+El endpoint valida la conexion a la base de datos, por lo que una caida de Supabase marca el servicio como no saludable (`503`) en Render.
 
 Si el frontend ya esta desplegado, reemplaza o agrega su origen publico en `MTE_CORS_ALLOWED_ORIGINS`, por ejemplo:
 
