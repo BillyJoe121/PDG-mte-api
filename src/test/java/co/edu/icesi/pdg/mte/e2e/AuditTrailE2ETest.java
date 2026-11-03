@@ -104,11 +104,12 @@ class AuditTrailE2ETest {
                   "description": "Proyecto auditable",
                   "type": "INVESTIGACION",
                   "departmentId": %d,
+                  "keyResultId": %d,
                   "status": "ACTIVO",
                   "startPeriod": "2026-1",
                   "endPeriod": "2026-1"
                 }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId), 201);
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 201);
         Long projectId = project.get("id").asLong();
         JsonNode link = post("/api/v1/project-key-result-links", """
                 {"projectId": %d, "keyResultId": %d, "contributionWeight": 50, "contributionType": "DIRECTA"}

@@ -47,7 +47,7 @@ class ProjectModuleE2ETest {
         assertThat(sync.get("imported").asInt()).isGreaterThanOrEqualTo(1);
         assertThat(sync.get("failed").asInt()).isZero();
 
-        JsonNode created = doPost("/api/v1/projects", projectPayload("Proyecto E2E " + SEQUENCE.incrementAndGet()), 201);
+        JsonNode created = doPost("/api/v1/projects", projectPayload("Proyecto E2E " + SEQUENCE.incrementAndGet(), createKeyResult("proyecto E2E")), 201);
         Long projectId = created.get("id").asLong();
         assertThat(created.get("origin").asText()).isEqualTo("LOCAL");
 
@@ -100,7 +100,8 @@ class ProjectModuleE2ETest {
 
     @Test
     void sadPathsForProjectModuleReturnExpectedErrors() throws Exception {
-        JsonNode created = doPost("/api/v1/projects", projectPayload("Proyecto sad " + SEQUENCE.incrementAndGet()), 201);
+        doPost("/api/v1/projects", projectPayload("Proyecto sin KR " + SEQUENCE.incrementAndGet(), null), 400);
+        JsonNode created = doPost("/api/v1/projects", projectPayload("Proyecto sad " + SEQUENCE.incrementAndGet(), createKeyResult("proyecto sad")), 201);
         Long projectId = created.get("id").asLong();
 
         doPost("/api/v1/projects", """
@@ -258,9 +259,10 @@ class ProjectModuleE2ETest {
                 strategicBetId,
                 unitId
         ), 201).get("id").asLong();
-        Long firstProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo A " + SEQUENCE.incrementAndGet()), 201)
+        Long mainKeyResultId = createKeyResult("principal vinculos");
+        Long firstProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo A " + SEQUENCE.incrementAndGet(), mainKeyResultId), 201)
                 .get("id").asLong();
-        Long secondProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo B " + SEQUENCE.incrementAndGet()), 201)
+        Long secondProjectId = doPost("/api/v1/projects", projectPayload("Proyecto vinculo B " + SEQUENCE.incrementAndGet(), mainKeyResultId), 201)
                 .get("id").asLong();
 
         JsonNode firstLink = doPost("/api/v1/project-key-result-links", """
@@ -294,13 +296,14 @@ class ProjectModuleE2ETest {
         doDelete("/api/v1/project-key-result-links/99999", 404);
     }
 
-    private String projectPayload(String name) {
+    private String projectPayload(String name, Long keyResultId) {
         return """
                 {
                   "name": "%s",
                   "description": "Proyecto creado en MSP para seguimiento independiente.",
                   "type": "INVESTIGACION",
                   "departmentId": 1,
+                  "keyResultId": %s,
                   "status": "ACTIVO",
                   "startPeriod": "2026-1",
                   "endPeriod": "2026-2",
@@ -308,7 +311,17 @@ class ProjectModuleE2ETest {
                   "endDate": "2026-11-30",
                   "tutors": ["Tutora A", "Tutor B"]
                 }
-                """.formatted(name);
+                """.formatted(name, keyResultId);
+    }
+
+    private Long createKeyResult(String label) throws Exception {
+        Long unitId = firstId("/api/v1/measurement-units");
+        Long periodId = firstId("/api/v1/academic-periods");
+        Long strategicBetId = createStrategicBet("Apuesta " + label + " " + SEQUENCE.incrementAndGet());
+        Long goalId = createGoal("Meta " + label + " " + SEQUENCE.incrementAndGet(), unitId);
+        return doPost("/api/v1/key-results", keyResultPayload(
+                "KR " + label + " " + SEQUENCE.incrementAndGet(), periodId, goalId, strategicBetId, unitId
+        ), 201).get("id").asLong();
     }
 
     private String projectPayloadWithImmediateLink(String name, Long departmentId, Long keyResultId) {

@@ -38,7 +38,7 @@ class DashboardE2ETest {
         Long goalId = createGoal(unitId);
         Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(periodId, goalId, betId, unitId), 201)
                 .get("id").asLong();
-        Long projectId = createProject(departmentId);
+        Long projectId = createProject(departmentId, keyResultId);
 
         doPost("/api/v1/project-key-result-links", """
                 {"projectId": %d, "keyResultId": %d, "contributionWeight": 100, "contributionType": "DIRECTA"}
@@ -149,7 +149,7 @@ class DashboardE2ETest {
         Long goalId = createGoal(unitId);
         Long keyResultId = doPost("/api/v1/key-results", keyResultPayload(periodId, goalId, betId, unitId), 201)
                 .get("id").asLong();
-        Long projectId = createProject(departmentId);
+        Long projectId = createProject(departmentId, keyResultId);
 
         doPost("/api/v1/project-key-result-links", """
                 {"projectId": %d, "keyResultId": %d, "contributionWeight": 75, "contributionType": "DIRECTA"}
@@ -221,18 +221,19 @@ class DashboardE2ETest {
                 """.formatted(SEQUENCE.incrementAndGet(), unitId), 201).get("id").asLong();
     }
 
-    private Long createProject(Long departmentId) throws Exception {
+    private Long createProject(Long departmentId, Long keyResultId) throws Exception {
         return doPost("/api/v1/projects", """
                 {
                   "name": "Proyecto dashboard %d",
                   "description": "Proyecto para dashboard.",
                   "type": "INVESTIGACION",
                   "departmentId": %d,
+                  "keyResultId": %d,
                   "status": "ACTIVO",
                   "startPeriod": "2026-1",
                   "endPeriod": "2026-1"
                 }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId), 201).get("id").asLong();
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 201).get("id").asLong();
     }
 
     private String keyResultPayload(Long periodId, Long goalId, Long betId, Long unitId) {
