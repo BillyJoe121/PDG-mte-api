@@ -385,7 +385,10 @@ TeacherPositionResponse: {"positionId": 1, "positionName": "Tutor", "teacherId":
 | PUT | `/api/v1/key-results/{id}` | - | `KeyResultRequest` | `KeyResultResponse` | ADMIN, MANAGER |
 | PATCH | `/api/v1/key-results/{id}/progress` | - | `KeyResultProgressRequest` | `KeyResultResponse` | ADMIN, MANAGER |
 | PATCH | `/api/v1/key-results/{id}/status` | - | `KeyResultStatusRequest` | `KeyResultResponse` | ADMIN, MANAGER |
-| DELETE | `/api/v1/key-results/{id}` | - | - | 204 | ADMIN, MANAGER |
+| GET | `/api/v1/key-results/{id}/progress-records` | - | - | `KeyResultProgressRecordResponse[]` | autenticado |
+| PATCH | `/api/v1/key-results/{id}/active` | - | `{ "active": boolean }` | `KeyResultResponse` | ADMIN, MANAGER |
+
+Un KR no se borra: se archiva o restaura con `PATCH /key-results/{id}/active` (ver [key-result-lifecycle-contracts.md](key-result-lifecycle-contracts.md)).
 
 Registro de avance de un KR:
 

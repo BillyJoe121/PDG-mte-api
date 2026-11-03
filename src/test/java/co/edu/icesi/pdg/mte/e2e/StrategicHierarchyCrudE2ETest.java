@@ -1,7 +1,9 @@
 package co.edu.icesi.pdg.mte.e2e;
 
+import co.edu.icesi.pdg.mte.people.ProfessorRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -12,6 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
+    @Autowired
+    private ProfessorRepository professorRepository;
+
     @Test
     void managesKeyResultLifecycleWithoutAllowingReopening() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
@@ -74,6 +79,11 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
                         "VISTA: VISualizador y Tutor Interactivo e Inteligente de Estructuras Discretas",
                         "Diseno de un modelo de anonimizacion de datos clinicos para investigacion en entornos hospitalarios"
                 );
+        assertThat(professorRepository.findByEmailIgnoreCase("sistemas.mte@icesi.edu.co"))
+                .hasValueSatisfying(admin -> {
+                    assertThat(admin.getAccessRole()).isEqualTo("ADMIN");
+                    assertThat(admin.isActive()).isTrue();
+                });
     }
 
     @Test
