@@ -152,8 +152,8 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
                 {"name": "Horas %d", "type": "NUMERICA", "description": "Unidad e2e"}
                 """.formatted(SEQUENCE.incrementAndGet()), 201);
         JsonNode createdPeriod = doPost("/api/v1/academic-periods", """
-                {"name": "2099-%d", "startDate": "2099-01-01", "endDate": "2099-06-01", "status": "PLANIFICACION"}
-                """.formatted(SEQUENCE.incrementAndGet()), 201);
+                {"name": "%d-1", "startDate": "2099-01-01", "endDate": "2099-06-01", "status": "PLANIFICACION"}
+                """.formatted(4000 + SEQUENCE.incrementAndGet()), 201);
         assertThat(createdUnit.get("id").asLong()).isPositive();
         assertThat(createdPeriod.get("id").asLong()).isPositive();
 
@@ -208,13 +208,13 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         doDelete("/api/v1/measurement-units/" + unitId, 204);
 
         JsonNode period = doPost("/api/v1/academic-periods", """
-                {"name": "2199-%d", "startDate": "2199-01-01", "endDate": "2199-06-01", "status": "PLANIFICACION"}
-                """.formatted(SEQUENCE.incrementAndGet()), 201);
+                {"name": "%d-1", "startDate": "2199-01-01", "endDate": "2199-06-01", "status": "PLANIFICACION"}
+                """.formatted(4000 + SEQUENCE.incrementAndGet()), 201);
         Long periodId = period.get("id").asLong();
 
         JsonNode updatedPeriod = doPut("/api/v1/academic-periods/" + periodId, """
-                {"name": "2199-%d", "startDate": "2199-07-01", "endDate": "2199-12-01", "status": "PLANIFICACION"}
-                """.formatted(SEQUENCE.incrementAndGet()), 200);
+                {"name": "%d-2", "startDate": "2199-07-01", "endDate": "2199-12-01", "status": "PLANIFICACION"}
+                """.formatted(4000 + SEQUENCE.incrementAndGet()), 200);
         JsonNode closedPeriod = doPatch("/api/v1/academic-periods/" + periodId + "/status", """
                 {"status": "CERRADO"}
                 """, 200);
