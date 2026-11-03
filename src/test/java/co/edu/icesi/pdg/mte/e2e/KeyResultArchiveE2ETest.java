@@ -171,6 +171,34 @@ class KeyResultArchiveE2ETest extends StrategicHierarchyE2ETestSupport {
     }
 
     @Test
+    void aKeyResultUsedAsAProjectMainKeyResultCannotBeArchived() throws Exception {
+        Scenario scenario = scenario();
+        Long id = newKeyResult(scenario);
+        doPost("/api/v1/projects", """
+                {"name": "Proyecto con KR principal %d", "description": "Usa el KR como principal", "type": "INVESTIGACION",
+                 "departmentId": %d, "status": "BORRADOR", "startPeriod": "2026-1", "endPeriod": "2026-1",
+                 "keyResultId": %d}
+                """.formatted(SEQUENCE.incrementAndGet(), scenario.departmentId(), id), 201);
+
+        JsonNode error = doPatch("/api/v1/key-results/" + id + "/active", INACTIVE, 409);
+
+        assertThat(error.get("message").asText()).contains("proyectos vinculados");
+        assertThat(doGet("/api/v1/key-results/" + id).get("archived").asBoolean()).isFalse();
+    }
+
+    @Test
+    void anEmptyActiveStateBodyIsRejectedInsteadOfArchiving() throws Exception {
+        Scenario scenario = scenario();
+        Long id = newKeyResult(scenario);
+
+        doPatch("/api/v1/key-results/" + id + "/active", "{}", 400);
+        doPatch("/api/v1/goals/" + scenario.goalId() + "/active", "{}", 400);
+        doPatch("/api/v1/strategic-bets/" + scenario.betId() + "/active", "{\"active\": null}", 400);
+
+        assertThat(doGet("/api/v1/key-results/" + id).get("archived").asBoolean()).isFalse();
+    }
+
+    @Test
     void onlyAdminsAndManagersCanArchiveButEveryoneCanRead() throws Exception {
         Long id = newKeyResult(scenario());
 

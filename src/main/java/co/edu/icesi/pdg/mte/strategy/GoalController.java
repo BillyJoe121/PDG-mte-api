@@ -51,7 +51,7 @@ public class GoalController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.GoalResponse setActive(
             @PathVariable Long id,
-            @RequestBody StrategyDtos.ActiveStateRequest request
+            @Valid @RequestBody StrategyDtos.ActiveStateRequest request
     ) {
         return strategyService.setGoalActive(id, request.active());
     }

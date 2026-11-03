@@ -76,7 +76,7 @@ public class KeyResultController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     StrategyDtos.KeyResultResponse setActive(
             @PathVariable Long id,
-            @RequestBody StrategyDtos.ActiveStateRequest request
+            @Valid @RequestBody StrategyDtos.ActiveStateRequest request
     ) {
         return keyResultService.setActive(id, request.active());
     }

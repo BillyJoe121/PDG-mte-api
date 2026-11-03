@@ -13,6 +13,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpec
 
     boolean existsByKeyResultIdAndStatus(Long keyResultId, ProjectStatus status);
 
+    boolean existsByKeyResultId(Long keyResultId);
+
     boolean existsByStartPeriodOrEndPeriod(String startPeriod, String endPeriod);
 
     boolean existsByDepartmentId(Long departmentId);

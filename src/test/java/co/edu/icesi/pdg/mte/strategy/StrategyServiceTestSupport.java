@@ -10,6 +10,7 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementUnitRepository;
 import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
+import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
@@ -42,6 +43,8 @@ abstract class StrategyServiceTestSupport {
     protected AuditService auditService;
     @Mock
     protected KeyResultProgressRecordRepository progressRecordRepository;
+    @Mock
+    protected ProjectRepository projectRepository;
 
     protected StrategyService service;
     protected KeyResultService keyResultService;
@@ -80,7 +83,8 @@ abstract class StrategyServiceTestSupport {
                 periodRepository,
                 linkRepository,
                 auditService,
-                progressRecordRepository
+                progressRecordRepository,
+                projectRepository
         );
         unit = TestFixtures.unit(1L);
         period = TestFixtures.period(1L);

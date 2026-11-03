@@ -12,6 +12,7 @@ import co.edu.icesi.pdg.mte.catalog.MeasurementValuePolicy;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.common.PlannerLinks;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
+import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.security.ExternalUserContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ public class KeyResultService {
     private final ProjectKeyResultLinkRepository linkRepository;
     private final AuditService auditService;
     private final KeyResultProgressRecordRepository progressRecordRepository;
+    private final ProjectRepository projectRepository;
 
     public KeyResultService(
             KeyResultRepository keyResultRepository,
@@ -47,8 +49,10 @@ public class KeyResultService {
             AcademicPeriodRepository periodRepository,
             ProjectKeyResultLinkRepository linkRepository,
             AuditService auditService,
-            KeyResultProgressRecordRepository progressRecordRepository
+            KeyResultProgressRecordRepository progressRecordRepository,
+            ProjectRepository projectRepository
     ) {
+        this.projectRepository = projectRepository;
         this.progressRecordRepository = progressRecordRepository;
         this.keyResultRepository = keyResultRepository;
         this.goalRepository = goalRepository;
@@ -184,7 +188,8 @@ public class KeyResultService {
         }
         if (!active) {
             requireNotClosed(keyResult);
-            if (linkRepository.countByKeyResultIdAndActiveTrue(keyResultId) > 0) {
+            // A project's main KR is a direct reference, not a link row, so it is checked separately.
+            if (linkRepository.countByKeyResultIdAndActiveTrue(keyResultId) > 0 || projectRepository.existsByKeyResultId(keyResultId)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "No se puede archivar un KR con proyectos vinculados.");
             }
         }
