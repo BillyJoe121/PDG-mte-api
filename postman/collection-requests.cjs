@@ -39,7 +39,7 @@ const projectBody = {
 const nameBody = label => ({ name: `${label} Postman {{runId}}`, description: "Creado por la coleccion Postman" });
 
 const folders = [
-  { tag: "health-controller", name: "Salud", requests: [{ op: "GET /api/v1/health", shape: { type: "object", keys: ["status", "timestamp", "service"], required: ["status"] } }] },
+  { tag: "health-controller", name: "Salud", requests: [{ op: "GET /api/v1/health", shape: { type: "object", keys: ["status", "database", "timestamp", "service"], required: ["status"] } }] },
   {
     tag: "auth-context-controller",
     name: "Sesion",
@@ -66,8 +66,8 @@ const folders = [
       { op: "PUT /api/v1/departments/:id", vars: { id: "{{newDepartmentId}}" }, body: { ...nameBody("Departamento editado"), schoolId: 1 } },
       { op: "DELETE /api/v1/departments/:id", vars: { id: "{{newDepartmentId}}" } },
       { op: "GET /api/v1/academic-periods" },
-      { op: "POST /api/v1/academic-periods", body: { name: "P-{{runId}}", startDate: "2031-01-15", endDate: "2031-06-30", status: "PLANIFICACION" }, save: [["newPeriodId", "id"]] },
-      { op: "PUT /api/v1/academic-periods/:id", vars: { id: "{{newPeriodId}}" }, body: { name: "P-{{runId}}-e", startDate: "2031-01-20", endDate: "2031-06-30", status: "PLANIFICACION" } },
+      { op: "POST /api/v1/academic-periods", body: { name: "{{periodYear}}-1", startDate: "2031-01-15", endDate: "2031-06-30", status: "PLANIFICACION" }, save: [["newPeriodId", "id"]] },
+      { op: "PUT /api/v1/academic-periods/:id", vars: { id: "{{newPeriodId}}" }, body: { name: "{{periodYear}}-2", startDate: "2031-01-20", endDate: "2031-06-30", status: "PLANIFICACION" } },
       { op: "PATCH /api/v1/academic-periods/:id/status", vars: { id: "{{newPeriodId}}" }, body: { status: "CERRADO" } },
       { op: "PATCH /api/v1/academic-periods/:id/active", vars: { id: "{{newPeriodId}}" }, body: { active: false } },
       { op: "DELETE /api/v1/academic-periods/:id", vars: { id: "{{newPeriodId}}" } }

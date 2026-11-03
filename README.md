@@ -379,7 +379,7 @@ La semilla deja a todas las personas como `CONTRIBUTOR`, asi que en esa base des
 UPDATE professor SET access_role = 'ADMIN' WHERE email = 'demo.profesor@icesi.edu.co';
 ```
 
-Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. El reporte `postman/newman-report.json` no se versiona.
+Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. Los periodos que crea usan un año lejano derivado del `runId` (`AAAA-1` y `AAAA-2`, entre 3000 y 9999). La coleccion solo se ha probado contra este sustituto local de autenticacion, no contra Supabase real. El reporte `postman/newman-report.json` no se versiona.
 
 ## Cobertura
 

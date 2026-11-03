@@ -120,6 +120,11 @@ const negativeFlow = [
   { name: "Token invalido", method: "GET", url: "/api/v1/projects", auth: "invalid", status: 401, error: "Inicia sesión para continuar." },
   { name: "Proyecto sin KR", method: "POST", url: "/api/v1/projects", status: 400, error: "Selecciona al menos un Key Result para la iniciativa.", body: projectWithoutKr },
   { name: "Periodo de proyecto invalido", method: "POST", url: "/api/v1/projects", status: 400, error: "", body: { ...projectBody, startPeriod: "2026" } },
+  {
+    name: "Periodo academico con nombre invalido", method: "POST", url: "/api/v1/academic-periods", status: 400, error: "",
+    body: { name: "P-{{runId}}", startDate: "2031-01-15", endDate: "2031-06-30", status: "PLANIFICACION" },
+    tests: [check("Detalle del formato AAAA-1 o AAAA-2", "pm.expect(pm.response.json().details.some(function (detail) { return detail.indexOf('AAAA-1 o AAAA-2') >= 0; })).to.equal(true);")]
+  },
   { name: "Archivar KR con proyectos", method: "PATCH", url: "/api/v1/key-results/1/active", status: 409, error: "No se puede archivar un KR con proyectos vinculados.", body: { active: false } },
   {
     name: "Archivar KR sin cuerpo", method: "PATCH", url: "/api/v1/key-results/1/active", status: 400, error: "", body: {},

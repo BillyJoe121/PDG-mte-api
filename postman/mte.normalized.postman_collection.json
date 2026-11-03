@@ -69,6 +69,7 @@
         "exec": [
           "function setVar(key, value) { if (pm.environment.has(key)) { pm.environment.set(key, value); } else { pm.collectionVariables.set(key, value); } }",
           "if (!pm.variables.get('runId')) { setVar('runId', Date.now().toString(36)); }",
+          "pm.variables.set('periodYear', String(3000 + Math.floor(parseInt(pm.variables.get('runId'), 36) / 1000) % 7000));",
           "const authMockUrl = pm.variables.get('authMockUrl');",
           "if (authMockUrl) {",
           "  [['accessToken', 'adminEmail'], ['managerToken', 'managerEmail'], ['visitorToken', 'visitorEmail']].forEach(function (pair) {",
@@ -98,7 +99,7 @@
       "description": "Endpoints del tag health-controller.",
       "item": [
         {
-          "id": "a3e0ec3c-90c6-4c1d-bd45-050428ce7750",
+          "id": "57231e67-c7fe-4b56-b140-78412a1ca1be",
           "name": "GET /api/v1/health",
           "request": {
             "name": "health",
@@ -144,7 +145,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"status\",\"timestamp\",\"service\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"status\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"status\",\"database\",\"timestamp\",\"service\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"status\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
                 ]
               }
             }
@@ -160,7 +161,7 @@
       "description": "Endpoints del tag auth-context-controller.",
       "item": [
         {
-          "id": "346f347d-51e7-4419-81e4-2f4c2337b504",
+          "id": "0de01b9c-5f19-4b7b-85dc-89280b9fce73",
           "name": "GET /api/v1/auth/me",
           "request": {
             "name": "me",
@@ -214,7 +215,7 @@
       "description": "Endpoints del tag catalog-controller.",
       "item": [
         {
-          "id": "7a06300f-012c-4da9-b11a-42870a3ed231",
+          "id": "dff4821c-198f-4212-a9ae-d8bf9dc4bc4d",
           "name": "GET /api/v1/schools",
           "request": {
             "name": "list Schools",
@@ -260,7 +261,7 @@
           }
         },
         {
-          "id": "f276f306-24e5-43b7-b50f-a4ad32d0ac64",
+          "id": "d31bd4f6-a12a-4bb6-a995-50a2e1a0ffe9",
           "name": "POST /api/v1/schools",
           "request": {
             "name": "create School",
@@ -321,7 +322,7 @@
           }
         },
         {
-          "id": "58426074-e89b-49df-ba09-6611e923a3f8",
+          "id": "33d3a308-086e-454a-bbcd-ce91582ff114",
           "name": "PUT /api/v1/schools/:id",
           "request": {
             "name": "update School",
@@ -392,7 +393,7 @@
           }
         },
         {
-          "id": "b19cf2e6-e947-400f-9291-d8a765a1722b",
+          "id": "dc5625c5-aaf3-4d67-8f69-86bd19cbc433",
           "name": "DELETE /api/v1/schools/:id",
           "request": {
             "name": "delete School",
@@ -444,7 +445,7 @@
           }
         },
         {
-          "id": "aa0ad162-e8cf-4b7f-b813-c63be3885d75",
+          "id": "b53935f0-a300-4af2-8dfd-91d233aa75fc",
           "name": "GET /api/v1/measurement-units",
           "request": {
             "name": "list Units",
@@ -490,7 +491,7 @@
           }
         },
         {
-          "id": "cf1e7875-24c9-4142-aefc-8441b8008d36",
+          "id": "c2dde6ac-8cda-4347-86b4-5e925f0a5cd8",
           "name": "POST /api/v1/measurement-units",
           "request": {
             "name": "create Unit",
@@ -551,7 +552,7 @@
           }
         },
         {
-          "id": "ab0efb31-76bb-4c3a-97e4-1a03b472f9c0",
+          "id": "9b07fd93-2524-497b-b264-6b5dac686a61",
           "name": "PUT /api/v1/measurement-units/:id",
           "request": {
             "name": "update Unit",
@@ -622,7 +623,7 @@
           }
         },
         {
-          "id": "36537f0b-f5d8-43c0-9090-ec4215a7dbe3",
+          "id": "a36e7edd-017d-48e1-b682-b1783b43123a",
           "name": "PATCH /api/v1/measurement-units/:id/active",
           "request": {
             "name": "update Unit Active",
@@ -694,7 +695,7 @@
           }
         },
         {
-          "id": "22e4aa1a-1f5a-4860-8edf-fc06eaa50cfd",
+          "id": "7f69f72e-b0c7-439f-944e-0b664c608173",
           "name": "DELETE /api/v1/measurement-units/:id",
           "request": {
             "name": "delete Unit",
@@ -746,7 +747,7 @@
           }
         },
         {
-          "id": "5de7769c-cc50-46be-a9a9-60ba16a25bd3",
+          "id": "28843fc8-c011-4fe6-9735-a51ddfb3ce1e",
           "name": "GET /api/v1/departments",
           "request": {
             "name": "list Departments",
@@ -792,7 +793,7 @@
           }
         },
         {
-          "id": "c41e3763-22b6-4223-b246-f9ee23698cbf",
+          "id": "e861075c-34bb-41a9-af9a-d1ea082432ff",
           "name": "POST /api/v1/departments",
           "request": {
             "name": "create Department",
@@ -853,7 +854,7 @@
           }
         },
         {
-          "id": "de387280-9ecf-48c0-9f43-2047078248ad",
+          "id": "d285e795-5523-468a-b687-8a8a8a21be9e",
           "name": "PUT /api/v1/departments/:id",
           "request": {
             "name": "update Department",
@@ -924,7 +925,7 @@
           }
         },
         {
-          "id": "e6effe7f-9df6-4cf2-a4b0-163dca8b8bcd",
+          "id": "9e3db0b1-ce14-4541-a925-9d5cb862d122",
           "name": "DELETE /api/v1/departments/:id",
           "request": {
             "name": "delete Department",
@@ -976,7 +977,7 @@
           }
         },
         {
-          "id": "f4724def-20bc-4a85-ab28-53cfa7243823",
+          "id": "b256d048-0c06-4e60-8476-c194ff58acba",
           "name": "GET /api/v1/academic-periods",
           "request": {
             "name": "list Periods",
@@ -1022,7 +1023,7 @@
           }
         },
         {
-          "id": "afbf0d53-2cea-4cde-8ab4-fb3e075e87c4",
+          "id": "0c1b2495-65cc-4b04-b201-6e946344350d",
           "name": "POST /api/v1/academic-periods",
           "request": {
             "name": "create Period",
@@ -1055,7 +1056,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"P-{{runId}}\",\n  \"startDate\": \"2031-01-15\",\n  \"endDate\": \"2031-06-30\",\n  \"status\": \"PLANIFICACION\"\n}",
+              "raw": "{\n  \"name\": \"{{periodYear}}-1\",\n  \"startDate\": \"2031-01-15\",\n  \"endDate\": \"2031-06-30\",\n  \"status\": \"PLANIFICACION\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1083,7 +1084,7 @@
           }
         },
         {
-          "id": "eef63717-540c-4fa2-9f91-42b18153e905",
+          "id": "061ba880-24d2-4731-ae04-34d1fae9cdb4",
           "name": "PUT /api/v1/academic-periods/:id",
           "request": {
             "name": "update Period",
@@ -1128,7 +1129,7 @@
             "method": "PUT",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"P-{{runId}}-e\",\n  \"startDate\": \"2031-01-20\",\n  \"endDate\": \"2031-06-30\",\n  \"status\": \"PLANIFICACION\"\n}",
+              "raw": "{\n  \"name\": \"{{periodYear}}-2\",\n  \"startDate\": \"2031-01-20\",\n  \"endDate\": \"2031-06-30\",\n  \"status\": \"PLANIFICACION\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1154,7 +1155,7 @@
           }
         },
         {
-          "id": "caa7bd48-bc07-4e13-bc7b-609b1defa9c7",
+          "id": "ae494f96-e4ce-4a62-8f3b-0128d15dfe16",
           "name": "PATCH /api/v1/academic-periods/:id/status",
           "request": {
             "name": "update Period Status",
@@ -1226,7 +1227,7 @@
           }
         },
         {
-          "id": "4abd0a8c-1fa1-45a3-a0a1-239fc0f1d7fb",
+          "id": "7803333b-f756-4815-b1ec-e636221c433b",
           "name": "PATCH /api/v1/academic-periods/:id/active",
           "request": {
             "name": "update Period Active",
@@ -1298,7 +1299,7 @@
           }
         },
         {
-          "id": "b4287824-375b-4602-a132-c6e95277cdb5",
+          "id": "0ef1abba-39b0-4478-bba6-8b3bd0727a2c",
           "name": "DELETE /api/v1/academic-periods/:id",
           "request": {
             "name": "delete Period",
@@ -1356,7 +1357,7 @@
       "description": "Endpoints del tag world-controller.",
       "item": [
         {
-          "id": "90e6f272-24c6-4e11-8440-9fdc7d670daf",
+          "id": "2318eebe-ecdf-4f60-bfd4-4dcc0e07a336",
           "name": "GET /api/v1/worlds",
           "request": {
             "name": "list",
@@ -1402,7 +1403,7 @@
           }
         },
         {
-          "id": "d1d77795-e22b-4a7d-9dcb-3e0c21a4ac1f",
+          "id": "346083e1-73bf-4e09-bcc3-d032f83b0b16",
           "name": "POST /api/v1/worlds",
           "request": {
             "name": "create",
@@ -1463,7 +1464,7 @@
           }
         },
         {
-          "id": "7e5e3ef3-628b-40ae-ab04-2ec6698158a2",
+          "id": "77f5e9fc-9d76-4c29-ad9b-1e247a8d8035",
           "name": "PUT /api/v1/worlds/:id",
           "request": {
             "name": "update",
@@ -1534,7 +1535,7 @@
           }
         },
         {
-          "id": "692a2a80-4196-4c59-9ca3-5d0f65d8ae96",
+          "id": "f33229c0-1fb3-4943-be67-0e958d477893",
           "name": "DELETE /api/v1/worlds/:id",
           "request": {
             "name": "delete",
@@ -1592,7 +1593,7 @@
       "description": "Endpoints del tag strategic-bet-controller.",
       "item": [
         {
-          "id": "97464265-3757-439e-b0d6-5a4ac7e51539",
+          "id": "58e55551-4fc5-4268-88c2-0f64574e1c34",
           "name": "GET /api/v1/strategic-bets",
           "request": {
             "name": "list 1",
@@ -1657,7 +1658,7 @@
           }
         },
         {
-          "id": "facf73b3-4b4a-409a-b682-73b5676c055e",
+          "id": "af7169de-b0fb-485d-877c-9db87906e01a",
           "name": "POST /api/v1/strategic-bets",
           "request": {
             "name": "create 1",
@@ -1718,7 +1719,7 @@
           }
         },
         {
-          "id": "5fd9910f-bebe-4d58-b944-661ef34579c4",
+          "id": "a78e1b93-3fc8-4e46-bd69-82c9e7444d55",
           "name": "GET /api/v1/strategic-bets/:id",
           "request": {
             "name": "get",
@@ -1743,7 +1744,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 }
               ],
               "variable": [
@@ -1786,7 +1787,7 @@
           }
         },
         {
-          "id": "243d97ed-4590-4872-a3a3-a51f7a1c677c",
+          "id": "0aee0457-d4f0-4e31-856e-c7deb8fc8432",
           "name": "PUT /api/v1/strategic-bets/:id",
           "request": {
             "name": "update 1",
@@ -1857,7 +1858,7 @@
           }
         },
         {
-          "id": "7b34a102-1322-4a0d-aa0f-3787ba7b63ff",
+          "id": "6a065ec0-c313-41bb-b16a-5e0c0eb11fbe",
           "name": "PATCH /api/v1/strategic-bets/:id/active",
           "request": {
             "name": "set Active",
@@ -1935,7 +1936,7 @@
       "description": "Endpoints del tag goal-controller.",
       "item": [
         {
-          "id": "b5203cfa-8c7d-4557-9f6f-17c53d8fb6bd",
+          "id": "1f6dfbfa-e292-4bd4-8e08-200e56cba688",
           "name": "GET /api/v1/goals",
           "request": {
             "name": "list 5",
@@ -2000,7 +2001,7 @@
           }
         },
         {
-          "id": "c4e03e2d-5a2c-494a-8154-1660d72ccb46",
+          "id": "b5e64b9c-9aac-4b79-aa52-5edbd60504fb",
           "name": "POST /api/v1/goals",
           "request": {
             "name": "create 4",
@@ -2061,7 +2062,7 @@
           }
         },
         {
-          "id": "d86714d4-77f2-4211-9140-07afa6e70d9c",
+          "id": "0fa9a17c-8211-416b-833a-22c7fb9b2f11",
           "name": "GET /api/v1/goals/:id",
           "request": {
             "name": "get 3",
@@ -2086,7 +2087,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 }
               ],
               "variable": [
@@ -2129,7 +2130,7 @@
           }
         },
         {
-          "id": "bc55619b-aecc-461c-8ecf-4c7f215d16c7",
+          "id": "83c20246-7244-41bb-93b5-0633b79b8d1c",
           "name": "PUT /api/v1/goals/:id",
           "request": {
             "name": "update 4",
@@ -2200,7 +2201,7 @@
           }
         },
         {
-          "id": "8c95086e-6412-47f8-ba6f-145d7f0013d9",
+          "id": "c9551259-4f44-4316-9203-15a8506f069f",
           "name": "POST /api/v1/goals/:id/periods/:periodId",
           "request": {
             "name": "attach Period",
@@ -2270,7 +2271,7 @@
           }
         },
         {
-          "id": "6cba03f9-9d91-4b6f-9f39-4ef9bd48c8ff",
+          "id": "bfbeb4cf-cb55-455c-9e7a-048ac32ec483",
           "name": "DELETE /api/v1/goals/:id/periods/:periodId",
           "request": {
             "name": "detach Period",
@@ -2340,7 +2341,7 @@
           }
         },
         {
-          "id": "5b491ff7-4657-49f2-94b1-c06465597256",
+          "id": "e05b1a71-85aa-48ef-85b0-7a2c6e0404bc",
           "name": "PATCH /api/v1/goals/:id/active",
           "request": {
             "name": "set Active 2",
@@ -2418,7 +2419,7 @@
       "description": "Endpoints del tag key-result-controller.",
       "item": [
         {
-          "id": "6d86429e-e012-47c0-9de0-dfb74f3ea573",
+          "id": "dd85e9d7-cf44-449d-b7f9-0c6e0e2fc79d",
           "name": "GET /api/v1/key-results",
           "request": {
             "name": "list 4",
@@ -2442,7 +2443,7 @@
                     "type": "text/plain"
                   },
                   "key": "goalId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 },
                 {
                   "disabled": true,
@@ -2451,7 +2452,7 @@
                     "type": "text/plain"
                   },
                   "key": "strategicBetId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 },
                 {
                   "disabled": true,
@@ -2460,7 +2461,7 @@
                     "type": "text/plain"
                   },
                   "key": "periodId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 },
                 {
                   "disabled": true,
@@ -2501,7 +2502,7 @@
           }
         },
         {
-          "id": "dc47ca6b-d991-43db-93dd-3307c560eb51",
+          "id": "0b813e0d-cd97-4710-b075-67fb4fe12997",
           "name": "POST /api/v1/key-results",
           "request": {
             "name": "create 3",
@@ -2562,7 +2563,7 @@
           }
         },
         {
-          "id": "f2fd5177-b20d-4faf-9a7f-65b489dd25f5",
+          "id": "103abf74-490a-4246-b8dd-5e588d9d12d7",
           "name": "GET /api/v1/key-results/:id",
           "request": {
             "name": "get 2",
@@ -2620,7 +2621,7 @@
           }
         },
         {
-          "id": "91df3be8-010c-4a8b-be5d-af85e01851bc",
+          "id": "e368418b-ff0b-4bed-9d13-6332a30e86db",
           "name": "PUT /api/v1/key-results/:id",
           "request": {
             "name": "update 3",
@@ -2691,7 +2692,7 @@
           }
         },
         {
-          "id": "e95404d7-e089-43cc-bca0-2dbc3f5c51ff",
+          "id": "16c99965-312a-4df5-843c-bf9243a50121",
           "name": "PATCH /api/v1/key-results/:id/status",
           "request": {
             "name": "set Status",
@@ -2763,7 +2764,7 @@
           }
         },
         {
-          "id": "d2a9eea2-7d4d-43e8-aa3a-337fb5b17fc1",
+          "id": "eaf7d368-877b-4fea-9c1a-87a9170ddd50",
           "name": "PATCH /api/v1/key-results/:id/progress",
           "request": {
             "name": "update Progress",
@@ -2835,7 +2836,7 @@
           }
         },
         {
-          "id": "e57a80d9-8b14-4670-bfd7-ca8236178875",
+          "id": "480aa79f-aeee-4af1-b53d-f2adb6702d77",
           "name": "GET /api/v1/key-results/:id/progress-records",
           "request": {
             "name": "progress Records",
@@ -2894,7 +2895,7 @@
           }
         },
         {
-          "id": "1879625e-8445-4f8c-a3e4-d762299bd8b2",
+          "id": "44eb64b1-a55e-4c7f-b803-aec29f3f777f",
           "name": "PATCH /api/v1/key-results/:id/active",
           "request": {
             "name": "set Active 1",
@@ -2973,7 +2974,7 @@
       "description": "Endpoints del tag project-controller.",
       "item": [
         {
-          "id": "cbe3c56d-b30d-430f-8a8d-5b2fbf89932f",
+          "id": "bf923f54-ba86-4c06-8a39-2f309235af98",
           "name": "GET /api/v1/projects",
           "request": {
             "name": "list 2",
@@ -2997,7 +2998,7 @@
                     "type": "text/plain"
                   },
                   "key": "search",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -3006,7 +3007,7 @@
                     "type": "text/plain"
                   },
                   "key": "status",
-                  "value": "SUSPENDIDO"
+                  "value": "FINALIZADO"
                 },
                 {
                   "disabled": true,
@@ -3024,7 +3025,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 },
                 {
                   "disabled": true,
@@ -3033,7 +3034,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 }
               ],
               "variable": [],
@@ -3065,7 +3066,7 @@
           }
         },
         {
-          "id": "8b3bcf6a-d439-415b-8b3a-edefe48d7c9a",
+          "id": "19927b98-0461-4f8a-8cd7-57fb4f67b4ea",
           "name": "POST /api/v1/projects",
           "request": {
             "name": "create 2",
@@ -3126,7 +3127,7 @@
           }
         },
         {
-          "id": "5afa76ca-0796-4882-972e-dd87eacf473f",
+          "id": "da575b69-bc96-45b3-a812-25ec4d254544",
           "name": "GET /api/v1/projects/:id",
           "request": {
             "name": "get 1",
@@ -3184,7 +3185,7 @@
           }
         },
         {
-          "id": "94fb8ae0-e1c5-4f64-bc09-54679f991e31",
+          "id": "fc7fa9ec-45bf-4ff1-9c71-a18dc819823f",
           "name": "GET /api/v1/projects/:id/detail",
           "request": {
             "name": "detail",
@@ -3243,7 +3244,7 @@
           }
         },
         {
-          "id": "f128274b-3d6e-4fde-8cba-2eaa2ea83f6c",
+          "id": "48b3293e-34f3-48bc-bea5-83b92e2b8f19",
           "name": "GET /api/v1/projects/:id/history",
           "request": {
             "name": "history",
@@ -3302,7 +3303,7 @@
           }
         },
         {
-          "id": "b2c42819-2c8d-48d4-a16a-81e160f48a39",
+          "id": "6501e913-4242-409e-83d5-953555f8a7aa",
           "name": "GET /api/v1/projects/:id/impact-chain",
           "request": {
             "name": "impact Chain",
@@ -3361,7 +3362,7 @@
           }
         },
         {
-          "id": "b74c47fe-6828-46b0-a98f-b52223583d02",
+          "id": "785bcf94-7d46-4ce3-9754-bc7e9d0c67c1",
           "name": "GET /api/v1/projects/:id/contribution-chain",
           "request": {
             "name": "contribution Chain",
@@ -3420,7 +3421,7 @@
           }
         },
         {
-          "id": "9b37fc5c-7492-4073-b8df-0ead1bdc8df6",
+          "id": "b772cd4d-d63b-44d3-aa72-81c197a8c792",
           "name": "PUT /api/v1/projects/:id",
           "request": {
             "name": "update 2",
@@ -3491,7 +3492,7 @@
           }
         },
         {
-          "id": "858c32b4-8479-4bab-85d6-ca8db76e2aba",
+          "id": "ef1b1b8a-85b0-43b6-aa95-37635ee7409c",
           "name": "POST /api/v1/projects/:id/teachers",
           "request": {
             "name": "assign Teacher",
@@ -3563,7 +3564,7 @@
           }
         },
         {
-          "id": "9e4dabf1-30cb-4a61-9de0-2cbee0c58c32",
+          "id": "0469bcdc-3f20-40bc-b3ac-4c59759f32b6",
           "name": "GET /api/v1/projects/:id/teachers",
           "request": {
             "name": "list Teachers",
@@ -3622,7 +3623,7 @@
           }
         },
         {
-          "id": "50f78fc5-3e91-4352-bc98-208f3e68d8c8",
+          "id": "2a281d8e-571c-42ab-91b9-a9b49fdc54d1",
           "name": "DELETE /api/v1/projects/:id/teachers/:teacherId/roles/:roleId",
           "request": {
             "name": "remove Teacher",
@@ -3698,7 +3699,7 @@
           }
         },
         {
-          "id": "b5479a12-a2e2-4ee9-b71d-ec0f90c7ba86",
+          "id": "8e01b137-f827-4e49-9790-a6f3d641ff50",
           "name": "POST /api/v1/projects/:id/progress",
           "request": {
             "name": "register Progress",
@@ -3770,7 +3771,7 @@
           }
         },
         {
-          "id": "14460a18-d5a6-4794-9b42-155f67604b33",
+          "id": "1f2c3720-4864-4e61-9845-f780d8fea373",
           "name": "PATCH /api/v1/projects/:id/status",
           "request": {
             "name": "update Status",
@@ -3842,7 +3843,7 @@
           }
         },
         {
-          "id": "865d087b-b775-4a58-b53b-43329986cd19",
+          "id": "d16dcf76-6883-4130-a899-13997cbc5415",
           "name": "POST /api/v1/projects/sync/trayectoria",
           "request": {
             "name": "sync Trayectoria",
@@ -3872,7 +3873,7 @@
                   "type": "text/plain"
                 },
                 "key": "Authorization",
-                "value": "id sit"
+                "value": "sed cillum dolor"
               },
               {
                 "key": "Accept",
@@ -3906,7 +3907,7 @@
       "description": "Endpoints del tag project-key-result-link-controller.",
       "item": [
         {
-          "id": "be2f5b69-cfac-42b4-b091-83556c269b28",
+          "id": "9ea01546-bda6-475c-ba48-7052fd2b3c91",
           "name": "GET /api/v1/project-key-result-links",
           "request": {
             "name": "list 3",
@@ -3939,7 +3940,7 @@
                     "type": "text/plain"
                   },
                   "key": "keyResultId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -3971,7 +3972,7 @@
           }
         },
         {
-          "id": "86d1f0b7-7fd5-4365-b918-5d11da884118",
+          "id": "250733fd-2e09-4331-94d5-f35d7020306c",
           "name": "POST /api/v1/project-key-result-links",
           "request": {
             "name": "link",
@@ -4032,7 +4033,7 @@
           }
         },
         {
-          "id": "70ec9616-8b26-434a-81ac-5caef459998c",
+          "id": "ab8a0b52-8c41-4aeb-9401-fed37fe21742",
           "name": "PATCH /api/v1/project-key-result-links/:id",
           "request": {
             "name": "update 5",
@@ -4103,7 +4104,7 @@
           }
         },
         {
-          "id": "9d5d3f01-4b31-4ada-9bac-ed090c1f645e",
+          "id": "0e85638a-a9b3-431a-af10-d5cbaa69a081",
           "name": "DELETE /api/v1/project-key-result-links/:id",
           "request": {
             "name": "unlink",
@@ -4161,7 +4162,7 @@
       "description": "Endpoints del tag people-controller.",
       "item": [
         {
-          "id": "90191981-e897-480f-aa02-334c5ecf71df",
+          "id": "0b9a7e0f-e8fc-4f40-8fa0-70970b375891",
           "name": "GET /api/v1/roles",
           "request": {
             "name": "list Roles",
@@ -4207,7 +4208,7 @@
           }
         },
         {
-          "id": "d47c4afe-8604-4cc7-b259-7ce9df386128",
+          "id": "90b54649-7236-4256-801c-94a6ba947faa",
           "name": "POST /api/v1/roles",
           "request": {
             "name": "create Role",
@@ -4268,7 +4269,7 @@
           }
         },
         {
-          "id": "7a884f8c-121c-4ef7-8939-aa0264a32e72",
+          "id": "9e95a29e-52c3-4f08-830e-d279b216689d",
           "name": "PUT /api/v1/roles/:id",
           "request": {
             "name": "update Role",
@@ -4339,7 +4340,7 @@
           }
         },
         {
-          "id": "c9c94202-c9b6-4c15-819f-18bf3b621cc7",
+          "id": "3159384d-c667-4a45-ae76-2993922e3c7e",
           "name": "DELETE /api/v1/roles/:id",
           "request": {
             "name": "delete Role",
@@ -4391,7 +4392,7 @@
           }
         },
         {
-          "id": "73fa607b-25ce-4bc8-8e91-cd591af2765d",
+          "id": "d6f4b4d3-4b89-40cc-8b16-e096f280cf67",
           "name": "GET /api/v1/positions",
           "request": {
             "name": "list Positions",
@@ -4437,7 +4438,7 @@
           }
         },
         {
-          "id": "de3bafa9-2426-4e18-ac12-9cca5b0d1f4d",
+          "id": "fde47022-84da-4530-97bd-9290a31df5ff",
           "name": "POST /api/v1/positions",
           "request": {
             "name": "create Position",
@@ -4498,7 +4499,7 @@
           }
         },
         {
-          "id": "f3876749-83ff-4fd6-8163-b91ac219fad7",
+          "id": "0ebc02e6-4aaa-437f-93ec-ecc9b1b200b7",
           "name": "PUT /api/v1/positions/:id",
           "request": {
             "name": "update Position",
@@ -4569,7 +4570,7 @@
           }
         },
         {
-          "id": "38964d7c-0409-4688-94a1-1b9a06586b9f",
+          "id": "031e4943-0868-40ae-888a-c791d265e9c8",
           "name": "GET /api/v1/professors",
           "request": {
             "name": "list Professors",
@@ -4625,7 +4626,7 @@
           }
         },
         {
-          "id": "96af8300-0f52-462f-abb5-6771a3f7fdfc",
+          "id": "6b1f83f4-5cd0-476a-8699-de03c8fa1af6",
           "name": "POST /api/v1/professors",
           "request": {
             "name": "create Professor",
@@ -4686,7 +4687,7 @@
           }
         },
         {
-          "id": "f67d300b-41a0-442d-83b1-a6c468447109",
+          "id": "6f1be983-4549-4d86-a3fe-3bb94e203328",
           "name": "PUT /api/v1/professors/:id",
           "request": {
             "name": "update Professor",
@@ -4757,7 +4758,7 @@
           }
         },
         {
-          "id": "cfa2889c-1cb1-4761-85d8-cc68e5017adc",
+          "id": "00edc235-35a7-448f-af30-fbd5348f1baf",
           "name": "POST /api/v1/professors/:id/positions",
           "request": {
             "name": "assign Position",
@@ -4829,7 +4830,7 @@
           }
         },
         {
-          "id": "ab0b7421-81f4-4de4-bc62-ded10974ed41",
+          "id": "c9e07321-fe5c-4d84-98e0-0c375cb12b96",
           "name": "GET /api/v1/professors/:id/positions",
           "request": {
             "name": "list Teacher Positions",
@@ -4888,7 +4889,7 @@
           }
         },
         {
-          "id": "035e7e1b-9b8d-4397-b063-ecd4dfaeb7cf",
+          "id": "a39be723-574e-447e-9875-822ac816a6ff",
           "name": "DELETE /api/v1/professors/:id/positions/:positionId",
           "request": {
             "name": "remove Position",
@@ -4952,7 +4953,7 @@
           }
         },
         {
-          "id": "a305f3ab-e8b5-4ae9-bd1c-0801cb3ad63c",
+          "id": "cdd0661b-e02f-4e5a-bf4a-8f60ebc84904",
           "name": "DELETE /api/v1/professors/:id",
           "request": {
             "name": "delete Professor",
@@ -5004,7 +5005,7 @@
           }
         },
         {
-          "id": "da04e641-3db9-406e-a5ed-f5add3836194",
+          "id": "8e793964-5e2a-4e3c-99ef-bf565e579000",
           "name": "DELETE /api/v1/positions/:id",
           "request": {
             "name": "delete Position",
@@ -5056,7 +5057,7 @@
           }
         },
         {
-          "id": "057de273-2f0d-4d84-9673-9adcf555c1ff",
+          "id": "e12d8aa4-f2fd-4f09-8977-d837f9c664fd",
           "name": "GET /api/v1/directory-users",
           "request": {
             "name": "list Directory Users",
@@ -5080,7 +5081,7 @@
                     "type": "text/plain"
                   },
                   "key": "search",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -5089,7 +5090,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 },
                 {
                   "disabled": false,
@@ -5107,7 +5108,7 @@
                     "type": "text/plain"
                   },
                   "key": "active",
-                  "value": "true"
+                  "value": "false"
                 }
               ],
               "variable": [],
@@ -5139,7 +5140,7 @@
           }
         },
         {
-          "id": "46cf05e3-6f61-4b2c-8e86-021c73a3002a",
+          "id": "a0a0cbbf-9d9d-443e-a515-64c20ac46d91",
           "name": "POST /api/v1/directory-users",
           "request": {
             "name": "create Directory User",
@@ -5200,7 +5201,7 @@
           }
         },
         {
-          "id": "b7dc7e86-0904-4e9e-ac98-97c09aca7acc",
+          "id": "29c5f6b9-6660-41c3-b9a1-3a89401a6b6a",
           "name": "PUT /api/v1/directory-users/:id",
           "request": {
             "name": "update Directory User",
@@ -5271,7 +5272,7 @@
           }
         },
         {
-          "id": "fe6902c1-b11b-4bdc-8e5d-b7016f973cbf",
+          "id": "60acec1c-993d-4350-ad1e-b9950fa03962",
           "name": "POST /api/v1/directory-users/:id/access-link",
           "request": {
             "name": "create Access Link",
@@ -5330,7 +5331,7 @@
           }
         },
         {
-          "id": "dade9067-9f12-4a39-9c52-dbc11967dc77",
+          "id": "ae0137fc-5504-48ca-bd46-0fe03354b78c",
           "name": "PATCH /api/v1/directory-users/:id/active",
           "request": {
             "name": "update Directory User Active",
@@ -5402,7 +5403,7 @@
           }
         },
         {
-          "id": "82f8b9f9-e704-48ec-973e-4b2eacc852f5",
+          "id": "fb9b58dd-dffb-4e27-9b17-1bcd1cb5aa4f",
           "name": "DELETE /api/v1/directory-users/:id",
           "request": {
             "name": "delete Directory User",
@@ -5460,7 +5461,7 @@
       "description": "Endpoints del tag strategic-hierarchy-controller.",
       "item": [
         {
-          "id": "fe291f18-b4ad-41e4-9ae2-b5811899cab9",
+          "id": "14cc3459-ff13-4a59-af1b-2bca9a1c0490",
           "name": "GET /api/v1/strategic-hierarchy/tree",
           "request": {
             "name": "tree",
@@ -5523,7 +5524,7 @@
       "description": "Endpoints del tag dashboard-controller.",
       "item": [
         {
-          "id": "026ae3b8-21a4-46b2-b991-b0f4381bc3ce",
+          "id": "219df9d7-ae47-4423-9353-37fe4303006b",
           "name": "GET /api/v1/dashboard/summary",
           "request": {
             "name": "summary",
@@ -5580,7 +5581,7 @@
           }
         },
         {
-          "id": "4c94b359-905a-4d6a-bc26-b336b4c8c51e",
+          "id": "5b759dcd-83f8-4fcb-9710-11ef20ee43d9",
           "name": "GET /api/v1/dashboard/strategic-bets/summary",
           "request": {
             "name": "strategic Bets",
@@ -5638,7 +5639,7 @@
           }
         },
         {
-          "id": "f139d679-af71-4554-a0e3-1d61125c5823",
+          "id": "9de7093d-ec93-4553-a361-0179e33574dc",
           "name": "GET /api/v1/dashboard/projects/by-status",
           "request": {
             "name": "projects By Status",
@@ -5696,7 +5697,7 @@
           }
         },
         {
-          "id": "dc887e91-398f-4482-bae2-eac20fa8e19f",
+          "id": "4a5a1fa6-b250-47ed-aa3c-8277c3adcfd0",
           "name": "GET /api/v1/dashboard/key-results/by-status",
           "request": {
             "name": "key Results By Status",
@@ -5754,7 +5755,7 @@
           }
         },
         {
-          "id": "820595f9-5c5e-4334-a0bd-a463e8664148",
+          "id": "c2651007-7fec-4073-92c6-5b26fb89616d",
           "name": "GET /api/v1/dashboard/goals/summary",
           "request": {
             "name": "goals",
@@ -5812,7 +5813,7 @@
           }
         },
         {
-          "id": "4463ed03-c646-46ac-afad-116eb89d2eee",
+          "id": "15384829-3c6e-4527-9d25-20cee9cb7315",
           "name": "GET /api/v1/dashboard/departments/summary",
           "request": {
             "name": "departments 1",
@@ -5876,7 +5877,7 @@
       "description": "Endpoints del tag report-controller.",
       "item": [
         {
-          "id": "333f1777-be3e-42b1-971a-2206671681de",
+          "id": "feabb829-9208-4dbe-8bf1-17a57a45a7a6",
           "name": "GET /api/v1/reports",
           "request": {
             "name": "consolidated",
@@ -5909,7 +5910,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -5941,7 +5942,7 @@
           }
         },
         {
-          "id": "b020646a-01b8-41f9-be7e-dd50a1ba0b04",
+          "id": "2adf1657-d0a3-431a-8120-03100cb9aebd",
           "name": "GET /api/v1/reports/general",
           "request": {
             "name": "general",
@@ -5975,7 +5976,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -6007,7 +6008,7 @@
           }
         },
         {
-          "id": "dc80e85f-62b2-49f3-9a79-d724bbf2723c",
+          "id": "4f541659-a820-4a02-a1b4-3d4b756cc716",
           "name": "GET /api/v1/reports/departments",
           "request": {
             "name": "departments",
@@ -6064,7 +6065,7 @@
           }
         },
         {
-          "id": "111c1dba-9aa7-40d7-99ae-6390a6a90a35",
+          "id": "a757d99b-3c14-4920-904e-f70167600c52",
           "name": "GET /api/v1/reports/key-results/ranking",
           "request": {
             "name": "key Result Ranking",
@@ -6099,7 +6100,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -6131,7 +6132,7 @@
           }
         },
         {
-          "id": "5cf041c4-3ca0-4eda-9b4a-7f7200ee91b1",
+          "id": "8da539e4-5b59-4074-bc53-beebdc8d6ccd",
           "name": "GET /api/v1/reports/period-comparison",
           "request": {
             "name": "period Comparison",
@@ -6174,7 +6175,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -6206,7 +6207,7 @@
           }
         },
         {
-          "id": "707686a6-272c-4326-984b-6465bfdf8072",
+          "id": "70a1c4c3-370b-43fb-8ed6-7bbc82e63439",
           "name": "GET /api/v1/reports/export.csv",
           "request": {
             "name": "csv",
@@ -6240,7 +6241,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -6272,7 +6273,7 @@
           }
         },
         {
-          "id": "c02cb413-5790-45b6-9a38-b9b43e60ddb5",
+          "id": "a7cf6d25-19b1-460d-815b-6dd474cc7141",
           "name": "GET /api/v1/reports/export.pdf",
           "request": {
             "name": "pdf",
@@ -6306,7 +6307,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "-21515125"
+                  "value": "91534842"
                 }
               ],
               "variable": [],
@@ -6344,7 +6345,7 @@
       "description": "Endpoints del tag presentation-controller.",
       "item": [
         {
-          "id": "2606963f-612a-4d04-a5af-7cd7620d518b",
+          "id": "dedf7a51-d2ca-46d3-98e2-88075e4e9230",
           "name": "GET /api/v1/presentation",
           "request": {
             "name": "presentation",
@@ -6406,7 +6407,7 @@
       "description": "Endpoints del tag consistency-controller.",
       "item": [
         {
-          "id": "68a4a540-e5bf-4990-8a5c-e927ff4a1d5f",
+          "id": "e0846d21-4ccc-4bb3-810f-795efbdce58f",
           "name": "GET /api/v1/consistency/check",
           "request": {
             "name": "check",
@@ -6431,7 +6432,7 @@
                     "type": "text/plain"
                   },
                   "key": "severity",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6440,7 +6441,7 @@
                     "type": "text/plain"
                   },
                   "key": "module",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6449,7 +6450,7 @@
                     "type": "text/plain"
                   },
                   "key": "staleDays",
-                  "value": "-38405089"
+                  "value": "-89950246"
                 }
               ],
               "variable": [],
@@ -6481,7 +6482,7 @@
           }
         },
         {
-          "id": "34047e6e-9e50-4b1c-821e-61cc9abe17ef",
+          "id": "5cc6bf86-7a64-4465-8e4d-8f563a004976",
           "name": "GET /api/v1/consistency/check/export.csv",
           "request": {
             "name": "csv 1",
@@ -6507,7 +6508,7 @@
                     "type": "text/plain"
                   },
                   "key": "severity",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6516,7 +6517,7 @@
                     "type": "text/plain"
                   },
                   "key": "module",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6525,7 +6526,7 @@
                     "type": "text/plain"
                   },
                   "key": "staleDays",
-                  "value": "-38405089"
+                  "value": "-89950246"
                 }
               ],
               "variable": [],
@@ -6563,7 +6564,7 @@
       "description": "Endpoints del tag audit-controller.",
       "item": [
         {
-          "id": "fdb51b7a-6122-49dc-8c4d-bea237459f9f",
+          "id": "afaf2362-a90e-44e6-b7b0-c297b4311cd2",
           "name": "GET /api/v1/audit-logs",
           "request": {
             "name": "list 6",
@@ -6587,7 +6588,7 @@
                     "type": "text/plain"
                   },
                   "key": "action",
-                  "value": "ACCOUNT_LOCKED"
+                  "value": "PASSWORD_SET"
                 },
                 {
                   "disabled": false,
@@ -6605,7 +6606,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityId",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6614,7 +6615,7 @@
                     "type": "text/plain"
                   },
                   "key": "actorUsername",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6623,7 +6624,7 @@
                     "type": "text/plain"
                   },
                   "key": "from",
-                  "value": "2006-04-26T02:57:03.898Z"
+                  "value": "2023-04-01T19:34:11.400Z"
                 },
                 {
                   "disabled": true,
@@ -6632,7 +6633,7 @@
                     "type": "text/plain"
                   },
                   "key": "to",
-                  "value": "2006-04-26T02:57:03.898Z"
+                  "value": "2023-04-01T19:34:11.400Z"
                 }
               ],
               "variable": [],
@@ -6664,7 +6665,7 @@
           }
         },
         {
-          "id": "5bccb711-eee5-4633-b000-7d31ebdd0f8b",
+          "id": "ba286952-cacd-4382-bcf8-2cbf9377dccf",
           "name": "GET /api/v1/audit-logs/summary",
           "request": {
             "name": "summary 1",
@@ -6689,7 +6690,7 @@
                     "type": "text/plain"
                   },
                   "key": "action",
-                  "value": "ACCOUNT_LOCKED"
+                  "value": "PASSWORD_SET"
                 },
                 {
                   "disabled": true,
@@ -6698,7 +6699,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityType",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6707,7 +6708,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityId",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6716,7 +6717,7 @@
                     "type": "text/plain"
                   },
                   "key": "actorUsername",
-                  "value": "id sit"
+                  "value": "sed cillum dolor"
                 },
                 {
                   "disabled": true,
@@ -6725,7 +6726,7 @@
                     "type": "text/plain"
                   },
                   "key": "from",
-                  "value": "2006-04-26T02:57:03.898Z"
+                  "value": "2023-04-01T19:34:11.400Z"
                 },
                 {
                   "disabled": true,
@@ -6734,7 +6735,7 @@
                     "type": "text/plain"
                   },
                   "key": "to",
-                  "value": "2006-04-26T02:57:03.898Z"
+                  "value": "2023-04-01T19:34:11.400Z"
                 }
               ],
               "variable": [],
@@ -8168,6 +8169,51 @@
                 "exec": [
                   "pm.test('Responde 400', function () { pm.response.to.have.status(400); });",
                   "pm.test('Error con forma ApiError', function () { const body = pm.response.json(); pm.expect(body).to.include.all.keys(\"statusCode\",\"message\",\"details\",\"timestamp\",\"path\"); pm.expect(body.statusCode).to.equal(400); pm.expect(body.details).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Periodo academico con nombre invalido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/academic-periods",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "academic-periods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"P-{{runId}}\",\n  \"startDate\": \"2031-01-15\",\n  \"endDate\": \"2031-06-30\",\n  \"status\": \"PLANIFICACION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error con forma ApiError', function () { const body = pm.response.json(); pm.expect(body).to.include.all.keys(\"statusCode\",\"message\",\"details\",\"timestamp\",\"path\"); pm.expect(body.statusCode).to.equal(400); pm.expect(body.details).to.be.an('array'); });",
+                  "pm.test(\"Detalle del formato AAAA-1 o AAAA-2\", function () { pm.expect(pm.response.json().details.some(function (detail) { return detail.indexOf('AAAA-1 o AAAA-2') >= 0; })).to.equal(true); });"
                 ]
               }
             }

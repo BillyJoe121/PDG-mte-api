@@ -21,6 +21,9 @@ const VARIABLES = [
 const COLLECTION_PRE_REQUEST = [
   SET_VAR,
   "if (!pm.variables.get('runId')) { setVar('runId', Date.now().toString(36)); }",
+  // Period names must look like YYYY-1 or YYYY-2: a far-future year taken from the run id
+  // (seconds, cycling through 3000-9999) keeps them clear of real periods and of other runs.
+  "pm.variables.set('periodYear', String(3000 + Math.floor(parseInt(pm.variables.get('runId'), 36) / 1000) % 7000));",
   "const authMockUrl = pm.variables.get('authMockUrl');",
   "if (authMockUrl) {",
   "  [['accessToken', 'adminEmail'], ['managerToken', 'managerEmail'], ['visitorToken', 'visitorEmail']].forEach(function (pair) {",
