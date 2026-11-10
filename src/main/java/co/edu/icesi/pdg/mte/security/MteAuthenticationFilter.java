@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Validates the Supabase access token on each request and loads the MTE person and role behind
+ * Validates the MTE access token on each request and loads the MTE person and role behind
  * it. Requests without a token continue unauthenticated and are rejected by the authorization
  * rules unless the endpoint is public.
  */

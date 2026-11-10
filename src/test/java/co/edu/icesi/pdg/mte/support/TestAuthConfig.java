@@ -3,6 +3,7 @@ package co.edu.icesi.pdg.mte.support;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
 import co.edu.icesi.pdg.mte.people.Professor;
 import co.edu.icesi.pdg.mte.people.ProfessorRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,8 +23,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 /**
  * Test-only authentication: accepts the tokens {@code test-admin}, {@code test-manager},
- * {@code test-contributor} and {@code test-visitor} instead of real Supabase tokens, and makes
- * every MockMvc request act as {@code test-admin} unless it sends its own Authorization header.
+ * {@code test-contributor} and {@code test-visitor} in addition to the real access tokens from
+ * {@code /auth/login}, and makes every MockMvc request act as {@code test-admin} unless it sends its own Authorization header.
  * Send an empty Authorization header to call the API without a session.
  */
 @Configuration
@@ -34,18 +35,26 @@ public class TestAuthConfig {
 
     @Bean
     @Primary
-    JwtDecoder testJwtDecoder(ProfessorRepository professors, DepartmentRepository departments) {
+    JwtDecoder testJwtDecoder(
+            ProfessorRepository professors,
+            DepartmentRepository departments,
+            @Qualifier("jwtDecoder") JwtDecoder realDecoder
+    ) {
         return token -> {
-            String role = token.startsWith(PREFIX) ? token.substring(PREFIX.length()).toUpperCase(Locale.ROOT) : "";
+            if (!token.startsWith(PREFIX)) {
+                return realDecoder.decode(token);
+            }
+            String role = token.substring(PREFIX.length()).toUpperCase(Locale.ROOT);
             if (!ROLES.contains(role)) {
                 throw new BadJwtException("Unknown test token.");
             }
             String email = "test." + role.toLowerCase(Locale.ROOT) + "@icesi.edu.co";
-            ensurePerson(professors, departments, email, role);
+            UUID subject = UUID.nameUUIDFromBytes(token.getBytes(StandardCharsets.UTF_8));
+            ensurePerson(professors, departments, email, role, subject);
             Instant now = Instant.now();
             return Jwt.withTokenValue(token)
                     .header("alg", "none")
-                    .subject(UUID.nameUUIDFromBytes(token.getBytes(StandardCharsets.UTF_8)).toString())
+                    .subject(subject.toString())
                     .claim("email", email)
                     .issuedAt(now)
                     .expiresAt(now.plusSeconds(3600))
@@ -62,16 +71,21 @@ public class TestAuthConfig {
             ProfessorRepository professors,
             DepartmentRepository departments,
             String email,
-            String role
+            String role,
+            UUID subject
     ) {
-        if (professors.findByEmailIgnoreCase(email).isPresent()) {
+        Professor professor = professors.findByEmailIgnoreCase(email).orElse(null);
+        if (professor != null && subject.equals(professor.getAuthUserId())) {
             return;
         }
-        Professor professor = new Professor();
-        professor.setName("Persona de prueba " + role);
-        professor.setEmail(email);
-        professor.setAccessRole(role);
-        professor.setDepartment(departments.findAll().get(0));
+        if (professor == null) {
+            professor = new Professor();
+            professor.setName("Persona de prueba " + role);
+            professor.setEmail(email);
+            professor.setAccessRole(role);
+            professor.setDepartment(departments.findAll().get(0));
+        }
+        professor.setAuthUserId(subject);
         professors.save(professor);
     }
 }

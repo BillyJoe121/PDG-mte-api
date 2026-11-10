@@ -43,12 +43,19 @@ logging:
 mte:
   cors:
     allowed-origins: ${MTE_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4200}
-  supabase:
-    # Supabase Auth project. Without url and server key every token is rejected.
-    url: ${SUPABASE_URL:}
-    server-key: ${SUPABASE_SECRET_KEY:}
+  auth:
+    # Key that signs access tokens (at least 32 bytes). Without it a temporary key is used
+    # and sessions end when the API restarts.
+    jwt-secret: ${MTE_AUTH_JWT_SECRET:}
+    issuer: ${MTE_AUTH_ISSUER:mte-api}
+    access-token-ttl: ${MTE_AUTH_ACCESS_TOKEN_TTL:1h}
+    access-link-ttl: ${MTE_AUTH_ACCESS_LINK_TTL:72h}
     # Frontend page where a person sets their password from an access link.
     access-link-url: ${MTE_ACCESS_LINK_URL:}
+    require-jwt-secret: ${MTE_AUTH_REQUIRE_JWT_SECRET:false}
+    # First sign-in on an empty database: logs a single-use link per administrator while
+    # no administrator has a password. Keep it off once an administrator has signed in.
+    bootstrap-admin-link: ${MTE_AUTH_BOOTSTRAP_ADMIN_LINK:false}
   seed:
     enabled: ${MTE_SEED_ENABLED:true}
   integration:

@@ -1,6 +1,6 @@
 # Frontend API Contracts
 
-Estado leido del codigo actual: autenticacion con Supabase Auth y cuatro roles de acceso (noviembre 2026).
+Estado leido del codigo actual: autenticacion propia de la API y cuatro roles de acceso (noviembre 2026).
 
 Este documento cubre convenciones, autenticacion, dashboard, catalogos, personas y estrategia. Proyectos, vinculos, reportes, presentacion, consistencia y auditoria estan en [frontend-api-contracts-operacion.md](frontend-api-contracts-operacion.md).
 
@@ -47,7 +47,7 @@ Autenticacion:
 Authorization: Bearer <token>
 ```
 
-El token es el `accessToken` que devuelve `POST /api/v1/auth/login` (JWT de Supabase Auth, vence en 1 hora). No hay refresh token: al vencer, la API responde 401 y el usuario vuelve a iniciar sesion.
+El token es el `accessToken` que devuelve `POST /api/v1/auth/login` (JWT HS256 firmado por la API, vence en 1 hora). No hay refresh token: al vencer, la API responde 401 y el usuario vuelve a iniciar sesion.
 
 Roles soportados (salen de `professor.access_role`, no del token):
 
@@ -125,11 +125,11 @@ AccessLinkResponse: {"professorId": 1, "email": "persona@icesi.edu.co", "url": "
 
 Reglas:
 
-- `login`: correo desconocido, persona inactiva, contrasena incorrecta y cuenta bloqueada responden el mismo 401, para no revelar cuales correos existen. Tras 5 fallos seguidos la cuenta se bloquea 15 minutos. Si Supabase no responde: 503.
+- `login`: correo desconocido, persona inactiva, contrasena incorrecta y cuenta bloqueada responden el mismo 401, para no revelar cuales correos existen. Tras 5 fallos seguidos la cuenta se bloquea 15 minutos.
 - `set-password`: la pagina `/establecer-contrasena` del frontend recibe `token_hash` y `type` en la URL y los envia con la nueva contrasena. Enlace vencido o usado: 400. Tambien desbloquea la cuenta.
 - `password`: valida la contrasena actual (un fallo cuenta para el bloqueo) y exige que la nueva sea distinta.
-- `access-link`: crea la cuenta en Supabase si no existe (`accountCreated: true`, enlace `invite`) o genera un enlace `recovery`. El administrador copia la URL y se la entrega a la persona.
-- `logout`: el token ya emitido sigue siendo valido hasta que vence; el frontend debe descartarlo.
+- `access-link`: crea la cuenta de acceso si no existe (`accountCreated: true`, enlace `invite`) o genera un enlace `recovery`. El enlace es de un solo uso, vence en 72 horas y anula los enlaces anteriores de la persona. El administrador copia la URL y se la entrega a la persona.
+- `logout`: la API revoca el token y desde ese momento responde 401 con el; el frontend tambien debe descartarlo.
 
 `AuthMeResponse`:
 
@@ -179,7 +179,7 @@ El endpoint obtiene una conexion de la base de datos y la valida con un timeout 
 - `200`: `{"status":"UP","database":"UP","service":"pdg-mte-api","timestamp":"..."}`.
 - `503`: `{"status":"DOWN","database":"DOWN","service":"pdg-mte-api","timestamp":"..."}` cuando la base no responde. La respuesta no incluye mensajes de error ni detalles de conexion.
 
-Render usa esta ruta como `healthCheckPath` (`render.yaml`), asi que una caida de la base de datos marca el servicio como no saludable.
+El `HEALTHCHECK` del `Dockerfile` y Coolify usan esta ruta, asi que una caida de la base de datos marca el contenedor como no saludable.
 
 ## Dashboard
 

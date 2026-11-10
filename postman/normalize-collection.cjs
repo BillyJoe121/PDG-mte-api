@@ -12,26 +12,23 @@ const outputPath = path.join(__dirname, "mte.normalized.postman_collection.json"
 const generated = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 
 const VARIABLES = [
-  "baseUrl", "accessToken", "managerToken", "visitorToken", "authMockUrl",
-  "adminEmail", "managerEmail", "visitorEmail", "runId"
+  "baseUrl", "accessToken", "managerToken", "visitorToken",
+  "adminEmail", "adminPassword", "runId"
 ];
 
-// Before each request: a run id for unique names and, when authMockUrl points at the
-// local auth stand-in, a token for every role that has an email but no token yet.
+// Before each request: a run id for unique names and, when the admin token is empty but
+// adminEmail and adminPassword are set, an admin session from POST /api/v1/auth/login.
 const COLLECTION_PRE_REQUEST = [
   SET_VAR,
   "if (!pm.variables.get('runId')) { setVar('runId', Date.now().toString(36)); }",
   // Period names must look like YYYY-1 or YYYY-2: a far-future year taken from the run id
   // (seconds, cycling through 3000-9999) keeps them clear of real periods and of other runs.
   "pm.variables.set('periodYear', String(3000 + Math.floor(parseInt(pm.variables.get('runId'), 36) / 1000) % 7000));",
-  "const authMockUrl = pm.variables.get('authMockUrl');",
-  "if (authMockUrl) {",
-  "  [['accessToken', 'adminEmail'], ['managerToken', 'managerEmail'], ['visitorToken', 'visitorEmail']].forEach(function (pair) {",
-  "    const email = pm.variables.get(pair[1]);",
-  "    if (pm.variables.get(pair[0]) || !email) { return; }",
-  "    pm.sendRequest({ url: authMockUrl.replace(/\\/$/, '') + '/mock/token', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ email: email }) } }, function (error, response) {",
-  "      if (!error && response.code === 200) { setVar(pair[0], response.json().access_token); }",
-  "    });",
+  "const adminEmail = pm.variables.get('adminEmail');",
+  "const adminPassword = pm.variables.get('adminPassword');",
+  "if (!pm.variables.get('accessToken') && adminEmail && adminPassword) {",
+  "  pm.sendRequest({ url: pm.variables.get('baseUrl').replace(/\\/$/, '') + '/api/v1/auth/login', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ email: adminEmail, password: adminPassword }) } }, function (error, response) {",
+  "    if (!error && response.code === 200) { setVar('accessToken', response.json().accessToken); }",
   "  });",
   "}"
 ];

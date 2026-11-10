@@ -6,6 +6,7 @@ import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.people.Professor;
 import co.edu.icesi.pdg.mte.people.ProfessorRepository;
+import co.edu.icesi.pdg.mte.security.credentials.CredentialService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -18,21 +19,24 @@ import java.nio.charset.StandardCharsets;
  */
 @Service
 public class AccountAccessService {
+    static final String INVITE = "invite";
+    static final String RECOVERY = "recovery";
+
     private final ProfessorRepository professorRepository;
-    private final SupabaseAuthClient supabaseAuthClient;
-    private final SupabaseProperties properties;
+    private final CredentialService credentialService;
+    private final AuthProperties properties;
     private final LoginAttemptService loginAttemptService;
     private final AuditService auditService;
 
     public AccountAccessService(
             ProfessorRepository professorRepository,
-            SupabaseAuthClient supabaseAuthClient,
-            SupabaseProperties properties,
+            CredentialService credentialService,
+            AuthProperties properties,
             LoginAttemptService loginAttemptService,
             AuditService auditService
     ) {
         this.professorRepository = professorRepository;
-        this.supabaseAuthClient = supabaseAuthClient;
+        this.credentialService = credentialService;
         this.properties = properties;
         this.loginAttemptService = loginAttemptService;
         this.auditService = auditService;
@@ -49,40 +53,23 @@ public class AccountAccessService {
                     "Falta configurar la dirección de la página para fijar la contraseña.");
         }
 
-        boolean created = false;
-        SupabaseAuthClient.GeneratedLink link;
-        try {
-            if (professor.getAuthUserId() == null) {
-                try {
-                    link = supabaseAuthClient.generateLink("invite", professor.getEmail());
-                    created = true;
-                } catch (SupabaseAuthClient.EmailExistsException exception) {
-                    link = supabaseAuthClient.generateLink("recovery", professor.getEmail());
-                }
-            } else {
-                link = supabaseAuthClient.generateLink("recovery", professor.getEmail());
-            }
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "No fue posible generar el enlace con el servicio de autenticación.");
-        }
-        if (professor.getAuthUserId() != null && !professor.getAuthUserId().equals(link.userId())) {
-            throw new BusinessException(HttpStatus.CONFLICT,
-                    "La cuenta de acceso de ese correo no corresponde a esta persona del directorio.");
-        }
+        CredentialService.Account account = credentialService.ensureAccount(professor.getAuthUserId());
+        String type = credentialService.hasPassword(account.userId()) ? RECOVERY : INVITE;
+        // Linking first so the person behind the link is known when it is used.
+        loginAttemptService.unlock(professor.getId(), account.userId());
+        String token = credentialService.issueLink(account.userId(), type);
 
-        loginAttemptService.unlock(professor.getId(), link.userId());
         auditService.record(AuditAction.ACCESS_LINK_CREATED, "DIRECTORY_USER", professor.getId(),
                 "Enlace de acceso generado para " + professor.getEmail()
-                        + (created ? " (cuenta nueva)" : ""), null, null);
-        return new SecurityDtos.AccessLinkResponse(professor.getId(), professor.getEmail(), url(link), created);
+                        + (account.created() ? " (cuenta nueva)" : ""), null, null);
+        return new SecurityDtos.AccessLinkResponse(professor.getId(), professor.getEmail(), url(token, type), account.created());
     }
 
-    private String url(SupabaseAuthClient.GeneratedLink link) {
+    private String url(String token, String type) {
         String base = properties.accessLinkUrl().trim();
         String separator = base.contains("?") ? "&" : "?";
         return base + separator
-                + "token_hash=" + URLEncoder.encode(link.hashedToken(), StandardCharsets.UTF_8)
-                + "&type=" + URLEncoder.encode(link.verificationType(), StandardCharsets.UTF_8);
+                + "token_hash=" + URLEncoder.encode(token, StandardCharsets.UTF_8)
+                + "&type=" + URLEncoder.encode(type, StandardCharsets.UTF_8);
     }
 }

@@ -23,4 +23,7 @@ public interface ProfessorRepository extends JpaRepository<Professor, Long> {
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<Professor> findByAccessRoleAndActiveTrueOrderByIdAsc(String accessRole);
+
+    /** Active people with the given access role in id order, read without locks. */
+    List<Professor> findAllByAccessRoleAndActiveTrueOrderByIdAsc(String accessRole);
 }

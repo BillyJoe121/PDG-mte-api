@@ -1,21 +1,30 @@
 # Integracion continua y despliegue
 
-Un fallo en las pruebas impide desplegar la API en Render.
+Un fallo en las pruebas impide desplegar la API.
 
 ## Workflow
 
 `.github/workflows/ci.yml` corre en cada push y pull request a `develop`:
 
-1. Java 17 (Temurin), la misma version de `pom.xml` y del `Dockerfile`.
-2. `sh ./mvnw -B test` contra H2 en memoria; no necesita base de datos ni secretos.
+1. `test`: Java 17 (Temurin), la misma version de `pom.xml` y del `Dockerfile`, y `sh ./mvnw -B test` contra H2 en memoria. No necesita base de datos ni secretos.
+2. `deploy`: solo en push a `develop` y solo si `test` paso. Llama al webhook de despliegue de Coolify para que reconstruya la imagen de la API.
 
 `mvnw` esta en Git sin permiso de ejecucion, por eso se invoca con `sh`.
 
 ## Despliegue condicionado
 
-`render.yaml` define `autoDeployTrigger: checksPass`: Render despliega `pdg-mte-api-staging` solo cuando los checks de GitHub del commit en `develop` pasan. Si fallan, el commit no se despliega y el servicio sigue con la version anterior.
+El job `deploy` usa dos secretos del repositorio (Settings > Secrets and variables > Actions):
 
-Si el servicio de Render no esta sincronizado con el Blueprint, el ajuste se hace a mano en el panel: Settings > Build & Deploy > Auto-Deploy = "After CI Checks Pass".
+| Secreto | Valor |
+|---|---|
+| `COOLIFY_WEBHOOK` | URL del webhook de la aplicacion en Coolify (pestana Webhooks, "Deploy Webhook") |
+| `COOLIFY_TOKEN` | Token de API de Coolify con permiso de despliegue (Keys & Tokens > API tokens) |
+
+Sin `COOLIFY_WEBHOOK` el paso termina sin desplegar, asi que los forks y los pull requests nunca despliegan. Si las pruebas fallan, el job no corre y el servidor sigue con la version anterior.
+
+En Coolify hay que desactivar el despliegue automatico propio de la aplicacion (Advanced > "Auto Deploy" apagado); si no, Coolify despliega en cada push sin esperar las pruebas.
+
+Si el servidor de la universidad no es alcanzable desde GitHub (red interna), el webhook falla y el job queda en rojo. En ese caso se despliega a mano desde el panel de Coolify ("Redeploy") despues de ver CI en verde. La guia completa esta en [despliegue-coolify.md](despliegue-coolify.md).
 
 ## Cobertura
 
