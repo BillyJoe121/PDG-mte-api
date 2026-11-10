@@ -6,8 +6,8 @@ import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.people.Professor;
 import co.edu.icesi.pdg.mte.people.ProfessorRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import co.edu.icesi.pdg.mte.security.credentials.CredentialService;
+import co.edu.icesi.pdg.mte.security.credentials.PasswordPolicy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -15,41 +15,39 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Sign-in, sign-out and passwords against Supabase Auth, plus resolution of the MTE person
- * behind a validated access token. Roles always come from the MTE directory.
+ * Sign-in, sign-out and passwords against the MTE's own accounts, plus resolution of the MTE
+ * person behind a validated access token. Roles always come from the MTE directory.
  */
 @Service
 public class AuthService {
     static final String INVALID_LOGIN = "No pudimos iniciar sesión con esos datos. "
             + "Después de 5 intentos fallidos la cuenta se bloquea 15 minutos.";
-    static final String AUTH_UNAVAILABLE = "El servicio de autenticación no está disponible. Intenta de nuevo en unos minutos.";
     static final String INVALID_LINK = "El enlace no es válido o ya venció. Pide uno nuevo al administrador.";
     static final String NO_ACCESS = "Tu cuenta no tiene acceso al MTE. Habla con el administrador.";
     static final String PASSWORD_TOO_LONG = "La contraseña no puede superar 72 caracteres (las letras con tilde y la ñ cuentan como dos).";
-    static final String LINK_SPENT = " El enlace ya se usó: pide uno nuevo al administrador.";
-    /** Supabase solo admite 72 bytes de contraseña. */
-    private static final int PASSWORD_MAX_BYTES = 72;
+    static final String WEAK_PASSWORD = "La contraseña no cumple las reglas. Usa al menos 10 caracteres, "
+            + "evita contraseñas comunes y no uses tu correo.";
 
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
-
-    private final SupabaseAuthClient supabaseAuthClient;
+    private final CredentialService credentialService;
+    private final AccessTokenService accessTokenService;
     private final ProfessorRepository professorRepository;
     private final LoginAttemptService loginAttemptService;
     private final AuditService auditService;
 
     public AuthService(
-            SupabaseAuthClient supabaseAuthClient,
+            CredentialService credentialService,
+            AccessTokenService accessTokenService,
             ProfessorRepository professorRepository,
             LoginAttemptService loginAttemptService,
             AuditService auditService
     ) {
-        this.supabaseAuthClient = supabaseAuthClient;
+        this.credentialService = credentialService;
+        this.accessTokenService = accessTokenService;
         this.professorRepository = professorRepository;
         this.loginAttemptService = loginAttemptService;
         this.auditService = auditService;
@@ -63,35 +61,22 @@ public class AuthService {
         if (loginAttemptService.isLocked(professor)) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
         }
-
-        SupabaseAuthClient.Session session;
         try {
-            session = supabaseAuthClient.signInWithPassword(email, request.password());
-        } catch (SupabaseAuthClient.InvalidCredentialsException exception) {
+            credentialService.verifyPassword(professor.getAuthUserId(), request.password());
+        } catch (CredentialService.InvalidCredentialsException exception) {
             loginAttemptService.recordFailure(professor.getId());
             throw new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            log.warn("Sign-in could not reach Supabase Auth: {}", exception.getMessage());
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, AUTH_UNAVAILABLE);
         }
-
-        if (professor.getAuthUserId() != null && !professor.getAuthUserId().equals(session.userId())) {
-            log.warn("Sign-in rejected: account does not match the directory person {}", professor.getId());
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
-        }
-        loginAttemptService.recordSuccess(professor.getId(), session.userId());
-        return new SecurityDtos.LoginResponse(session.accessToken(), "Bearer", session.expiresIn(), session.expiresAt());
+        loginAttemptService.recordSuccess(professor.getId(), professor.getAuthUserId());
+        AccessTokenService.IssuedToken token = accessTokenService.issue(professor.getAuthUserId(), professor.getEmail());
+        return new SecurityDtos.LoginResponse(token.accessToken(), "Bearer", token.expiresIn(), token.expiresAt());
     }
 
     public void logout(String accessToken) {
         if (accessToken == null || accessToken.isBlank()) {
             return;
         }
-        try {
-            supabaseAuthClient.signOut(accessToken);
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            log.info("Supabase sign-out did not complete: {}", exception.getMessage());
-        }
+        accessTokenService.revoke(accessToken);
     }
 
     public void changePassword(ExternalUserContext user, SecurityDtos.ChangePasswordRequest request) {
@@ -105,61 +90,44 @@ public class AuthService {
         if (loginAttemptService.isLocked(professor)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, INVALID_LOGIN);
         }
-
-        SupabaseAuthClient.Session check;
-        try {
-            check = supabaseAuthClient.signInWithPassword(professor.getEmail(), request.currentPassword());
-        } catch (SupabaseAuthClient.InvalidCredentialsException exception) {
-            loginAttemptService.recordFailure(professor.getId());
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "La contraseña actual no es correcta.");
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, AUTH_UNAVAILABLE);
-        }
-        if (professor.getAuthUserId() == null || !professor.getAuthUserId().equals(check.userId())) {
+        if (professor.getAuthUserId() == null) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, NO_ACCESS);
         }
-        updatePassword(check.userId(), request.newPassword());
-        logout(check.accessToken());
+        try {
+            credentialService.verifyPassword(professor.getAuthUserId(), request.currentPassword());
+        } catch (CredentialService.InvalidCredentialsException exception) {
+            loginAttemptService.recordFailure(professor.getId());
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "La contraseña actual no es correcta.");
+        }
+        storePassword(professor, request.newPassword());
         auditService.record(AuditAction.PASSWORD_CHANGED, "PROFESSOR", professor.getId(),
                 "Contraseña cambiada por " + professor.getEmail(), null, null);
     }
 
+    /**
+     * Sets a password with an access link. Everything runs in one transaction: if the password is
+     * refused the link is not spent and the person can try again with the same link.
+     */
+    @Transactional
     public void setPassword(SecurityDtos.SetPasswordRequest request) {
-        // Verificar el enlace lo consume, así que todo lo que se pueda validar va antes.
         requireSupportedLength(request.password());
-        SupabaseAuthClient.Session session;
+        UUID userId;
         try {
-            session = supabaseAuthClient.verifyTokenHash(request.type(), request.tokenHash());
-        } catch (SupabaseAuthClient.InvalidCredentialsException exception) {
+            userId = credentialService.consumeLink(request.type(), request.tokenHash());
+        } catch (CredentialService.InvalidCredentialsException exception) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, INVALID_LINK);
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, AUTH_UNAVAILABLE);
         }
-        Professor professor = professorRepository.findByAuthUserId(session.userId())
-                .or(() -> session.email() == null
-                        ? java.util.Optional.empty()
-                        : professorRepository.findByEmailIgnoreCase(session.email())
-                                .filter(candidate -> candidate.getAuthUserId() == null))
+        Professor professor = professorRepository.findByAuthUserId(userId)
                 .filter(Professor::isActive)
                 .orElseThrow(() -> new BusinessException(HttpStatus.FORBIDDEN, NO_ACCESS));
-
-        try {
-            updatePassword(session.userId(), request.password());
-        } catch (BusinessException exception) {
-            throw new BusinessException(exception.status(), exception.getMessage() + LINK_SPENT);
-        } finally {
-            logout(session.accessToken());
-        }
-        loginAttemptService.unlock(professor.getId(), session.userId());
+        storePassword(professor, request.password());
+        loginAttemptService.unlock(professor.getId(), userId);
         auditService.record(AuditAction.PASSWORD_SET, "PROFESSOR", professor.getId(),
                 "Contraseña fijada con enlace de acceso por " + professor.getEmail(), null, null);
     }
 
-    /**
-     * Maps a validated token to the MTE person. Links the account by email on first use and
-     * rejects unknown or inactive people on every request.
-     */
-    @Transactional
+    /** Maps a validated token to the MTE person and rejects unknown or inactive people on every request. */
+    @Transactional(readOnly = true)
     public ExternalUserContext resolve(Jwt jwt) {
         UUID authUserId;
         try {
@@ -167,9 +135,7 @@ public class AuthService {
         } catch (RuntimeException exception) {
             throw new BadCredentialsException("Token sin sujeto válido.");
         }
-        String email = jwt.getClaimAsString("email");
         Professor professor = professorRepository.findByAuthUserId(authUserId)
-                .or(() -> linkByEmail(email, authUserId))
                 .orElseThrow(() -> new DisabledException(NO_ACCESS));
         if (!professor.isActive()) {
             throw new DisabledException(NO_ACCESS);
@@ -187,31 +153,18 @@ public class AuthService {
         );
     }
 
-    private java.util.Optional<Professor> linkByEmail(String email, UUID authUserId) {
-        if (email == null || email.isBlank()) {
-            return java.util.Optional.empty();
-        }
-        return professorRepository.findByEmailIgnoreCase(normalizeEmail(email))
-                .filter(candidate -> candidate.getAuthUserId() == null)
-                .map(candidate -> {
-                    candidate.setAuthUserId(authUserId);
-                    return professorRepository.save(candidate);
-                });
-    }
-
-    private void updatePassword(UUID authUserId, String password) {
+    private void storePassword(Professor professor, String password) {
         try {
-            supabaseAuthClient.updatePassword(authUserId, password);
-        } catch (SupabaseAuthClient.RejectedException exception) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST,
-                    "La contraseña no cumple las reglas. Usa al menos 10 caracteres y evita contraseñas comunes.");
-        } catch (SupabaseAuthClient.SupabaseException exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, AUTH_UNAVAILABLE);
+            credentialService.setPassword(professor.getAuthUserId(), password, professor.getEmail());
+        } catch (CredentialService.RejectedException exception) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, WEAK_PASSWORD);
+        } catch (CredentialService.InvalidCredentialsException exception) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, NO_ACCESS);
         }
     }
 
     private static void requireSupportedLength(String password) {
-        if (password != null && password.getBytes(StandardCharsets.UTF_8).length > PASSWORD_MAX_BYTES) {
+        if (PasswordPolicy.exceedsMaxBytes(password)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, PASSWORD_TOO_LONG);
         }
     }

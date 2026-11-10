@@ -24,7 +24,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({CorsProperties.class, SupabaseProperties.class})
+@EnableConfigurationProperties({CorsProperties.class, AuthProperties.class})
 public class SecurityConfig {
     private final CorsProperties corsProperties;
 

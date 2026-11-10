@@ -2,14 +2,13 @@
 
 REST API del Modulo de Trazabilidad Estrategica (MTE) de la Escuela TDI.
 
-El backend gestiona catalogos, jerarquia estrategica, profesores, roles, cargos, proyectos, vinculaciones proyecto-KR, dashboard, reportes, modo presentacion, auditoria e integracion de autenticacion. El esquema inicial esta alineado al MER institucional y la base persistente objetivo es Supabase/PostgreSQL.
+El backend gestiona catalogos, jerarquia estrategica, profesores, roles, cargos, proyectos, vinculaciones proyecto-KR, dashboard, reportes, modo presentacion, auditoria y autenticacion propia (cuentas, contrasenas y enlaces de acceso). El esquema inicial esta alineado al MER institucional y la base persistente es PostgreSQL 17 en el servidor Coolify de la universidad.
 
 ## Requisitos
 
 - Java 17 o superior.
 - Maven Wrapper incluido en el repo: `mvnw.cmd` en Windows, `./mvnw` en Linux/macOS.
-- Un proyecto Supabase para la base persistente unica.
-- Docker opcional si quieres probar PostgreSQL local antes de Supabase.
+- Docker opcional para probar PostgreSQL local o construir la imagen.
 
 ## Comandos Rapidos
 
@@ -49,60 +48,9 @@ H2 console: http://localhost:8081/h2-console
 
 ## Modelo de Datos
 
-El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V14`) esta en [docs/database-schema.md](docs/database-schema.md).
+El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V15`) esta en [docs/database-schema.md](docs/database-schema.md).
 
 [V10__retire_objective_links.sql](src/main/resources/db/migration/V10__retire_objective_links.sql) retira el Objetivo como nivel de la jerarquia: crea `key_result_goal` y `key_result_strategic_bet` (vinculos N:M del KR con Metas y Apuestas), traslada los vinculos de cada objetivo a sus KRs y vuelve opcional `key_result.objective_id`. La tabla `objective` queda como legado y ningun codigo la usa.
-
-## Supabase como Base Persistente
-
-Supabase debe tratarse como PostgreSQL administrado. El backend no depende de APIs especiales de Supabase para datos; solo usa JDBC, Flyway y JPA.
-
-1. Crea un proyecto Supabase vacio.
-2. Entra a `Project Settings > Database`.
-3. Copia la cadena PostgreSQL directa. Para Flyway usa conexion directa, no transaction pooler.
-4. Incluye SSL:
-
-```text
-jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
-```
-
-Variables recomendadas para la primera conexion:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE='supabase'
-$env:SUPABASE_DB_URL='jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require'
-$env:SUPABASE_DB_USERNAME='postgres'
-$env:SUPABASE_DB_PASSWORD='<password>'
-$env:DB_DRIVER='org.postgresql.Driver'
-$env:JPA_DDL_AUTO='validate'
-$env:FLYWAY_ENABLED='true'
-$env:FLYWAY_BASELINE_ON_MIGRATE='false'
-$env:MTE_SEED_ENABLED='true'
-$env:SUPABASE_URL='https://<auth-project-ref>.supabase.co'
-$env:SUPABASE_SECRET_KEY='<server-side-secret-key>'
-$env:MTE_ACCESS_LINK_URL='http://localhost:5173/establecer-contrasena'
-$env:MTE_TRAYECTORIA_PROJECTS_MODE='mock'
-.\mvnw.cmd spring-boot:run
-```
-
-Para produccion real, cambia:
-
-```powershell
-$env:MTE_SEED_ENABLED='false'
-```
-
-Hay una plantilla sin secretos en [supabase.env.example](supabase.env.example). Copiala a un archivo local no versionado si lo necesitas. Spring Boot no carga `.env` automaticamente; puedes exportar variables desde PowerShell, el IDE o la plataforma de despliegue.
-
-Flujo recomendado con archivo local:
-
-```powershell
-Copy-Item .\supabase.env.example .\.env.supabase
-notepad .\.env.supabase
-.\scripts\supabase-validate.ps1
-.\scripts\supabase-run.ps1
-```
-
-`.env.supabase` esta ignorado por Git. La primera ejecucion contra una base Supabase vacia aplicara Flyway y creara el esquema del MER. Si el arranque termina correctamente, Hibernate tambien habra validado el modelo con `JPA_DDL_AUTO=validate`.
 
 ## Ejecucion Local
 
@@ -119,29 +67,25 @@ FLYWAY_ENABLED=false
 MTE_SEED_ENABLED=true
 ```
 
-Sin `SUPABASE_URL` y `SUPABASE_SECRET_KEY` la API arranca, pero rechaza todo token: para iniciar sesion en local configura un proyecto de Supabase Auth (ver [Autenticacion](#autenticacion)). Los tests no lo necesitan.
+En `dev` no hace falta ningun servicio externo: sin `MTE_AUTH_JWT_SECRET` la API firma los tokens con una llave temporal y las sesiones terminan al reiniciarla. Para entrar en local, define `MTE_ACCESS_LINK_URL` y `MTE_AUTH_BOOTSTRAP_ADMIN_LINK=true`: al arrancar, el log muestra un enlace de un solo uso para el administrador inicial (ver [Autenticacion](#autenticacion)).
 
-H2 es solo un entorno efimero para desarrollo y tests. La base persistente del proyecto debe ser Supabase/PostgreSQL.
+H2 es solo un entorno efimero para desarrollo y tests. La base persistente es PostgreSQL.
 
-## Perfil Supabase
+## Perfiles prod y staging
 
-El perfil `supabase` vive en [application-supabase.yml](src/main/resources/application-supabase.yml). Este perfil:
+[application-prod.yml](src/main/resources/application-prod.yml) y [application-staging.yml](src/main/resources/application-staging.yml):
 
-- Usa PostgreSQL por JDBC.
-- Desactiva H2 console.
-- Activa Flyway.
-- Usa `JPA_DDL_AUTO=validate`.
-- Habilita seeds por defecto para el primer arranque controlado. Cada arranque con `MTE_SEED_ENABLED=true` limpia las tablas pobladas por seed y las repuebla.
+- Usan PostgreSQL por JDBC con `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` (sin valores por defecto).
+- Desactivan H2 console.
+- Activan Flyway y usan `JPA_DDL_AUTO=validate`.
+- Exigen `MTE_AUTH_JWT_SECRET`: sin el, la API no arranca.
+- Dejan la semilla apagada (`MTE_SEED_ENABLED=false`). Cada arranque con la semilla encendida limpia las tablas pobladas por seed y las repuebla.
 
-Cuando la base ya este creada y el despliegue sea real, usa:
-
-```powershell
-$env:MTE_SEED_ENABLED='false'
-```
+`staging` ademas fija `MTE_TRAYECTORIA_PROJECTS_MODE=mock` por defecto. El `Dockerfile` arranca con `prod`.
 
 ## PostgreSQL Local Opcional
 
-Puedes levantar PostgreSQL local antes de tocar Supabase:
+Puedes levantar PostgreSQL local con la misma version del servidor:
 
 ```powershell
 docker run --name mte-postgres `
@@ -149,7 +93,7 @@ docker run --name mte-postgres `
   -e POSTGRES_USER=mte `
   -e POSTGRES_PASSWORD=mte `
   -p 5432:5432 `
-  -d postgres:16
+  -d postgres:17
 ```
 
 Ejecuta con Flyway y validacion JPA:
@@ -163,10 +107,13 @@ $env:DB_DRIVER='org.postgresql.Driver'
 $env:JPA_DDL_AUTO='validate'
 $env:FLYWAY_ENABLED='true'
 $env:MTE_SEED_ENABLED='true'
+$env:MTE_AUTH_JWT_SECRET='<32 caracteres o mas, solo para esta prueba>'
+$env:MTE_ACCESS_LINK_URL='http://localhost:5173/establecer-contrasena'
+$env:MTE_AUTH_BOOTSTRAP_ADMIN_LINK='true'
 .\mvnw.cmd spring-boot:run
 ```
 
-Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, metas, apuestas, catalogos base y personas antes de poblar de nuevo; entre las personas recrea el administrador inicial (`sistemas.mte@icesi.edu.co`). Usalo solo en bases de desarrollo, staging controlado o Supabase de prueba.
+Con `MTE_SEED_ENABLED=true`, el arranque limpia auditoria, proyectos, KRs, metas, apuestas, catalogos base y personas antes de poblar de nuevo; entre las personas recrea el administrador inicial (`sistemas.mte@icesi.edu.co`). Usalo solo en bases de desarrollo o de prueba, nunca en la base del servidor.
 
 Para borrar esa base local:
 
@@ -182,11 +129,11 @@ Las migraciones viven en:
 src/main/resources/db/migration
 ```
 
-Las migraciones actuales van de `V1` a `V14`; la lista con lo que cambia cada una esta en [docs/database-schema.md](docs/database-schema.md#historial-de-migraciones). `V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de aplicar Supabase.
+Las migraciones actuales van de `V1` a `V15`; la lista con lo que cambia cada una esta en [docs/database-schema.md](docs/database-schema.md#historial-de-migraciones). `V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de la primera aplicacion.
 
 Reglas:
 
-- No editar migraciones ya aplicadas en Supabase o una base compartida.
+- No editar migraciones ya aplicadas en el servidor o en una base compartida: cambia su checksum y Flyway detiene el arranque.
 - Para cambios nuevos despues de la primera aplicacion, crear `V4__descripcion.sql`, `V5__...sql`, etc.
 - Mantener SQL compatible con PostgreSQL.
 - Usar `JPA_DDL_AUTO=validate` en ambientes persistentes.
@@ -198,8 +145,8 @@ Flujo recomendado:
 1. Cambiar entidades/servicios/DTOs.
 2. Crear migracion Flyway nueva.
 3. Ejecutar .\mvnw.cmd test.
-4. Probar con PostgreSQL local o Supabase staging.
-5. Desplegar contra Supabase productivo.
+4. Probar con PostgreSQL local o una copia restaurada (docs/backup-restore.md).
+5. Respaldar la base del servidor y desplegar.
 ```
 
 ## Endpoints Principales
@@ -265,22 +212,25 @@ http://localhost:8081/swagger-ui.html
 
 ## Autenticacion
 
-El MTE usa Supabase Auth con correo y contrasena. El frontend nunca habla con Supabase: la API hace el inicio de sesion, valida los tokens y decide el rol.
+La API autentica por si misma con correo y contrasena; no depende de ningun servicio externo.
 
 ```text
-SUPABASE_URL=https://<auth-project-ref>.supabase.co
-SUPABASE_SECRET_KEY=<server-side-secret-key>
+MTE_AUTH_JWT_SECRET=<32 bytes o mas, aleatorio>      obligatorio en prod y staging
 MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
+MTE_AUTH_ACCESS_TOKEN_TTL=1h                         opcional
+MTE_AUTH_ACCESS_LINK_TTL=72h                         opcional
+MTE_AUTH_BOOTSTRAP_ADMIN_LINK=false                  true solo para el primer ingreso
 ```
 
-- `SUPABASE_SECRET_KEY` es la clave de servidor (`sb_secret_...` o la `service_role` heredada). Solo vive en el backend.
-- Los tokens se validan con las llaves publicas del proyecto (JWKS, ES256 o RS256), el emisor `<SUPABASE_URL>/auth/v1` y la audiencia `authenticated`. Sin `SUPABASE_URL` y la clave, todo token se rechaza.
-- La persona se resuelve por el `sub` del token (`professor.auth_user_id`); en el primer acceso se vincula por correo. Una persona inactiva o fuera del directorio no entra.
+- La contrasena se guarda solo como hash BCrypt (costo 12) en `auth_credential`. Tiene entre 10 caracteres y 72 bytes, y se rechazan contrasenas comunes, un solo caracter repetido o las que contienen el nombre del correo.
+- Los tokens son JWT HS256 firmados con `MTE_AUTH_JWT_SECRET`, con emisor `mte-api` y audiencia `mte`, y vencen en 1 hora. Cambiar el secreto cierra todas las sesiones. Genera uno con `openssl rand -base64 48`.
+- La persona se resuelve por el `sub` del token (`professor.auth_user_id`). Una persona inactiva o fuera del directorio no entra.
 - El rol sale de `professor.access_role`: `ADMIN`, `MANAGER`, `CONTRIBUTOR` o `VISITOR`. `VISITOR` solo consulta; cualquier POST, PUT, PATCH o DELETE le responde 403.
 - Tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (`failed_login_attempts`, `locked_until`). El bloqueo queda en auditoria.
-- La contrasena tiene entre 10 y 72 caracteres. El MTE no guarda contrasenas ni refresh tokens.
-- No hay registro abierto: el administrador genera un enlace de acceso para cada persona del directorio. El enlace lleva a `MTE_ACCESS_LINK_URL` con `token_hash` y `type`, y alli la persona fija su contrasena.
-- Cerrar sesion revoca la sesion en Supabase, pero el token ya emitido sigue siendo valido hasta que vence (1 hora por defecto).
+- No hay registro abierto ni correo: el administrador genera un enlace de acceso para cada persona del directorio y se lo entrega. El enlace lleva a `MTE_ACCESS_LINK_URL` con `token_hash` y `type` (`invite` o `recovery`), es de un solo uso, vence en 72 horas y anula los anteriores. En la base solo queda su hash SHA-256.
+- Cerrar sesion revoca el token (`auth_revoked_token`): desde ese momento la API lo rechaza.
+
+Primer ingreso en una base nueva: solo un administrador puede generar enlaces. Con `MTE_AUTH_BOOTSTRAP_ADMIN_LINK=true`, y solo mientras ningun administrador activo tenga contrasena, la API escribe en el log al arrancar un enlace de un solo uso por cada administrador activo. Tras fijar la contrasena, vuelve a ponerla en `false`.
 
 Endpoints:
 
@@ -298,8 +248,6 @@ Cada request protegido debe incluir:
 ```http
 Authorization: Bearer <token>
 ```
-
-Configuracion del proyecto de Supabase Auth: registro abierto desactivado, llaves de firma asimetricas y longitud minima de contrasena 10.
 
 ## Integracion de Proyectos Externos
 
@@ -346,10 +294,10 @@ Compilar tests sin ejecutarlos:
 .\mvnw.cmd '-DskipTests' test-compile
 ```
 
-Ultima verificacion conocida (2 nov 2026, `mvnw -B test`):
+Ultima verificacion conocida (10 nov 2026, `mvnw -B test`):
 
 ```text
-Tests run: 359, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 366, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Postman
@@ -363,20 +311,19 @@ npm run postman:normalize
 npm run postman:test       # usa postman/mte.local.postman_environment.json
 ```
 
-Variables: `baseUrl`, `accessToken` (sesion ADMIN), `managerToken`, `visitorToken` y opcionalmente `authMockUrl` con `adminEmail`, `managerEmail` y `visitorEmail`. Si `authMockUrl` esta definido y un token esta vacio, la coleccion lo pide con `POST {{authMockUrl}}/mock/token`. Los tokens de MANAGER y VISITOR que falten se toman del login del flujo de usuarios. No guardes tokens reales en el archivo de entorno.
+Variables: `baseUrl`, `accessToken` (sesion ADMIN), `managerToken`, `visitorToken`, `adminEmail` y `adminPassword`. Si `accessToken` esta vacio y hay `adminEmail` y `adminPassword`, la coleccion inicia sesion con `POST {{baseUrl}}/api/v1/auth/login`. Los tokens de MANAGER y VISITOR que falten se toman del login del flujo de usuarios. `adminPassword` es secreto: se pasa al correr (`--env-var adminPassword=...`) y nunca se guarda en el archivo de entorno.
 
-En local, `npm run postman:auth` levanta un sustituto de Supabase Auth en `http://localhost:9998` (solo 127.0.0.1, datos en memoria). Arranca la API contra una base desechable apuntando a el:
+En local, arranca la API contra una base desechable con la semilla y el enlace inicial:
 
 ```powershell
-$env:SUPABASE_URL = "http://localhost:9998"
-$env:SUPABASE_SECRET_KEY = "local-placeholder-key"
 $env:MTE_SEED_ENABLED = "true"
-$env:MTE_ACCESS_LINK_URL = "http://localhost:5173/acceso"   # sin ella, los enlaces de acceso responden 503
+$env:MTE_ACCESS_LINK_URL = "http://localhost:5173/establecer-contrasena"   # sin ella, los enlaces de acceso responden 503
+$env:MTE_AUTH_BOOTSTRAP_ADMIN_LINK = "true"
 ```
 
-La semilla deja a las personas como `CONTRIBUTOR` y recrea el administrador inicial de la migracion V11_1 (`sistemas.mte@icesi.edu.co`, `ADMIN`), que es el `adminEmail` del entorno local.
+La semilla deja a las personas como `CONTRIBUTOR` y recrea el administrador inicial de la migracion V11_1 (`sistemas.mte@icesi.edu.co`, `ADMIN`), que es el `adminEmail` del entorno local. Usa el enlace del log para fijar su contrasena (en el frontend o con `POST /api/v1/auth/set-password`) y pasa esa contrasena como `adminPassword`.
 
-Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. Los periodos que crea usan un año lejano derivado del `runId` (`AAAA-1` y `AAAA-2`, entre 3000 y 9999). La coleccion solo se ha probado contra este sustituto local de autenticacion, no contra Supabase real. El reporte `postman/newman-report.json` no se versiona.
+Con `MTE_TRAYECTORIA_PROJECTS_MODE=mock` la sincronizacion con Trayectoria responde 503 a proposito, y la coleccion lo espera asi. Los periodos que crea usan un año lejano derivado del `runId` (`AAAA-1` y `AAAA-2`, entre 3000 y 9999). El reporte `postman/newman-report.json` no se versiona.
 
 ## Cobertura
 
@@ -430,63 +377,19 @@ java -jar .\target\pdg-mte-api-0.0.1-SNAPSHOT.jar
 Variables minimas para despliegue productivo:
 
 ```text
-SPRING_PROFILES_ACTIVE=supabase
-SUPABASE_DB_URL=jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require
-SUPABASE_DB_USERNAME=postgres
-SUPABASE_DB_PASSWORD=<password>
-DB_DRIVER=org.postgresql.Driver
-JPA_DDL_AUTO=validate
-FLYWAY_ENABLED=true
-MTE_SEED_ENABLED=false
+SPRING_PROFILES_ACTIVE=prod
+DB_URL=jdbc:postgresql://<host-postgres>:5432/<base>
+DB_USERNAME=<usuario>
+DB_PASSWORD=<password>
+MTE_AUTH_JWT_SECRET=<32 bytes o mas, aleatorio>
+MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
 MTE_CORS_ALLOWED_ORIGINS=<url-frontend>
-SUPABASE_URL=https://<auth-project-ref>.supabase.co
-SUPABASE_SECRET_KEY=<server-side-secret-key>
-MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
 ```
 
-No guardar credenciales reales en Git. `.env` esta ignorado, pero `supabase.env.example` no contiene secretos y sirve como plantilla.
+No guardar credenciales reales en Git. `.env` esta ignorado.
 
-## Despliegue en Render
+## Despliegue en Coolify
 
-El repositorio incluye `Dockerfile`, `.dockerignore`, `render.yaml` y el perfil `staging`. Render solo despliega cuando pasan las pruebas de CI; ver [docs/ci.md](docs/ci.md).
+La API, el frontend y la base se despliegan en el servidor Coolify de la universidad. El `Dockerfile` construye el JAR, corre como usuario sin privilegios, arranca con el perfil `prod` y trae un `HEALTHCHECK` contra `/api/v1/health`, que valida la base de datos (`503` si no responde).
 
-Flujo recomendado:
-
-1. Sube estos archivos al repositorio remoto.
-2. En Render crea un Blueprint desde el repositorio o un Web Service con runtime Docker.
-3. Si usas Blueprint, Render leera `render.yaml` desde la raiz.
-4. Cuando Render pida variables con `sync: false`, define:
-
-```text
-SUPABASE_DB_PASSWORD=<password de Supabase>
-SUPABASE_URL=https://<auth-project-ref>.supabase.co
-SUPABASE_SECRET_KEY=<clave de servidor de Supabase Auth>
-MTE_ACCESS_LINK_URL=<url-frontend>/establecer-contrasena
-MTE_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:4200
-```
-
-Para staging, el servicio usa:
-
-```text
-SPRING_PROFILES_ACTIVE=staging
-SUPABASE_DB_URL=jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require
-SUPABASE_DB_USERNAME=postgres.otqqavjfriyqxntpwcgm
-JPA_DDL_AUTO=validate
-FLYWAY_ENABLED=true
-MTE_SEED_ENABLED=false
-MTE_TRAYECTORIA_PROJECTS_MODE=mock
-```
-
-El health check de Render apunta a:
-
-```text
-/api/v1/health
-```
-
-El endpoint valida la conexion a la base de datos, por lo que una caida de Supabase marca el servicio como no saludable (`503`) en Render.
-
-Si el frontend ya esta desplegado, reemplaza o agrega su origen publico en `MTE_CORS_ALLOWED_ORIGINS`, por ejemplo:
-
-```text
-MTE_CORS_ALLOWED_ORIGINS=http://localhost:5173,https://mte-frontend.onrender.com
-```
+CI despliega solo cuando pasan las pruebas en `develop` ([docs/ci.md](docs/ci.md)). La guia paso a paso (base, variables, primer administrador, traslado de datos y respaldos) esta en [docs/despliegue-coolify.md](docs/despliegue-coolify.md).

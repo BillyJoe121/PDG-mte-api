@@ -52,7 +52,7 @@ public final class SecurityDtos {
 
     public record SetPasswordRequest(
             @NotBlank @Size(max = 512) @Pattern(regexp = "[A-Za-z0-9_-]+") String tokenHash,
-            @NotBlank @Pattern(regexp = "invite|recovery|magiclink|signup|email") String type,
+            @NotBlank @Pattern(regexp = "invite|recovery") String type,
             @NotBlank @Size(min = 10, max = 72) String password
     ) {
     }

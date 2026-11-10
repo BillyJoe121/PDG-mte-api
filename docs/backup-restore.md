@@ -1,22 +1,20 @@
 # Respaldo y restauracion de la base de datos
 
-Procedimiento para respaldar la base PostgreSQL de staging (Supabase, Postgres 17.6) que usa el servicio `pdg-mte-api-staging` en Render, y para comprobar que el respaldo se puede restaurar.
+Procedimiento para respaldar la base PostgreSQL 17 del MTE en el servidor Coolify de la universidad y para comprobar que el respaldo se puede restaurar. Coolify tambien saca respaldos programados de la base (ver [despliegue-coolify.md](despliegue-coolify.md#2-base-de-datos)); este procedimiento es el respaldo manual previo a migraciones y la prueba de restauracion.
 
 Alcance del respaldo:
 
 - Incluye el esquema `public`: todas las tablas de la aplicacion y `flyway_schema_history`.
-- No incluye los esquemas que administra Supabase (`auth`, `storage`, `realtime`, `extensions`, etc.). Las cuentas de Supabase Auth no quedan en este respaldo.
+- Las cuentas de acceso viven en el mismo esquema (`auth_credential`, `auth_link_token`, `auth_revoked_token`), asi que el respaldo incluye los hashes de contrasena. Tratarlo como dato sensible.
 
 ## Requisitos
 
 - Docker Desktop en marcha. No hace falta instalar PostgreSQL en el equipo.
 - Imagen `postgres:18`. `pg_dump` tiene que ser de la misma version del servidor o mas nueva; la 18 respalda sin problema un servidor 17.6. El archivo que genera `pg_dump` 18 solo lo lee `pg_restore` 18 o superior, asi que la restauracion tambien usa `postgres:18`.
-- Datos de conexion del pooler de sesion de Supabase (puerto 5432, no el 6543 del pooler de transacciones):
-  - host: `aws-1-us-west-2.pooler.supabase.com`
-  - puerto: `5432`
-  - base: `postgres`
-  - usuario: el valor de `SUPABASE_DB_USERNAME` en `render.yaml` (`postgres.<project-ref>`)
-  - contrasena: la de la base en el panel de Supabase o en el gestor de contrasenas. Nunca se escribe en un comando, en un archivo ni en este repositorio.
+- Acceso a la base desde el equipo. La base de Coolify no se publica a internet; lo normal es un tunel SSH al servidor (`ssh -L 55432:<host-interno-postgres>:5432 <usuario>@<servidor>`) o activar "Make it publicly available" solo durante el respaldo y solo dentro de la red de la universidad.
+  - host: `127.0.0.1` con el tunel (o el host publicado)
+  - puerto: `55432` con el tunel (o el publicado)
+  - base, usuario y contrasena: los de la base en Coolify (pestana General del recurso PostgreSQL). Nunca se escriben en un comando, en un archivo ni en este repositorio.
 - Una carpeta de trabajo fuera de cualquier repositorio Git, por ejemplo `C:\Users\<usuario>\respaldos-mte`. El `.dump` tiene datos reales y no debe quedar dentro del proyecto.
 - PowerShell 7 para `Read-Host -MaskInput`. En Windows PowerShell 5.1 ver la alternativa del paso 1.
 
@@ -27,18 +25,18 @@ Desde la carpeta de trabajo fuera del repositorio:
 ```powershell
 cd C:\Users\<usuario>\respaldos-mte
 
-$env:PGHOST = "aws-1-us-west-2.pooler.supabase.com"
-$env:PGPORT = "5432"
-$env:PGDATABASE = "postgres"
-$env:PGUSER = "postgres.<project-ref>"   # SUPABASE_DB_USERNAME de render.yaml
-$env:PGSSLMODE = "require"
+$env:PGHOST = "host.docker.internal"   # el tunel escucha en el equipo, no en el contenedor
+$env:PGPORT = "55432"
+$env:PGDATABASE = "<base>"
+$env:PGUSER = "<usuario>"
+$env:PGSSLMODE = "prefer"
 $env:PGPASSWORD = Read-Host "Contrasena de la base" -MaskInput
 
 $fecha = Get-Date -Format yyyy-MM-dd
 docker run --rm `
   -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER -e PGSSLMODE -e PGPASSWORD `
   -v "${PWD}:/backup" `
-  postgres:18 pg_dump -Fc -n public -f "/backup/mte-staging-$fecha.dump"
+  postgres:18 pg_dump -Fc -n public -f "/backup/mte-$fecha.dump"
 
 Remove-Item Env:PGPASSWORD
 ```
@@ -57,37 +55,37 @@ Banderas de `pg_dump`:
 | Bandera | Para que |
 |---|---|
 | `-Fc` | Formato custom: comprimido y restaurable con `pg_restore`, que permite listar el contenido y restaurar por partes. |
-| `-n public` | Solo el esquema de la aplicacion. Los esquemas de Supabase necesitan roles propios de Supabase y no se pueden restaurar en un Postgres comun. |
+| `-n public` | Solo el esquema de la aplicacion y su historial de Flyway. |
 | `-f` | Archivo de salida dentro de la carpeta montada en `/backup`. |
 
 Comprobar que el archivo es legible y trae las tablas esperadas:
 
 ```powershell
-docker run --rm -v "${PWD}:/backup:ro" postgres:18 pg_restore --list "/backup/mte-staging-$fecha.dump"
-Get-FileHash "mte-staging-$fecha.dump" -Algorithm SHA256
+docker run --rm -v "${PWD}:/backup:ro" postgres:18 pg_restore --list "/backup/mte-$fecha.dump"
+Get-FileHash "mte-$fecha.dump" -Algorithm SHA256
 ```
 
 La lista debe mostrar entradas `TABLE` y `TABLE DATA` de `public`, entre ellas `professor` y `flyway_schema_history`. Anotar el SHA256 junto al archivo para detectar copias danadas.
 
 ## 2. Donde guardarlo
 
-El respaldo contiene datos reales de personas (nombres, correos, cargos). Por eso:
+El respaldo contiene datos reales de personas (nombres, correos, cargos) y hashes de contrasena. Por eso:
 
 - Se guarda en un almacenamiento privado fuera del portatil: una carpeta de Drive (o similar) con acceso solo para el responsable del proyecto, sin enlaces compartidos.
 - Recomendado: comprimirlo cifrado antes de subirlo (por ejemplo 7-Zip con AES-256) y guardar la clave en el gestor de contrasenas.
-- Nunca en este repositorio ni en otro, ni en carpetas compartidas con otras personas, ni en Render, Jira, chats o correos.
+- Nunca en este repositorio ni en otro, ni en carpetas compartidas con otras personas, ni en Jira, chats o correos.
 - Despues de subirlo y comprobar el SHA256 de la copia, se borra la copia local.
 - Conservar al menos el respaldo semanal mas reciente y el ultimo previo a cada migracion. Al cerrar el proyecto se eliminan segun el acuerdo de manejo de datos con la institucion.
 
 ## 3. Restaurar en una base desechable
 
-La restauracion de prueba se hace siempre en un contenedor nuevo, nunca sobre staging. El contenedor no publica puertos y guarda los datos en memoria (`--tmpfs`), asi que todo desaparece al borrarlo.
+La restauracion de prueba se hace siempre en un contenedor nuevo, nunca sobre la base del servidor. El contenedor no publica puertos y guarda los datos en memoria (`--tmpfs`), asi que todo desaparece al borrarlo.
 
 Desde la carpeta donde esta el `.dump`:
 
 ```powershell
 $env:POSTGRES_PASSWORD = [guid]::NewGuid().ToString("N")   # clave de un solo uso
-$dump = "mte-staging-<fecha>.dump"
+$dump = "mte-<fecha>.dump"
 
 docker run -d --name mte-restore-check `
   --tmpfs /var/lib/postgresql `
@@ -102,7 +100,7 @@ docker exec mte-restore-check pg_restore --exit-on-error -U postgres -d postgres
 ```
 
 - `drop schema public cascade` vacia el esquema `public` que trae la base nueva. Sin ese paso `pg_restore` termina con un unico error, `schema "public" already exists`, que es inofensivo pero oculta errores reales.
-- `--no-owner` y `--no-acl` omiten duenos y permisos de roles que solo existen en Supabase (`anon`, `authenticated`, `service_role`, etc.).
+- `--no-owner` y `--no-acl` omiten duenos y permisos de roles que solo existen en el servidor de origen.
 - `--exit-on-error` detiene la restauracion en el primer error; el comando debe terminar sin mensajes.
 
 ## 4. Verificar la restauracion
@@ -128,8 +126,8 @@ docker exec mte-restore-check psql -U postgres -d postgres -c "select installed_
 La restauracion es valida cuando:
 
 - estan todas las tablas de la aplicacion y `flyway_schema_history`;
-- los conteos coinciden con los de staging en el momento del respaldo (Table Editor de Supabase) o con el registro de la verificacion anterior;
-- la ultima version del historial es la ultima migracion aplicada en staging y todas las filas tienen `success = t`.
+- los conteos coinciden con los del servidor en el momento del respaldo o con el registro de la verificacion anterior;
+- la ultima version del historial es la ultima migracion aplicada en el servidor y todas las filas tienen `success = t`.
 
 Al terminar:
 
@@ -140,15 +138,15 @@ Remove-Item Env:POSTGRES_PASSWORD
 
 ## 5. Frecuencia
 
-- Respaldo antes de cada migracion que llegue a staging (obligatorio, ver la seccion 6).
-- Respaldo semanal mientras staging tenga datos reales, y antes de cargas masivas de datos o de una entrega.
-- Restauracion de prueba (secciones 3 y 4) al menos una vez al mes, y siempre que cambie la version de Postgres en Supabase o la imagen usada para `pg_dump`.
+- Respaldo antes de cada migracion que llegue al servidor (obligatorio, ver la seccion 6).
+- Ademas de los respaldos programados de Coolify, un respaldo manual semanal mientras la base tenga datos reales, y antes de cargas masivas de datos o de una entrega.
+- Restauracion de prueba (secciones 3 y 4) al menos una vez al mes, y siempre que cambie la version de Postgres en Coolify o la imagen usada para `pg_dump`.
 
 ## 6. Antes de una migracion
 
-Staging se despliega solo desde `develop` y Flyway aplica las migraciones nuevas al arrancar. Antes de integrar una migracion en `develop`:
+La API se despliega solo desde `develop` y Flyway aplica las migraciones nuevas al arrancar. Antes de integrar una migracion en `develop`:
 
-1. Sacar un respaldo de staging (seccion 1) y comprobarlo con `pg_restore --list`.
+1. Sacar un respaldo de la base del servidor (seccion 1) y comprobarlo con `pg_restore --list`.
 2. Restaurarlo en un contenedor desechable (seccion 3). Para este paso el contenedor si publica un puerto, solo en el equipo local: agregar `-p 127.0.0.1:55434:5432` al `docker run`.
 3. Arrancar la API contra la copia para que Flyway aplique la migracion nueva, con la semilla apagada:
 
@@ -164,10 +162,12 @@ Staging se despliega solo desde `develop` y Flyway aplica las migraciones nuevas
    ```
 
 4. Confirmar que la API arranca, que el historial de Flyway muestra la version nueva con `success = t` y que los conteos de la seccion 4 siguen teniendo sentido (la migracion no borro datos que no debia).
-5. Solo entonces integrar en `develop`. Despues del despliegue, revisar `/api/v1/health` y el historial de Flyway en staging.
-6. Si la migracion falla en staging, lo preferible es una migracion correctiva nueva. Restaurar el respaldo encima de staging no esta probado: requiere detener el servicio en Render, sacar antes un respaldo del estado actual y planearlo aparte.
+5. Solo entonces integrar en `develop`. Despues del despliegue, revisar `/api/v1/health` y el historial de Flyway en el servidor.
+6. Si la migracion falla en el servidor, lo preferible es una migracion correctiva nueva. Restaurar el respaldo encima de la base del servidor no esta probado: requiere detener la API en Coolify, sacar antes un respaldo del estado actual y planearlo aparte.
 
 ## Registro de pruebas
+
+Las entradas de noviembre de 2026 se hicieron sobre la base anterior en Supabase, antes de migrar al servidor de la universidad.
 
 **2 nov 2026.** Respaldo `mte-staging-2026-11-02.dump` de staging (Supabase Postgres 17.6) con `pg_dump` 18 (`postgres:18`), formato `-Fc` y `-n public`. `pg_restore --list` mostro las tablas, entre ellas `professor` y `flyway_schema_history`. Se restauro con `--no-owner --no-acl` en un Postgres 18 desechable en memoria: historial de Flyway en V10 y los 9 profesores de staging. Sobre esa copia se aplicaron V11 y V11_1, y la API arranco con el esquema validado. El contenedor se borro al terminar.
 
