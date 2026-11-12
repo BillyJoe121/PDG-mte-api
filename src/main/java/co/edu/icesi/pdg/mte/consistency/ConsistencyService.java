@@ -8,9 +8,10 @@ import co.edu.icesi.pdg.mte.api.dto.ConsistencyDtos.ConsistencyModule;
 import co.edu.icesi.pdg.mte.api.dto.ConsistencyDtos.ConsistencySeverity;
 import co.edu.icesi.pdg.mte.api.dto.ConsistencyDtos.ConsistencySummaryResponse;
 import co.edu.icesi.pdg.mte.common.BusinessException;
+import co.edu.icesi.pdg.mte.common.CsvCells;
+import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
-import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
 import co.edu.icesi.pdg.mte.project.ProjectProgressEntryRepository;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
@@ -23,9 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -56,10 +62,11 @@ public class ConsistencyService {
         Instant detectedAt = Instant.now();
         Instant staleLimit = detectedAt.minus(Duration.ofDays(normalizedStaleDays));
 
+        ActiveWork activeWork = loadActiveWork();
         List<ConsistencyFindingResponse> allFindings = java.util.stream.Stream.of(
-                        keyResultsWithoutActiveProjects(detectedAt).stream(),
-                        activeProjectsWithoutKr(detectedAt).stream(),
-                        activeProjectsWithoutRecentProgress(detectedAt, staleLimit, normalizedStaleDays).stream()
+                        keyResultsWithoutActiveProjects(activeWork, detectedAt).stream(),
+                        activeProjectsWithoutKr(activeWork, detectedAt).stream(),
+                        activeProjectsWithoutRecentProgress(activeWork, detectedAt, staleLimit, normalizedStaleDays).stream()
                 )
                 .flatMap(stream -> stream)
                 .sorted(Comparator
@@ -98,11 +105,47 @@ public class ConsistencyService {
         return csv.toString();
     }
 
-    private List<ConsistencyFindingResponse> keyResultsWithoutActiveProjects(Instant detectedAt) {
+    /**
+     * Active projects with everything the checks need, read in a fixed number of queries:
+     * the KRs they cover (directly or through an active link), which of them have active links,
+     * and when each one last recorded progress.
+     */
+    private record ActiveWork(
+            List<Project> projects,
+            Set<Long> coveredKeyResultIds,
+            Set<Long> linkedProjectIds,
+            Map<Long, Instant> latestProgressByProject
+    ) {
+    }
+
+    private ActiveWork loadActiveWork() {
+        List<Project> projects = projectRepository.findByStatus(ProjectStatus.ACTIVO);
+        Set<Long> coveredKeyResultIds = new HashSet<>();
+        Set<Long> linkedProjectIds = new HashSet<>();
+        for (Project project : projects) {
+            if (project.getKeyResult() != null && project.getKeyResult().getId() != null) {
+                coveredKeyResultIds.add(project.getKeyResult().getId());
+            }
+        }
+        for (ProjectKeyResultLink link : linkRepository.findByActiveTrueAndProjectStatus(ProjectStatus.ACTIVO)) {
+            coveredKeyResultIds.add(link.getKeyResult().getId());
+            linkedProjectIds.add(link.getProject().getId());
+        }
+        List<Long> projectIds = projects.stream().map(Project::getId).filter(Objects::nonNull).toList();
+        Map<Long, Instant> latestProgressByProject = new HashMap<>();
+        if (!projectIds.isEmpty()) {
+            for (Object[] row : progressRepository.findLatestCreatedAtByProjectIds(projectIds)) {
+                latestProgressByProject.put((Long) row[0], (Instant) row[1]);
+            }
+        }
+        return new ActiveWork(projects, coveredKeyResultIds, linkedProjectIds, latestProgressByProject);
+    }
+
+    private List<ConsistencyFindingResponse> keyResultsWithoutActiveProjects(ActiveWork activeWork, Instant detectedAt) {
         return keyResultRepository.findAll()
                 .stream()
                 .filter(keyResult -> !keyResult.isArchived())
-                .filter(keyResult -> !hasActiveProject(keyResult))
+                .filter(keyResult -> keyResult.getId() == null || !activeWork.coveredKeyResultIds().contains(keyResult.getId()))
                 .map(keyResult -> finding(
                         ConsistencyFindingType.KR_WITHOUT_ACTIVE_PROJECTS,
                         ConsistencySeverity.ALTA,
@@ -120,24 +163,10 @@ public class ConsistencyService {
                 .toList();
     }
 
-    private boolean hasActiveProject(KeyResult keyResult) {
-        if (keyResult.getId() == null) {
-            return false;
-        }
-        boolean directProject = projectRepository.existsByKeyResultIdAndStatus(keyResult.getId(), ProjectStatus.ACTIVO);
-        if (directProject) {
-            return true;
-        }
-        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResult.getId())
+    private List<ConsistencyFindingResponse> activeProjectsWithoutKr(ActiveWork activeWork, Instant detectedAt) {
+        return activeWork.projects()
                 .stream()
-                .map(co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink::getProject)
-                .anyMatch(project -> project != null && project.getStatus() == ProjectStatus.ACTIVO);
-    }
-
-    private List<ConsistencyFindingResponse> activeProjectsWithoutKr(Instant detectedAt) {
-        return projectRepository.findByStatus(ProjectStatus.ACTIVO)
-                .stream()
-                .filter(project -> project.getId() == null || !linkRepository.existsByProjectIdAndActiveTrue(project.getId()))
+                .filter(project -> project.getId() == null || !activeWork.linkedProjectIds().contains(project.getId()))
                 .map(project -> finding(
                         ConsistencyFindingType.ACTIVE_PROJECT_WITHOUT_KR,
                         ConsistencySeverity.ALTA,
@@ -156,27 +185,29 @@ public class ConsistencyService {
     }
 
     private List<ConsistencyFindingResponse> activeProjectsWithoutRecentProgress(
+            ActiveWork activeWork,
             Instant detectedAt,
             Instant staleLimit,
             int staleDays
     ) {
-        return projectRepository.findByStatus(ProjectStatus.ACTIVO)
+        return activeWork.projects()
                 .stream()
-                .map(project -> staleProgressFinding(project, detectedAt, staleLimit, staleDays))
+                .map(project -> staleProgressFinding(project, activeWork, detectedAt, staleLimit, staleDays))
                 .flatMap(Optional::stream)
                 .toList();
     }
 
     private Optional<ConsistencyFindingResponse> staleProgressFinding(
             Project project,
+            ActiveWork activeWork,
             Instant detectedAt,
             Instant staleLimit,
             int staleDays
     ) {
-        Optional<ProjectProgressEntry> latest = project.getId() == null
+        Optional<Instant> latest = project.getId() == null
                 ? Optional.empty()
-                : progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(project.getId());
-        if (latest.isPresent() && !latest.get().getCreatedAt().isBefore(staleLimit)) {
+                : Optional.ofNullable(activeWork.latestProgressByProject().get(project.getId()));
+        if (latest.isPresent() && !latest.get().isBefore(staleLimit)) {
             return Optional.empty();
         }
 
@@ -296,9 +327,6 @@ public class ConsistencyService {
     }
 
     private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
-        return "\"" + value.replace("\"", "\"\"") + "\"";
+        return CsvCells.quote(value);
     }
 }

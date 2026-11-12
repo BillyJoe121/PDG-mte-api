@@ -63,6 +63,26 @@ class HealthControllerTest {
         verify(connection).close();
     }
 
+    @Test
+    void reportsDownWhenThePoolHandsOutNoConnection() throws Exception {
+        DataSource dataSource = mock(DataSource.class);
+        when(dataSource.getConnection()).thenReturn(null);
+
+        assertDown(new HealthController(dataSource).health());
+    }
+
+    @Test
+    void reportsDownWhenClosingTheConnectionFailsToo() throws Exception {
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.isValid(anyInt())).thenThrow(new SQLException("validation failed"));
+        org.mockito.Mockito.doThrow(new SQLException("close failed")).when(connection).close();
+
+        assertDown(new HealthController(dataSource).health());
+        verify(connection).close();
+    }
+
     private static void assertDown(ResponseEntity<Map<String, Object>> response) {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody())

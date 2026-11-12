@@ -14,6 +14,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,6 +28,13 @@ import java.util.List;
 @EnableMethodSecurity
 @EnableConfigurationProperties({CorsProperties.class, AuthProperties.class})
 public class SecurityConfig {
+    /**
+     * The API only serves JSON (plus the developer console and docs when enabled), so the policy
+     * forbids framing by other sites, plugins and base-URL changes without restricting scripts.
+     */
+    static final String CONTENT_SECURITY_POLICY =
+            "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+    static final long HSTS_MAX_AGE_SECONDS = 31_536_000L;
     private final CorsProperties corsProperties;
 
     public SecurityConfig(CorsProperties corsProperties) {
@@ -44,7 +53,16 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        // TLS ends at the proxy, so the request looks plain HTTP here; browsers ignore
+                        // the header on plain HTTP and keep it once they see it over HTTPS.
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .requestMatcher(AnyRequestMatcher.INSTANCE)
+                                .includeSubDomains(false)
+                                .maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()

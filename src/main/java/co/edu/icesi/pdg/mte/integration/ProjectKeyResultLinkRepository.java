@@ -1,5 +1,6 @@
 package co.edu.icesi.pdg.mte.integration;
 
+import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -13,6 +14,10 @@ public interface ProjectKeyResultLinkRepository extends JpaRepository<ProjectKey
     List<ProjectKeyResultLink> findByKeyResultIdInAndActiveTrueOrderByIdAsc(Collection<Long> keyResultIds);
 
     List<ProjectKeyResultLink> findByProjectIdAndActiveTrueOrderByIdAsc(Long projectId);
+
+    List<ProjectKeyResultLink> findByProjectIdInAndActiveTrueOrderByIdAsc(Collection<Long> projectIds);
+
+    List<ProjectKeyResultLink> findByActiveTrueAndProjectStatus(ProjectStatus status);
 
     boolean existsByProjectIdAndActiveTrue(Long projectId);
 

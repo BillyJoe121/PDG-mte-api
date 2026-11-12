@@ -22,6 +22,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Lazy associations and collections load in batches (one IN query per 100 owners) instead of one query per row.
+        default_batch_fetch_size: 100
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration

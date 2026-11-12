@@ -1,17 +1,18 @@
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM eclipse-temurin:17.0.21_9-jdk-jammy AS build
 
 WORKDIR /workspace
 
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
-RUN chmod +x mvnw
+# Windows checkouts may add CR line endings, which break the wrapper script on Linux.
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
 COPY src/ src/
 RUN ./mvnw -B -DskipTests package
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17.0.21_9-jre-jammy
 
 # curl is used by the container health check (GET /api/v1/health).
 RUN apt-get update \

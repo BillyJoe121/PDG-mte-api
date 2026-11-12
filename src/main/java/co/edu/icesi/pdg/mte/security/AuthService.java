@@ -57,8 +57,11 @@ public class AuthService {
         String email = normalizeEmail(request.email());
         Professor professor = professorRepository.findByEmailIgnoreCase(email)
                 .filter(Professor::isActive)
-                .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN));
-        if (loginAttemptService.isLocked(professor)) {
+                .orElse(null);
+        if (professor == null || loginAttemptService.isLocked(professor)) {
+            // Same password check as a real account, so the response time does not reveal
+            // whether the email exists or the account is locked.
+            spendPasswordCheck(request.password());
             throw new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
         }
         try {
@@ -160,6 +163,14 @@ public class AuthService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, WEAK_PASSWORD);
         } catch (CredentialService.InvalidCredentialsException exception) {
             throw new BusinessException(HttpStatus.FORBIDDEN, NO_ACCESS);
+        }
+    }
+
+    private void spendPasswordCheck(String password) {
+        try {
+            credentialService.verifyPassword(null, password);
+        } catch (CredentialService.InvalidCredentialsException expected) {
+            // Always thrown without an account; only the time spent matters here.
         }
     }
 

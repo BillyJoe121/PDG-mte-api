@@ -58,4 +58,20 @@ class ProjectKeyResultLinkArchivedTest {
                 .extracting("status").isEqualTo(HttpStatus.CONFLICT);
         verify(linkRepository, never()).save(any());
     }
+
+    @Test
+    void updatingAnInactiveLinkIsRejectedWithoutSavingAnything() {
+        ProjectKeyResultLinkService service =
+                new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, auditService);
+        ProjectKeyResultLink inactive = new ProjectKeyResultLink();
+        inactive.setActive(false);
+        when(linkRepository.findById(4L)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> service.update(4L, new ProjectDtos.ProjectKeyResultLinkUpdateRequest(
+                BigDecimal.valueOf(30), ContributionType.DIRECTA)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("inactivo")
+                .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+        verify(linkRepository, never()).save(any());
+    }
 }

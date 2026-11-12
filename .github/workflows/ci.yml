@@ -1,3 +1,4 @@
+# Checks only. Deployment runs from the Bitbucket repository through Jenkins (Jenkinsfile).
 name: CI
 
 on:
@@ -27,26 +28,7 @@ jobs:
           cache: maven
 
       # Tests run against in-memory H2; no database or secrets are needed.
-      # The JaCoCo coverage rule is bound to `verify` and is not enforced here.
+      # `verify` also enforces the JaCoCo coverage rule.
       # mvnw is stored without the executable bit, so it is run through sh.
-      - name: Test
-        run: sh ./mvnw -B test
-
-  # After the tests pass on develop, ask the server to rebuild the API. Without the
-  # COOLIFY_WEBHOOK secret the step is skipped, so forks and pull requests never deploy.
-  deploy:
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Trigger deployment
-        env:
-          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-        run: |
-          if [ -z "$COOLIFY_WEBHOOK" ]; then
-            echo "COOLIFY_WEBHOOK is not set; skipping deployment."
-            exit 0
-          fi
-          curl -fsS --max-time 30 -X GET "$COOLIFY_WEBHOOK" -H "Authorization: Bearer $COOLIFY_TOKEN"
+      - name: Test and coverage
+        run: sh ./mvnw -B verify

@@ -50,7 +50,8 @@ class AuthServiceTest {
     }
 
     @Test
-    void unknownOrInactivePeopleGetTheGenericErrorWithoutCheckingAPassword() {
+    void unknownOrInactivePeopleGetTheGenericErrorAfterTheSamePasswordCheck() {
+        doThrow(new CredentialService.InvalidCredentialsException()).when(credentials).verifyPassword(null, PASSWORD);
         when(professors.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
         assertUnauthorized(() -> service.login(new SecurityDtos.LoginRequest("nadie@icesi.edu.co", PASSWORD)));
 
@@ -59,17 +60,24 @@ class AuthServiceTest {
         when(professors.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(inactive));
         assertUnauthorized(() -> service.login(new SecurityDtos.LoginRequest(EMAIL, PASSWORD)));
 
-        verifyNoInteractions(credentials, tokens);
+        // Timing: a missing account still pays for one password check, against no stored hash.
+        verify(credentials, times(2)).verifyPassword(null, PASSWORD);
+        verify(credentials, never()).verifyPassword(eq(AUTH_ID), anyString());
+        verify(attempts, never()).recordFailure(anyLong());
+        verifyNoInteractions(tokens);
     }
 
     @Test
-    void lockedAccountsAreRefusedBeforeCheckingThePassword() {
+    void lockedAccountsAreRefusedWithoutCheckingTheirOwnPassword() {
         Professor professor = professor(AUTH_ID);
         when(professors.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(professor));
         when(attempts.isLocked(professor)).thenReturn(true);
 
         assertUnauthorized(() -> service.login(new SecurityDtos.LoginRequest(EMAIL, PASSWORD)));
-        verifyNoInteractions(credentials, tokens);
+        verify(credentials).verifyPassword(null, PASSWORD);
+        verify(credentials, never()).verifyPassword(eq(AUTH_ID), anyString());
+        verify(attempts, never()).recordFailure(anyLong());
+        verifyNoInteractions(tokens);
     }
 
     @Test

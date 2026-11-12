@@ -294,10 +294,10 @@ Compilar tests sin ejecutarlos:
 .\mvnw.cmd '-DskipTests' test-compile
 ```
 
-Ultima verificacion conocida (10 nov 2026, `mvnw -B test`):
+Ultima verificacion conocida (12 nov 2026, `mvnw -B verify`):
 
 ```text
-Tests run: 366, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 503, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Postman
@@ -350,8 +350,9 @@ Ejecutar validacion de cobertura:
 Umbrales configurados:
 
 ```text
-Line coverage:   91%
-Branch coverage: 85%
+Line coverage:        95%
+Branch coverage:      95%
+Instruction coverage: 95%
 ```
 
 ## Build y Despliegue
@@ -392,4 +393,4 @@ No guardar credenciales reales en Git. `.env` esta ignorado.
 
 La API, el frontend y la base se despliegan en el servidor Coolify de la universidad. El `Dockerfile` construye el JAR, corre como usuario sin privilegios, arranca con el perfil `prod` y trae un `HEALTHCHECK` contra `/api/v1/health`, que valida la base de datos (`503` si no responde).
 
-CI despliega solo cuando pasan las pruebas en `develop` ([docs/ci.md](docs/ci.md)). La guia paso a paso (base, variables, primer administrador, traslado de datos y respaldos) esta en [docs/despliegue-coolify.md](docs/despliegue-coolify.md).
+Jenkins construye el repositorio de Bitbucket y despliega `develop` solo cuando pasan las pruebas y la cobertura ([docs/ci.md](docs/ci.md)). La guia paso a paso (base, variables, primer administrador, traslado de datos y respaldos) esta en [docs/despliegue-coolify.md](docs/despliegue-coolify.md), y el resumen para revisar cada despliegue en [docs/checklist-despliegue.md](docs/checklist-despliegue.md).
