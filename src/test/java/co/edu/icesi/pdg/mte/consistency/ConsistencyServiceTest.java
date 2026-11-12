@@ -11,7 +11,6 @@ import co.edu.icesi.pdg.mte.common.BusinessException;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
-import co.edu.icesi.pdg.mte.project.ProjectProgressEntry;
 import co.edu.icesi.pdg.mte.project.ProjectProgressEntryRepository;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
@@ -25,15 +24,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,20 +78,14 @@ class ConsistencyServiceTest {
     @Test
     void reportsTheThreeConsistencyFindingTypesAndCounters() {
         when(keyResultRepository.findAll()).thenReturn(List.of(linkedKr, unlinkedKr));
-        when(projectRepository.existsByKeyResultIdAndStatus(1L, ProjectStatus.ACTIVO)).thenReturn(true);
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO))
                 .thenReturn(List.of(linkedActiveProject, projectWithoutKr, staleProject, recentProject));
-        when(linkRepository.existsByProjectIdAndActiveTrue(1L)).thenReturn(true);
-        when(linkRepository.existsByProjectIdAndActiveTrue(2L)).thenReturn(false);
-        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
-        when(linkRepository.existsByProjectIdAndActiveTrue(4L)).thenReturn(true);
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(1L))
-                .thenReturn(Optional.of(progressEntry(linkedActiveProject, Instant.now())));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(2L)).thenReturn(Optional.empty());
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L))
-                .thenReturn(Optional.of(progressEntry(staleProject, Instant.now().minusSeconds(20L * 24 * 60 * 60))));
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(4L))
-                .thenReturn(Optional.of(progressEntry(recentProject, Instant.now())));
+        when(linkRepository.findByActiveTrueAndProjectStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(
+                link(linkedKr, linkedActiveProject), link(linkedKr, staleProject), link(linkedKr, recentProject)));
+        when(progressRepository.findLatestCreatedAtByProjectIds(anyCollection())).thenReturn(List.of(
+                progressRow(1L, Instant.now()),
+                progressRow(3L, Instant.now().minusSeconds(20L * 24 * 60 * 60)),
+                progressRow(4L, Instant.now())));
 
         var response = service.check(null, null, 15);
 
@@ -115,8 +107,9 @@ class ConsistencyServiceTest {
     void filtersBySeverityAndModuleAndExportsCsv() {
         when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(staleProject));
-        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L)).thenReturn(Optional.empty());
+        when(linkRepository.findByActiveTrueAndProjectStatus(ProjectStatus.ACTIVO))
+                .thenReturn(List.of(link(linkedKr, staleProject)));
+        when(progressRepository.findLatestCreatedAtByProjectIds(anyCollection())).thenReturn(List.of());
 
         var onlyHigh = service.check("alta", null, null);
         var onlyProjects = service.check(null, "proyectos", null);
@@ -132,8 +125,9 @@ class ConsistencyServiceTest {
     void summaryCoversAllFindingsWhileFiltersOnlyTrimTheList() {
         when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(staleProject));
-        when(linkRepository.existsByProjectIdAndActiveTrue(3L)).thenReturn(true);
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(3L)).thenReturn(Optional.empty());
+        when(linkRepository.findByActiveTrueAndProjectStatus(ProjectStatus.ACTIVO))
+                .thenReturn(List.of(link(linkedKr, staleProject)));
+        when(progressRepository.findLatestCreatedAtByProjectIds(anyCollection())).thenReturn(List.of());
 
         var onlyHigh = service.check("ALTA", null, null);
         var onlyProjects = service.check(null, "PROYECTOS", null);
@@ -163,8 +157,8 @@ class ConsistencyServiceTest {
     void emitsClientRoutesForCorrectiveActions() {
         when(keyResultRepository.findAll()).thenReturn(List.of(unlinkedKr));
         when(projectRepository.findByStatus(ProjectStatus.ACTIVO)).thenReturn(List.of(projectWithoutKr));
-        when(linkRepository.existsByProjectIdAndActiveTrue(2L)).thenReturn(false);
-        when(progressRepository.findFirstByProjectIdOrderByCreatedAtDesc(2L)).thenReturn(Optional.empty());
+        when(linkRepository.findByActiveTrueAndProjectStatus(ProjectStatus.ACTIVO)).thenReturn(List.of());
+        when(progressRepository.findLatestCreatedAtByProjectIds(anyCollection())).thenReturn(List.of());
 
         var findings = service.check(null, null, 15).findings();
 
@@ -188,13 +182,8 @@ class ConsistencyServiceTest {
         return project;
     }
 
-    private ProjectProgressEntry progressEntry(Project project, Instant createdAt) {
-        ProjectProgressEntry entry = new ProjectProgressEntry();
-        entry.setProject(project);
-        entry.setProgressPercent(BigDecimal.TEN);
-        entry.setComment("Avance");
-        ReflectionTestUtils.setField(entry, "createdAt", createdAt);
-        return entry;
+    private Object[] progressRow(Long projectId, Instant createdAt) {
+        return new Object[]{projectId, createdAt};
     }
 
     private ProjectKeyResultLink link(KeyResult keyResult, Project project) {

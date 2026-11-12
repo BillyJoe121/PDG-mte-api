@@ -123,11 +123,10 @@ public class ProjectService {
             }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
-        return projectRepository.findAll(specification)
+        return responseAssembler.toProjectResponses(projectRepository.findAll(specification)
                 .stream()
                 .filter(project -> requestedPeriod == null || periodService.overlaps(project, requestedPeriod))
-                .map(responseAssembler::toProjectResponse)
-                .toList();
+                .toList());
     }
 
     @Transactional(readOnly = true)

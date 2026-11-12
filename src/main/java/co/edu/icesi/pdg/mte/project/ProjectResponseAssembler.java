@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Component
 class ProjectResponseAssembler {
@@ -65,10 +68,28 @@ class ProjectResponseAssembler {
     }
 
     ProjectDtos.ProjectResponse toProjectResponse(Project project) {
-        ProjectDtos.ProjectResponse base = Mapper.toResponse(project);
-        List<ProjectDtos.ProjectLinkedKeyResultResponse> linkedKeyResults = project.getId() == null
+        return toProjectResponse(project, project.getId() == null
                 ? List.of()
-                : linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(project.getId())
+                : linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(project.getId()));
+    }
+
+    /** Builds a list with one query for the active links of every project, instead of one per project. */
+    List<ProjectDtos.ProjectResponse> toProjectResponses(List<Project> projects) {
+        List<Long> ids = projects.stream().map(Project::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<ProjectKeyResultLink>> linksByProject = ids.isEmpty()
+                ? Map.of()
+                : linkRepository.findByProjectIdInAndActiveTrueOrderByIdAsc(ids).stream()
+                .collect(Collectors.groupingBy(link -> link.getProject().getId()));
+        return projects.stream()
+                .map(project -> toProjectResponse(project, project.getId() == null
+                        ? List.of()
+                        : linksByProject.getOrDefault(project.getId(), List.of())))
+                .toList();
+    }
+
+    private ProjectDtos.ProjectResponse toProjectResponse(Project project, List<ProjectKeyResultLink> activeLinks) {
+        ProjectDtos.ProjectResponse base = Mapper.toResponse(project);
+        List<ProjectDtos.ProjectLinkedKeyResultResponse> linkedKeyResults = activeLinks
                 .stream()
                 .map(link -> new ProjectDtos.ProjectLinkedKeyResultResponse(
                         link.getId(),

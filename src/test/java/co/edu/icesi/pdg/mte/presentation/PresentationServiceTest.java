@@ -87,6 +87,22 @@ class PresentationServiceTest {
     }
 
     @Test
+    void coversThePortfolioWhenNoPeriodIsActive() {
+        StrategyService strategyService = mock(StrategyService.class);
+        AcademicPeriodRepository periodRepository = mock(AcademicPeriodRepository.class);
+        when(periodRepository.findFirstByStatusOrderByStartDateDesc(PeriodStatus.ACTIVO)).thenReturn(Optional.empty());
+        when(strategyService.listStrategicBets(null)).thenReturn(List.of());
+        when(strategyService.portfolioExecutionSummary(null)).thenReturn(new StrategyDtos.ExecutionSummaryResponse(
+                "Sin avance.", 0, 0, 0, 0, List.of()));
+
+        var response = new PresentationService(strategyService, periodRepository).presentation(null);
+
+        assertThat(response.period()).isNull();
+        assertThat(response.slides().get(0).subtitle()).isEqualTo("Portafolio completo");
+        assertThat(response.slides()).hasSize(2);
+    }
+
+    @Test
     void rejectsMalformedPeriod() {
         StrategyService strategyService = mock(StrategyService.class);
         AcademicPeriodRepository periodRepository = mock(AcademicPeriodRepository.class);

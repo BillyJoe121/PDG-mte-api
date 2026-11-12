@@ -25,6 +25,12 @@ class PasswordPolicyTest {
     }
 
     @Test
+    void emailsWithoutDomainAreUsedWhole() {
+        assertThat(PasswordPolicy.accepts("usuario-sistema-2026", "usuario-sistema")).isFalse();
+        assertThat(PasswordPolicy.accepts("Trazabilidad-2026", "usuario-sistema")).isTrue();
+    }
+
+    @Test
     void shortEmailNamesDoNotBlockPasswords() {
         assertThat(PasswordPolicy.accepts("ana-trazabilidad", "ana@icesi.edu.co")).isTrue();
     }

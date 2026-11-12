@@ -134,5 +134,6 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
         assertThat(response).hasSize(1);
         assertThat(response.get(0).linkedKeyResults()).isEmpty();
         verify(linkRepository, never()).findByProjectIdAndActiveTrueOrderByIdAsc(any());
+        verify(linkRepository, never()).findByProjectIdInAndActiveTrueOrderByIdAsc(any());
     }
 }
