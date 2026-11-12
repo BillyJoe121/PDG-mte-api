@@ -2,14 +2,16 @@
 
 Guia para publicar el MTE en el servidor Coolify de la universidad: la base PostgreSQL 17, la API (este repositorio) y el frontend (`PDG-mte-client`). Todo el codigo ya esta listo; aqui solo queda configuracion.
 
-Orden recomendado: base de datos, API, frontend, primer administrador y CI. El traslado de datos desde la base anterior es opcional y va antes de abrir el sistema a los usuarios.
+Orden recomendado: base de datos, API, frontend, primer administrador y Jenkins. El traslado de datos desde la base anterior es opcional y va antes de abrir el sistema a los usuarios.
 
-Ninguna credencial real va en Git ni en este documento: los valores se escriben solo en Coolify y en los secretos de GitHub.
+Ninguna credencial real va en Git ni en este documento: los valores se escriben solo en Coolify y en las credenciales de Jenkins.
+
+El codigo se despliega desde Bitbucket: Coolify descarga los repositorios de `https://pi2tools.icesi.edu.co/bitbucket/scm/PDGPROYEC/` y Jenkins dispara cada despliegue despues de que pasan las pruebas.
 
 ## 1. Proyecto en Coolify
 
 1. Crear un proyecto `MTE` con un entorno (por ejemplo `production`).
-2. Conectar los repositorios de GitHub de la API y del frontend (GitHub App de Coolify o deploy key). Si la red de la universidad no deja que Coolify llegue a GitHub, avisar a quien administra el servidor antes de seguir.
+2. Conectar los repositorios de Bitbucket de la API (`pdg-mte-api`) y del frontend (`pdg-mte-client`) como repositorios privados con deploy key: Coolify genera la llave (Keys & Tokens > Private Keys), y su parte publica se agrega en Bitbucket como llave de acceso de solo lectura de cada repositorio (Repository settings > Access keys). La URL del repositorio en Coolify es la SSH de Bitbucket.
 
 ## 2. Base de datos
 
@@ -30,7 +32,7 @@ Las tablas no se crean a mano: Flyway aplica `V1` a `V15` en el primer arranque 
 
 ## 3. API
 
-New Resource > Application desde el repositorio de la API:
+New Resource > Application > Private Repository (with deploy key) desde el repositorio de Bitbucket de la API:
 
 | Campo | Valor |
 | --- | --- |
@@ -38,7 +40,7 @@ New Resource > Application desde el repositorio de la API:
 | Build Pack | Dockerfile (el `Dockerfile` de la raiz) |
 | Puerto expuesto | `8081` |
 | Health check | `/api/v1/health` (el `Dockerfile` ya trae `HEALTHCHECK`; responde `503` si la base no contesta) |
-| Auto Deploy | apagado (despliega CI, ver seccion 7) |
+| Auto Deploy | apagado (despliega Jenkins, ver seccion 7) |
 
 Variables de entorno (Environment Variables, todas de runtime):
 
@@ -69,13 +71,13 @@ El primer arranque aplica las migraciones; el log debe mostrar `Successfully app
 
 ## 4. Frontend
 
-New Resource > Application desde el repositorio `PDG-mte-client`:
+New Resource > Application > Private Repository (with deploy key) desde el repositorio de Bitbucket `pdg-mte-client`:
 
 | Campo | Valor |
 | --- | --- |
 | Rama | `develop` |
 | Build Pack | Dockerfile |
-| Puerto expuesto | `80` |
+| Puerto expuesto | `8080` (nginx corre sin root) |
 | Health check | `/healthz` |
 | Auto Deploy | apagado |
 
@@ -96,7 +98,7 @@ El enlace del log da acceso de administrador: no copiarlo a chats ni tickets, y 
 
 ## 6. Traslado de datos desde la base anterior (opcional)
 
-Solo si hay que conservar los datos que ya existian. Lo ejecuta una persona del equipo, no CI, y antes de abrir el sistema a los usuarios.
+Solo si hay que conservar los datos que ya existian. Lo ejecuta una persona del equipo, no Jenkins, y antes de abrir el sistema a los usuarios.
 
 1. Respaldar la base anterior y comprobar el archivo (ver [backup-restore.md](backup-restore.md)).
 2. Exportar solo el esquema `public`, sin propietarios ni permisos:
@@ -143,17 +145,19 @@ El servicio de cuentas anterior guardaba hashes BCrypt en `auth.users.encrypted_
    Solo se actualizan personas que ya estan en el directorio del MTE; el resto de filas se ignora.
 3. Borrar `hashes.csv`.
 
-## 7. CI y despliegue automatico
+## 7. Jenkins y despliegue automatico
 
-Cada repositorio tiene un job `deploy` que corre solo en push a `develop` y solo si pasan las pruebas ([ci.md](ci.md)).
+Cada repositorio tiene un `Jenkinsfile`: corre las pruebas con la cobertura en cada push a Bitbucket y, solo en `develop` y solo si todo pasa, llama al Deploy Webhook de Coolify ([ci.md](ci.md)).
 
 1. En cada aplicacion de Coolify, dejar Auto Deploy apagado y copiar su Deploy Webhook (pestana Webhooks).
 2. En Coolify, Keys & Tokens > API tokens: crear un token con permiso de despliegue.
-3. En cada repositorio de GitHub (Settings > Secrets and variables > Actions):
-   - `COOLIFY_WEBHOOK`: el webhook de esa aplicacion.
-   - `COOLIFY_TOKEN`: el token del paso 2.
+3. En Jenkins (Manage Jenkins > Credentials), crear credenciales "Secret text":
+   - `coolify-api-webhook`: el webhook de la API.
+   - `coolify-client-webhook`: el webhook del frontend.
+   - `coolify-token`: el token del paso 2.
+4. Crear un Multibranch Pipeline por repositorio de Bitbucket y el webhook de Bitbucket hacia Jenkins ([ci.md](ci.md)).
 
-Sin `COOLIFY_WEBHOOK`, el job se salta. Si GitHub no alcanza el servidor de la universidad, el job falla y se despliega a mano con Redeploy en Coolify despues de ver CI en verde.
+Si Jenkins no alcanza el servidor de Coolify, la etapa `Deploy` falla y se despliega a mano con Redeploy en Coolify despues de ver el pipeline en verde.
 
 ## 8. Lista de comprobacion
 
@@ -165,5 +169,5 @@ Sin `COOLIFY_WEBHOOK`, el job se salta. Si GitHub no alcanza el servidor de la u
 - [ ] Administrador inicial con contrasena; `MTE_AUTH_BOOTSTRAP_ADMIN_LINK=false`.
 - [ ] Inicio de sesion desde el frontend sin errores de CORS.
 - [ ] Datos trasladados y verificados, si aplica; archivos de dump y `hashes.csv` fuera del repositorio o borrados.
-- [ ] `COOLIFY_WEBHOOK` y `COOLIFY_TOKEN` en ambos repositorios; Auto Deploy apagado.
-- [ ] Un push a `develop` despliega solo despues de CI en verde (o queda el Redeploy manual documentado).
+- [ ] Credenciales `coolify-api-webhook`, `coolify-client-webhook` y `coolify-token` en Jenkins; Auto Deploy apagado.
+- [ ] Un push a `develop` en Bitbucket despliega solo despues del pipeline de Jenkins en verde (o queda el Redeploy manual documentado).
