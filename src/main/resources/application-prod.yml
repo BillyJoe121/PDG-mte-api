@@ -22,3 +22,10 @@ mte:
     require-jwt-secret: true
   seed:
     enabled: ${MTE_SEED_ENABLED:false}
+
+# API docs and the interactive console stay off unless explicitly enabled.
+springdoc:
+  api-docs:
+    enabled: ${MTE_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${MTE_API_DOCS_ENABLED:false}

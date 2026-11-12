@@ -2,6 +2,8 @@ package co.edu.icesi.pdg.mte.common;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -19,6 +21,7 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
     ResponseEntity<ApiError> handleBusiness(BusinessException exception, HttpServletRequest request) {
@@ -59,12 +62,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ApiError> handleNoResource(NoResourceFoundException exception, HttpServletRequest request) {
-        return build(HttpStatus.NOT_FOUND, "Recurso no encontrado.", List.of(exception.getMessage()), request);
+        return build(HttpStatus.NOT_FOUND, "Recurso no encontrado.", List.of("La ruta solicitada no existe."), request);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
-        return build(HttpStatus.METHOD_NOT_ALLOWED, "Metodo HTTP no soportado.", List.of(exception.getMessage()), request);
+        String detail = "Metodo " + exception.getMethod() + " no soportado en esta ruta.";
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "Metodo HTTP no soportado.", List.of(detail), request);
     }
 
     @ExceptionHandler(AuthorizationDeniedException.class)
@@ -74,10 +78,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> handleUnexpected(Exception exception, HttpServletRequest request) {
+        // Internal messages can name tables, classes or values, so they stay in the server log only.
+        log.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), exception);
         return build(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Ocurrio un error inesperado.",
-                List.of(exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()),
+                List.of("Intenta de nuevo. Si el problema sigue, avisa al administrador."),
                 request
         );
     }

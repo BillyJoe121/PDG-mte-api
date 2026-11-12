@@ -25,3 +25,10 @@ mte:
   integration:
     trayectoria:
       mode: ${MTE_TRAYECTORIA_PROJECTS_MODE:mock}
+
+# API docs and the interactive console stay off unless explicitly enabled.
+springdoc:
+  api-docs:
+    enabled: ${MTE_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${MTE_API_DOCS_ENABLED:false}

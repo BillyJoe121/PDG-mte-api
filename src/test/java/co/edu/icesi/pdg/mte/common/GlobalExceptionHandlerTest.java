@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,12 +18,13 @@ class GlobalExceptionHandlerTest {
     void handlesUnexpectedExceptionsWithAndWithoutMessages() {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/test");
 
-        var withMessage = handler.handleUnexpected(new IllegalStateException("boom"), request);
+        var withMessage = handler.handleUnexpected(new IllegalStateException("tabla interna sin columna"), request);
         var withoutMessage = handler.handleUnexpected(new RuntimeException(), request);
 
         assertThat(withMessage.getStatusCode().value()).isEqualTo(500);
-        assertThat(withMessage.getBody().details()).containsExactly("boom");
-        assertThat(withoutMessage.getBody().details()).containsExactly("RuntimeException");
+        assertThat(withMessage.getBody().details()).noneMatch(detail -> detail.contains("tabla interna"));
+        assertThat(withMessage.getBody().details()).isEqualTo(withoutMessage.getBody().details());
+        assertThat(withoutMessage.getBody().details()).noneMatch(detail -> detail.contains("RuntimeException"));
     }
 
     @Test
@@ -33,6 +35,17 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(404);
         assertThat(response.getBody().message()).isEqualTo("Recurso no encontrado.");
+        assertThat(response.getBody().details()).noneMatch(detail -> detail.contains("/api/v1"));
+    }
+
+    @Test
+    void handlesUnsupportedMethodsWithoutEchoingTheException() {
+        MockHttpServletRequest request = new MockHttpServletRequest("PUT", "/api/v1/health");
+
+        var response = handler.handleMethodNotSupported(new HttpRequestMethodNotSupportedException("PUT"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(405);
+        assertThat(response.getBody().details()).containsExactly("Metodo PUT no soportado en esta ruta.");
     }
 
     @Test
