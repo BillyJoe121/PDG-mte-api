@@ -31,7 +31,6 @@ const projectBody = {
   startDate: "2026-02-01",
   endDate: "2026-11-30",
   keyResultId: 2,
-  contributionWeight: 15,
   tutors: ["Tutor Postman"],
   plannerUrl: PLANNER_PROJECT
 };
@@ -152,8 +151,7 @@ const folders = [
     name: "Vinculos proyecto-KR",
     requests: [
       { op: "GET /api/v1/project-key-result-links", query: { projectId: "{{newProjectId}}" } },
-      { op: "POST /api/v1/project-key-result-links", body: { projectId: "#{newProjectId}", keyResultId: 3, contributionWeight: 5, contributionType: "SOPORTE" }, save: [["newLinkId", "id"]] },
-      { op: "PATCH /api/v1/project-key-result-links/:id", vars: { id: "{{newLinkId}}" }, body: { contributionType: "INDIRECTA", contributionWeight: 8 } },
+      { op: "POST /api/v1/project-key-result-links", body: { projectId: "#{newProjectId}", keyResultId: 3 }, save: [["newLinkId", "id"]] },
       { op: "DELETE /api/v1/project-key-result-links/:id", vars: { id: "{{newLinkId}}" } }
     ]
   },

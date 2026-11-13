@@ -71,11 +71,11 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
-                link(keyResult, completed, 40),
-                link(keyResult, activeSameId, 20),
-                link(keyResult, activeWithStartFallback, 20),
-                link(keyResult, activeWithKeyResultFallback, 20),
-                link(keyResult, withoutId, 20)
+                link(keyResult, completed),
+                link(keyResult, activeSameId),
+                link(keyResult, activeWithStartFallback),
+                link(keyResult, activeWithKeyResultFallback),
+                link(keyResult, withoutId)
         ));
 
         var response = service.getGoal(1L, null);
@@ -93,7 +93,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         when(goalRepository.findById(1L)).thenReturn(Optional.of(goal));
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
-                link(keyResult, project, 20)
+                link(keyResult, project)
         ));
 
         var response = service.getGoal(1L, " 2026-Q4 ");
@@ -126,8 +126,8 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         when(strategicBetRepository.findById(1L)).thenReturn(Optional.of(bet));
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
-                link(keyResult, completedProject, 50),
-                link(keyResult, activeProject, 50)
+                link(keyResult, completedProject),
+                link(keyResult, activeProject)
         ));
 
         var response = service.getStrategicBet(1L, null);
@@ -160,7 +160,7 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         Project sharedProject = project(1L, ProjectStatus.ACTIVO);
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
-                link(keyResult, sharedProject, 100)
+                link(keyResult, sharedProject)
         ));
 
         var portfolio = service.portfolioExecutionSummary(null);
@@ -212,7 +212,6 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setExternalProjectId(77L);
-        link.setContributionWeight(BigDecimal.valueOf(35));
 
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
@@ -279,7 +278,6 @@ class StrategyServiceHierarchyTest extends StrategyServiceTestSupport {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setExternalProjectId(null);
-        link.setContributionWeight(BigDecimal.valueOf(35));
 
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));

@@ -202,7 +202,7 @@ class EndpointAuthorizationMatrixTest {
         allow(expected, ALL, "DashboardController", "summary", "projectsByStatus", "keyResultsByStatus",
                 "departments", "strategicBets", "goals");
         allow(expected, ALL, "ProjectKeyResultLinkController", "list");
-        allow(expected, ADMIN_MANAGER, "ProjectKeyResultLinkController", "link", "update", "unlink");
+        allow(expected, ADMIN_MANAGER, "ProjectKeyResultLinkController", "link", "unlink");
         allow(expected, ALL, "PeopleController", "listRoles", "listPositions", "listProfessors", "listTeacherPositions");
         allow(expected, ADMIN, "PeopleController", "listDirectoryUsers", "createDirectoryUser", "updateDirectoryUser",
                 "updateDirectoryUserActive", "createAccessLink", "deleteDirectoryUser",

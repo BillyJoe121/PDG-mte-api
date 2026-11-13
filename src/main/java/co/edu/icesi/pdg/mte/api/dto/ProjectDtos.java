@@ -4,7 +4,6 @@ import co.edu.icesi.pdg.mte.project.ProjectOrigin;
 import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectSyncStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
-import co.edu.icesi.pdg.mte.integration.ContributionType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -29,7 +28,6 @@ public final class ProjectDtos {
             LocalDate startDate,
             LocalDate endDate,
             Long keyResultId,
-            @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
             String plannerUrl,
@@ -50,7 +48,7 @@ public final class ProjectDtos {
                 List<ProjectKeyResultDraftRequest> keyResultLinks
         ) {
             this(name, description, type, departmentId, status, startPeriod, endPeriod, startDate, endDate,
-                    null, null, null, null, null, tutors, keyResultLinks);
+                    null, null, null, null, tutors, keyResultLinks);
         }
     }
 
@@ -65,7 +63,6 @@ public final class ProjectDtos {
             LocalDate endDate,
             LocalDate actualEndDate,
             Long keyResultId,
-            @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
             String plannerUrl,
@@ -84,7 +81,7 @@ public final class ProjectDtos {
                 List<String> tutors
         ) {
             this(name, description, type, departmentId, startPeriod, endPeriod, startDate, endDate, actualEndDate,
-                    null, null, null, null, null, tutors);
+                    null, null, null, null, tutors);
         }
     }
 
@@ -118,7 +115,6 @@ public final class ProjectDtos {
             BigDecimal globalProgress,
             Long keyResultId,
             String keyResultName,
-            BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
             @JsonInclude(JsonInclude.Include.ALWAYS) String plannerUrl,
@@ -155,7 +151,7 @@ public final class ProjectDtos {
                 Instant updatedAt
         ) {
             this(id, externalProjectId, externalSource, name, description, type, departmentId, departmentName, status,
-                    startPeriod, endPeriod, startDate, endDate, actualEndDate, globalProgress, null, null, null, null,
+                    startPeriod, endPeriod, startDate, endDate, actualEndDate, globalProgress, null, null, null,
                     null, null, tutors, linkedKeyResults, origin, syncStatus, lastSyncedAt, createdAt, updatedAt);
         }
     }
@@ -183,9 +179,7 @@ public final class ProjectDtos {
     public record ProjectKpiResponse(
             int progressEntries,
             int linkedKeyResults,
-            BigDecimal declaredContributionWeight,
-            boolean completed,
-            boolean overweightWarning
+            boolean completed
     ) {
     }
 
@@ -199,22 +193,12 @@ public final class ProjectDtos {
 
     public record ProjectKeyResultLinkRequest(
             @NotNull Long projectId,
-            @NotNull Long keyResultId,
-            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
-            @NotNull ContributionType contributionType
-    ) {
-    }
-
-    public record ProjectKeyResultLinkUpdateRequest(
-            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
-            @NotNull ContributionType contributionType
+            @NotNull Long keyResultId
     ) {
     }
 
     public record ProjectKeyResultDraftRequest(
-            @NotNull Long keyResultId,
-            @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal contributionWeight,
-            @NotNull ContributionType contributionType
+            @NotNull Long keyResultId
     ) {
     }
 
@@ -224,10 +208,6 @@ public final class ProjectDtos {
             String projectName,
             Long keyResultId,
             String keyResultDescription,
-            BigDecimal contributionWeight,
-            ContributionType contributionType,
-            BigDecimal totalWeightForKeyResult,
-            boolean overweightWarning,
             boolean active,
             Instant createdAt
     ) {
@@ -238,8 +218,6 @@ public final class ProjectDtos {
             Long keyResultId,
             String keyResultName,
             String keyResultDescription,
-            BigDecimal contributionWeight,
-            ContributionType contributionType,
             boolean active
     ) {
     }
@@ -259,8 +237,6 @@ public final class ProjectDtos {
             String keyResultDescription,
             List<String> goalNames,
             List<String> strategicBetNames,
-            BigDecimal contributionWeight,
-            ContributionType contributionType,
             boolean projectCompleted,
             String period
     ) {

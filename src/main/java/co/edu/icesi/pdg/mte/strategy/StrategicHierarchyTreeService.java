@@ -166,7 +166,7 @@ class StrategicHierarchyTreeService {
                     project.getDescription(),
                     project.getGlobalProgress() == null ? BigDecimal.ZERO : project.getGlobalProgress(),
                     null,
-                    "Peso: " + link.getContributionWeight() + "%",
+                    null,
                     List.of()
             );
         }
@@ -178,7 +178,7 @@ class StrategicHierarchyTreeService {
                 link.getExternalProjectSource(),
                 null,
                 null,
-                "Peso: " + link.getContributionWeight() + "%",
+                null,
                 List.of()
         );
     }

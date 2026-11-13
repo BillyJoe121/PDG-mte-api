@@ -35,11 +35,10 @@ ProjectRequest: {
   "startDate": "2026-01-01",
   "endDate": "2026-12-31",
   "keyResultId": 1,
-  "contributionWeight": 50,
   "linkStatus": "ACTIVE",
   "jiraKey": "ABC-123",
   "tutors": ["Tutor"],
-  "keyResultLinks": [{"keyResultId": 1, "contributionWeight": 50, "contributionType": "DIRECTA"}]
+  "keyResultLinks": [{"keyResultId": 1}]
 }
 
 ProjectUpdateRequest: {
@@ -53,7 +52,6 @@ ProjectUpdateRequest: {
   "endDate": "2026-12-31",
   "actualEndDate": null,
   "keyResultId": 1,
-  "contributionWeight": 50,
   "linkStatus": "ACTIVE",
   "jiraKey": "ABC-123",
   "tutors": ["Tutor"]
@@ -85,7 +83,6 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
   "globalProgress": 75,
   "keyResultId": 1,
   "keyResultName": "KR",
-  "contributionWeight": 50,
   "linkStatus": "ACTIVE",
   "jiraKey": "ABC-123",
   "tutors": [],
@@ -98,7 +95,7 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
 }
 ```
 
-`ImpactChainResponse` (`/impact-chain` y `/contribution-chain`) muestra solo el peso de contribucion declarado en cada vinculo:
+`ImpactChainResponse` (`/impact-chain` y `/contribution-chain`) lista los KR a los que aporta el proyecto; los vinculos no llevan peso ni tipo:
 
 ```json
 {
@@ -112,8 +109,6 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
     "keyResultDescription": "KR",
     "goalNames": ["Meta"],
     "strategicBetNames": ["Apuesta"],
-    "contributionWeight": 50,
-    "contributionType": "DIRECTA",
     "projectCompleted": false,
     "period": "2026-1"
   }]
@@ -131,17 +126,13 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
 Schemas:
 
 ```json
-ProjectKeyResultLinkRequest: {"projectId": 1, "keyResultId": 1, "contributionWeight": 50, "contributionType": "DIRECTA"}
+ProjectKeyResultLinkRequest: {"projectId": 1, "keyResultId": 1}
 ProjectKeyResultLinkResponse: {
   "id": 1,
   "projectId": 1,
   "projectName": "Proyecto",
   "keyResultId": 1,
   "keyResultDescription": "KR",
-  "contributionWeight": 50,
-  "contributionType": "DIRECTA",
-  "totalWeightForKeyResult": 100,
-  "overweightWarning": false,
   "active": true,
   "createdAt": "2026-05-26T00:00:00Z"
 }
@@ -182,12 +173,13 @@ GeneralReportResponse: {
 }
 
 DepartmentReportResponse: {"departmentId": 1, "departmentName": "DCSI", "projects": 0, "keyResults": 0, "closedKeyResults": 0}
-KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "progressPercentage": 35, "linkedProjects": 0}
+KeyResultRankingResponse: {"keyResultId": 1, "keyResultName": "KR", "goalNames": ["Meta"], "strategicBetNames": ["Apuesta"], "period": "2026-1", "progressPercentage": 35, "linkedProjects": 2, "linkedProjectItems": [{"id": 7, "name": "Proyecto A", "globalProgress": 80, "status": "ACTIVO"}, {"id": 3, "name": "Proyecto B", "globalProgress": 25, "status": "FINALIZADO"}]}
 PeriodComparisonResponse: {"basePeriod": "2026-1", "comparePeriod": "2026-2", "base": {}, "compare": {}}
 ConsolidatedReportResponse: {"general": {}, "departments": [], "keyResultRanking": []}
 ```
 
 - `KeyResultRankingResponse.progressPercentage` es el avance registrado manualmente (puede ser `null`); el ranking se ordena por ese valor de mayor a menor, con los `null` al final.
+- `KeyResultRankingResponse.linkedProjectItems` lista los proyectos locales con vinculo activo al KR (sin repetir), ordenados por `globalProgress` de mayor a menor (los `null` al final y, a igual avance, por nombre). `status` es el valor de `ProjectStatus`. `linkedProjects` sigue contando todos los vinculos activos, incluidos los de proyectos que solo existen afuera.
 - `PeriodComparisonResponse` entrega los dos reportes generales lado a lado, sin diferencias calculadas.
 - El CSV exporta conteos (`general,krsActivos`, `general,krsCerrados`, `departamentoProyectos`, `departamentoKRs`, `departamentoKRsCerrados`) y el avance registrado de cada KR en filas `krAvanceRegistrado`; no incluye promedios.
 

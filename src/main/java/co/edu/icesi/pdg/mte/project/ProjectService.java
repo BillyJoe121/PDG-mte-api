@@ -28,7 +28,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -88,7 +87,7 @@ public class ProjectService {
         Project project = new Project();
         fieldMapper.applyLocalFields(project, request.name(), request.description(), request.type(), request.departmentId(),
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), null, request.tutors());
-        applyDirectKeyResult(project, request.keyResultId(), request.contributionWeight(), request.linkStatus(), request.jiraKey(), request.keyResultLinks());
+        applyDirectKeyResult(project, request.keyResultId(), request.linkStatus(), request.jiraKey(), request.keyResultLinks());
         project.setPlannerUrl(plannerUrl);
         project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
         project.setOrigin(ProjectOrigin.LOCAL);
@@ -164,7 +163,6 @@ public class ProjectService {
         if (request.keyResultId() != null) {
             project.setKeyResult(resolveKeyResultForUpdate(project, request.keyResultId()));
         }
-        project.setContributionWeight(request.contributionWeight());
         project.setLinkStatus(request.linkStatus());
         project.setJiraKey(request.jiraKey());
         project.setPlannerUrl(plannerUrl);
@@ -274,8 +272,6 @@ public class ProjectService {
             ProjectKeyResultLink link = new ProjectKeyResultLink();
             link.setProject(project);
             link.setKeyResult(keyResult);
-            link.setContributionWeight(request.contributionWeight());
-            link.setContributionType(request.contributionType());
             linkRepository.save(link);
         }
     }
@@ -320,7 +316,6 @@ public class ProjectService {
     private void applyDirectKeyResult(
             Project project,
             Long keyResultId,
-            BigDecimal contributionWeight,
             String linkStatus,
             String jiraKey,
             List<ProjectDtos.ProjectKeyResultDraftRequest> draftLinks
@@ -332,7 +327,6 @@ public class ProjectService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecciona al menos un Key Result para la iniciativa.");
         }
         project.setKeyResult(findLinkableKeyResult(resolvedKeyResultId));
-        project.setContributionWeight(contributionWeight != null ? contributionWeight : primaryLink == null ? null : primaryLink.contributionWeight());
         project.setLinkStatus(linkStatus == null || linkStatus.isBlank() ? "ACTIVO" : linkStatus.trim());
         project.setJiraKey(jiraKey);
     }

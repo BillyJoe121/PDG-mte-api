@@ -28,7 +28,7 @@ El codigo se despliega desde Bitbucket: Coolify descarga los repositorios de `ht
    Usuario y contrasena van aparte, en `DB_USERNAME` y `DB_PASSWORD`.
 5. En la pestana Backups, activar respaldos programados (por ejemplo diarios, conservando al menos 7) y, si el servidor lo ofrece, un destino S3 fuera de la maquina. Probar una restauracion siguiendo [backup-restore.md](backup-restore.md).
 
-Las tablas no se crean a mano: Flyway aplica `V1` a `V15` en el primer arranque de la API.
+Las tablas no se crean a mano: Flyway aplica `V1` a `V16` en el primer arranque de la API.
 
 ## 3. API
 

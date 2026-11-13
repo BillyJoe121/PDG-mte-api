@@ -12,7 +12,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +35,7 @@ class ProjectServiceBranchesTest extends ProjectServiceTestSupport {
         var created = service.create(new ProjectDtos.ProjectRequest(
                 base.name(), base.description(), base.type(), base.departmentId(), base.status(),
                 base.startPeriod(), base.endPeriod(), base.startDate(), base.endDate(),
-                1L, BigDecimal.valueOf(25), "   ", null, null, List.of(), List.of()));
+                1L, "   ", null, null, List.of(), List.of()));
 
         assertThat(created.linkStatus()).isEqualTo("ACTIVO");
     }
@@ -117,6 +116,6 @@ class ProjectServiceBranchesTest extends ProjectServiceTestSupport {
         return new ProjectDtos.ProjectUpdateRequest(
                 "Proyecto MSP", "Descripcion", ProjectType.INVESTIGACION, 1L, "2026-1", "2026-2",
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 1), null,
-                keyResultId, BigDecimal.valueOf(25), "ACTIVO", null, null, List.of("Tutora Uno"));
+                keyResultId, "ACTIVO", null, null, List.of("Tutora Uno"));
     }
 }

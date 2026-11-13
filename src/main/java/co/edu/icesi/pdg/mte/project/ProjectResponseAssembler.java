@@ -7,8 +7,6 @@ import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,16 +25,10 @@ class ProjectResponseAssembler {
             List<ProjectDtos.ProjectProgressResponse> history,
             List<ProjectKeyResultLink> links
     ) {
-        BigDecimal declaredContribution = links.stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
         return new ProjectDtos.ProjectKpiResponse(
                 history.size(),
                 links.size(),
-                declaredContribution,
-                project.getStatus() == ProjectStatus.FINALIZADO,
-                declaredContribution.compareTo(BigDecimal.valueOf(100)) > 0
+                project.getStatus() == ProjectStatus.FINALIZADO
         );
     }
 
@@ -51,17 +43,12 @@ class ProjectResponseAssembler {
     }
 
     ProjectDtos.ProjectKeyResultLinkResponse toLinkResponse(ProjectKeyResultLink link) {
-        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
         return new ProjectDtos.ProjectKeyResultLinkResponse(
                 link.getId(),
                 link.getProject() == null ? null : link.getProject().getId(),
                 link.getProject() == null ? null : link.getProject().getName(),
                 link.getKeyResult().getId(),
                 link.getKeyResult().getDescription(),
-                link.getContributionWeight(),
-                link.getContributionType(),
-                totalWeight,
-                totalWeight.compareTo(BigDecimal.valueOf(100)) > 0,
                 link.isActive(),
                 link.getCreatedAt()
         );
@@ -96,8 +83,6 @@ class ProjectResponseAssembler {
                         link.getKeyResult().getId(),
                         link.getKeyResult().getName(),
                         link.getKeyResult().getDescription(),
-                        link.getContributionWeight(),
-                        link.getContributionType(),
                         link.isActive()
                 ))
                 .toList();
@@ -119,7 +104,6 @@ class ProjectResponseAssembler {
                 base.globalProgress(),
                 base.keyResultId(),
                 base.keyResultName(),
-                base.contributionWeight(),
                 base.linkStatus(),
                 base.jiraKey(),
                 base.plannerUrl(),
@@ -142,19 +126,9 @@ class ProjectResponseAssembler {
                 keyResult.getDescription(),
                 Mapper.goalNames(keyResult),
                 Mapper.strategicBetNames(keyResult),
-                link.getContributionWeight(),
-                link.getContributionType(),
                 completed,
                 periodOf(link.getProject())
         );
-    }
-
-    private BigDecimal totalWeightForKeyResult(Long keyResultId) {
-        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
-                .stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private String periodOf(Project project) {

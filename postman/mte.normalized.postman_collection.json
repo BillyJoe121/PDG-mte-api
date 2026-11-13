@@ -86,7 +86,7 @@
       "description": "Endpoints del tag health-controller.",
       "item": [
         {
-          "id": "57231e67-c7fe-4b56-b140-78412a1ca1be",
+          "id": "3554d684-07c3-42b8-9a12-69ee0a329b0b",
           "name": "GET /api/v1/health",
           "request": {
             "name": "health",
@@ -148,7 +148,7 @@
       "description": "Endpoints del tag auth-context-controller.",
       "item": [
         {
-          "id": "0de01b9c-5f19-4b7b-85dc-89280b9fce73",
+          "id": "c5233df8-540f-4594-9483-d388c5dea545",
           "name": "GET /api/v1/auth/me",
           "request": {
             "name": "me",
@@ -202,7 +202,7 @@
       "description": "Endpoints del tag catalog-controller.",
       "item": [
         {
-          "id": "dff4821c-198f-4212-a9ae-d8bf9dc4bc4d",
+          "id": "070c9f98-e7d1-458b-ad14-f0a6558a52fb",
           "name": "GET /api/v1/schools",
           "request": {
             "name": "list Schools",
@@ -248,7 +248,7 @@
           }
         },
         {
-          "id": "d31bd4f6-a12a-4bb6-a995-50a2e1a0ffe9",
+          "id": "5a75d5ea-01d2-4bcc-bb38-3c5e2cf8c444",
           "name": "POST /api/v1/schools",
           "request": {
             "name": "create School",
@@ -309,7 +309,7 @@
           }
         },
         {
-          "id": "33d3a308-086e-454a-bbcd-ce91582ff114",
+          "id": "948087aa-df26-472b-bbfe-3d02d8f3ad7f",
           "name": "PUT /api/v1/schools/:id",
           "request": {
             "name": "update School",
@@ -380,7 +380,7 @@
           }
         },
         {
-          "id": "dc5625c5-aaf3-4d67-8f69-86bd19cbc433",
+          "id": "edee900e-f348-4eac-8b49-a191761fe392",
           "name": "DELETE /api/v1/schools/:id",
           "request": {
             "name": "delete School",
@@ -432,7 +432,7 @@
           }
         },
         {
-          "id": "b53935f0-a300-4af2-8dfd-91d233aa75fc",
+          "id": "9a9a7e61-5e1b-4ab2-af90-acc3f6e8cb93",
           "name": "GET /api/v1/measurement-units",
           "request": {
             "name": "list Units",
@@ -478,7 +478,7 @@
           }
         },
         {
-          "id": "c2dde6ac-8cda-4347-86b4-5e925f0a5cd8",
+          "id": "e6881000-9db8-47fc-a267-6dcad0ba8ab6",
           "name": "POST /api/v1/measurement-units",
           "request": {
             "name": "create Unit",
@@ -539,7 +539,7 @@
           }
         },
         {
-          "id": "9b07fd93-2524-497b-b264-6b5dac686a61",
+          "id": "ffa4b4da-09d0-44ce-af50-d1a215372538",
           "name": "PUT /api/v1/measurement-units/:id",
           "request": {
             "name": "update Unit",
@@ -610,7 +610,7 @@
           }
         },
         {
-          "id": "a36e7edd-017d-48e1-b682-b1783b43123a",
+          "id": "eed4dc75-abdf-4d62-8ed8-a0f3dbbe283c",
           "name": "PATCH /api/v1/measurement-units/:id/active",
           "request": {
             "name": "update Unit Active",
@@ -682,7 +682,7 @@
           }
         },
         {
-          "id": "7f69f72e-b0c7-439f-944e-0b664c608173",
+          "id": "2c28c8dc-b7b8-4586-bb94-c866900d48f4",
           "name": "DELETE /api/v1/measurement-units/:id",
           "request": {
             "name": "delete Unit",
@@ -734,7 +734,7 @@
           }
         },
         {
-          "id": "28843fc8-c011-4fe6-9735-a51ddfb3ce1e",
+          "id": "34b37e71-668f-4fcb-b01f-927665d644f6",
           "name": "GET /api/v1/departments",
           "request": {
             "name": "list Departments",
@@ -780,7 +780,7 @@
           }
         },
         {
-          "id": "e861075c-34bb-41a9-af9a-d1ea082432ff",
+          "id": "7cdb6a02-ee84-4245-a41f-6fb347871510",
           "name": "POST /api/v1/departments",
           "request": {
             "name": "create Department",
@@ -841,7 +841,7 @@
           }
         },
         {
-          "id": "d285e795-5523-468a-b687-8a8a8a21be9e",
+          "id": "457dd965-5b9e-4c98-b49b-e86ff8062a28",
           "name": "PUT /api/v1/departments/:id",
           "request": {
             "name": "update Department",
@@ -912,7 +912,7 @@
           }
         },
         {
-          "id": "9e3db0b1-ce14-4541-a925-9d5cb862d122",
+          "id": "e9eb278c-5cb2-4e1e-90fa-0dac9b2c9f72",
           "name": "DELETE /api/v1/departments/:id",
           "request": {
             "name": "delete Department",
@@ -964,7 +964,7 @@
           }
         },
         {
-          "id": "b256d048-0c06-4e60-8476-c194ff58acba",
+          "id": "5c44089c-94d9-4fe5-928a-5b1ab0dbb4b2",
           "name": "GET /api/v1/academic-periods",
           "request": {
             "name": "list Periods",
@@ -1010,7 +1010,7 @@
           }
         },
         {
-          "id": "0c1b2495-65cc-4b04-b201-6e946344350d",
+          "id": "857cf021-f6b6-491c-b2b4-60c1c20e1135",
           "name": "POST /api/v1/academic-periods",
           "request": {
             "name": "create Period",
@@ -1071,7 +1071,7 @@
           }
         },
         {
-          "id": "061ba880-24d2-4731-ae04-34d1fae9cdb4",
+          "id": "78c31f89-ed0f-4d3f-a84f-d03d7edaf3f8",
           "name": "PUT /api/v1/academic-periods/:id",
           "request": {
             "name": "update Period",
@@ -1142,7 +1142,7 @@
           }
         },
         {
-          "id": "ae494f96-e4ce-4a62-8f3b-0128d15dfe16",
+          "id": "d60d9089-55e0-4965-8f68-8722ccc4d462",
           "name": "PATCH /api/v1/academic-periods/:id/status",
           "request": {
             "name": "update Period Status",
@@ -1214,7 +1214,7 @@
           }
         },
         {
-          "id": "7803333b-f756-4815-b1ec-e636221c433b",
+          "id": "411d92ae-29fc-45e6-a244-59bdabbd87b0",
           "name": "PATCH /api/v1/academic-periods/:id/active",
           "request": {
             "name": "update Period Active",
@@ -1286,7 +1286,7 @@
           }
         },
         {
-          "id": "0ef1abba-39b0-4478-bba6-8b3bd0727a2c",
+          "id": "4f2b4572-5e93-4918-ad7f-30ad3ad72edb",
           "name": "DELETE /api/v1/academic-periods/:id",
           "request": {
             "name": "delete Period",
@@ -1344,7 +1344,7 @@
       "description": "Endpoints del tag world-controller.",
       "item": [
         {
-          "id": "2318eebe-ecdf-4f60-bfd4-4dcc0e07a336",
+          "id": "3bbd481b-32c2-426e-84fc-5ac0b223ad66",
           "name": "GET /api/v1/worlds",
           "request": {
             "name": "list",
@@ -1390,7 +1390,7 @@
           }
         },
         {
-          "id": "346083e1-73bf-4e09-bcc3-d032f83b0b16",
+          "id": "6819c427-ea0d-429d-8e69-c837f0d37bff",
           "name": "POST /api/v1/worlds",
           "request": {
             "name": "create",
@@ -1451,7 +1451,7 @@
           }
         },
         {
-          "id": "77f5e9fc-9d76-4c29-ad9b-1e247a8d8035",
+          "id": "72379266-f36c-492f-8adb-5bf4ef32605e",
           "name": "PUT /api/v1/worlds/:id",
           "request": {
             "name": "update",
@@ -1522,7 +1522,7 @@
           }
         },
         {
-          "id": "f33229c0-1fb3-4943-be67-0e958d477893",
+          "id": "8c7117b3-f308-4c99-8a0c-f9886c5b8ef3",
           "name": "DELETE /api/v1/worlds/:id",
           "request": {
             "name": "delete",
@@ -1580,7 +1580,7 @@
       "description": "Endpoints del tag strategic-bet-controller.",
       "item": [
         {
-          "id": "58e55551-4fc5-4268-88c2-0f64574e1c34",
+          "id": "988a5982-9679-4607-83a8-cf5105f4270f",
           "name": "GET /api/v1/strategic-bets",
           "request": {
             "name": "list 1",
@@ -1645,7 +1645,7 @@
           }
         },
         {
-          "id": "af7169de-b0fb-485d-877c-9db87906e01a",
+          "id": "b4e9babf-07df-4880-be5c-752579cb591a",
           "name": "POST /api/v1/strategic-bets",
           "request": {
             "name": "create 1",
@@ -1706,7 +1706,7 @@
           }
         },
         {
-          "id": "a78e1b93-3fc8-4e46-bd69-82c9e7444d55",
+          "id": "5d178b92-b178-44b7-9c55-e0c030aeaa27",
           "name": "GET /api/v1/strategic-bets/:id",
           "request": {
             "name": "get",
@@ -1731,7 +1731,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 }
               ],
               "variable": [
@@ -1774,7 +1774,7 @@
           }
         },
         {
-          "id": "0aee0457-d4f0-4e31-856e-c7deb8fc8432",
+          "id": "265380c0-e221-48b0-902a-6baf8733eefe",
           "name": "PUT /api/v1/strategic-bets/:id",
           "request": {
             "name": "update 1",
@@ -1845,7 +1845,7 @@
           }
         },
         {
-          "id": "6a065ec0-c313-41bb-b16a-5e0c0eb11fbe",
+          "id": "4774843b-fdaf-4a76-a6e5-4641c023b022",
           "name": "PATCH /api/v1/strategic-bets/:id/active",
           "request": {
             "name": "set Active",
@@ -1923,7 +1923,7 @@
       "description": "Endpoints del tag goal-controller.",
       "item": [
         {
-          "id": "1f6dfbfa-e292-4bd4-8e08-200e56cba688",
+          "id": "48f50de6-6bc5-45b4-b29e-e06b8f647708",
           "name": "GET /api/v1/goals",
           "request": {
             "name": "list 5",
@@ -1988,7 +1988,7 @@
           }
         },
         {
-          "id": "b5e64b9c-9aac-4b79-aa52-5edbd60504fb",
+          "id": "cf6da180-5cf0-4de5-84ac-554fcb54b680",
           "name": "POST /api/v1/goals",
           "request": {
             "name": "create 4",
@@ -2049,7 +2049,7 @@
           }
         },
         {
-          "id": "0fa9a17c-8211-416b-833a-22c7fb9b2f11",
+          "id": "825774fc-721c-4cb1-ad51-17d23c713023",
           "name": "GET /api/v1/goals/:id",
           "request": {
             "name": "get 3",
@@ -2074,7 +2074,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 }
               ],
               "variable": [
@@ -2117,7 +2117,7 @@
           }
         },
         {
-          "id": "83c20246-7244-41bb-93b5-0633b79b8d1c",
+          "id": "698c1973-306e-44f9-b878-678f4bbf311e",
           "name": "PUT /api/v1/goals/:id",
           "request": {
             "name": "update 4",
@@ -2188,7 +2188,7 @@
           }
         },
         {
-          "id": "c9551259-4f44-4316-9203-15a8506f069f",
+          "id": "fb6e1d18-ec10-4c90-bd5b-d81317535f48",
           "name": "POST /api/v1/goals/:id/periods/:periodId",
           "request": {
             "name": "attach Period",
@@ -2258,7 +2258,7 @@
           }
         },
         {
-          "id": "bfbeb4cf-cb55-455c-9e7a-048ac32ec483",
+          "id": "bd333ca6-c5ca-4851-8ddc-c0d76bc1e0b6",
           "name": "DELETE /api/v1/goals/:id/periods/:periodId",
           "request": {
             "name": "detach Period",
@@ -2328,7 +2328,7 @@
           }
         },
         {
-          "id": "e05b1a71-85aa-48ef-85b0-7a2c6e0404bc",
+          "id": "1a5727af-d5d6-4c30-a57e-134d4ba3e0a5",
           "name": "PATCH /api/v1/goals/:id/active",
           "request": {
             "name": "set Active 2",
@@ -2406,7 +2406,7 @@
       "description": "Endpoints del tag key-result-controller.",
       "item": [
         {
-          "id": "dd85e9d7-cf44-449d-b7f9-0c6e0e2fc79d",
+          "id": "3b8aa19f-b6c0-46b9-8222-3a140e5f675d",
           "name": "GET /api/v1/key-results",
           "request": {
             "name": "list 4",
@@ -2430,7 +2430,7 @@
                     "type": "text/plain"
                   },
                   "key": "goalId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 },
                 {
                   "disabled": true,
@@ -2439,7 +2439,7 @@
                     "type": "text/plain"
                   },
                   "key": "strategicBetId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 },
                 {
                   "disabled": true,
@@ -2448,7 +2448,7 @@
                     "type": "text/plain"
                   },
                   "key": "periodId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 },
                 {
                   "disabled": true,
@@ -2489,7 +2489,7 @@
           }
         },
         {
-          "id": "0b813e0d-cd97-4710-b075-67fb4fe12997",
+          "id": "da2424bf-4b38-4125-9ad8-407bcc3d81bf",
           "name": "POST /api/v1/key-results",
           "request": {
             "name": "create 3",
@@ -2550,7 +2550,7 @@
           }
         },
         {
-          "id": "103abf74-490a-4246-b8dd-5e588d9d12d7",
+          "id": "4d5d69bb-877d-4341-9bae-15bc7c082234",
           "name": "GET /api/v1/key-results/:id",
           "request": {
             "name": "get 2",
@@ -2608,7 +2608,7 @@
           }
         },
         {
-          "id": "e368418b-ff0b-4bed-9d13-6332a30e86db",
+          "id": "8f2b1c49-44fe-4990-af54-81acf19d1b9b",
           "name": "PUT /api/v1/key-results/:id",
           "request": {
             "name": "update 3",
@@ -2679,7 +2679,7 @@
           }
         },
         {
-          "id": "16c99965-312a-4df5-843c-bf9243a50121",
+          "id": "680e4102-f289-4bff-bda2-ad609aa3d9dd",
           "name": "PATCH /api/v1/key-results/:id/status",
           "request": {
             "name": "set Status",
@@ -2751,7 +2751,7 @@
           }
         },
         {
-          "id": "eaf7d368-877b-4fea-9c1a-87a9170ddd50",
+          "id": "9a33e6c5-af60-4789-b90d-f4ade792b44d",
           "name": "PATCH /api/v1/key-results/:id/progress",
           "request": {
             "name": "update Progress",
@@ -2823,7 +2823,7 @@
           }
         },
         {
-          "id": "480aa79f-aeee-4af1-b53d-f2adb6702d77",
+          "id": "9c5c37e3-85ae-484f-95d6-1565eb8accbb",
           "name": "GET /api/v1/key-results/:id/progress-records",
           "request": {
             "name": "progress Records",
@@ -2882,7 +2882,7 @@
           }
         },
         {
-          "id": "44eb64b1-a55e-4c7f-b803-aec29f3f777f",
+          "id": "9d8f15aa-362a-4200-bc71-ec5b67a62053",
           "name": "PATCH /api/v1/key-results/:id/active",
           "request": {
             "name": "set Active 1",
@@ -2961,7 +2961,7 @@
       "description": "Endpoints del tag project-controller.",
       "item": [
         {
-          "id": "bf923f54-ba86-4c06-8a39-2f309235af98",
+          "id": "7d615298-d67c-4463-ad69-e5689a75d786",
           "name": "GET /api/v1/projects",
           "request": {
             "name": "list 2",
@@ -2985,7 +2985,7 @@
                     "type": "text/plain"
                   },
                   "key": "search",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -2994,7 +2994,7 @@
                     "type": "text/plain"
                   },
                   "key": "status",
-                  "value": "FINALIZADO"
+                  "value": "BORRADOR"
                 },
                 {
                   "disabled": true,
@@ -3012,7 +3012,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 },
                 {
                   "disabled": true,
@@ -3021,7 +3021,7 @@
                     "type": "text/plain"
                   },
                   "key": "period",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 }
               ],
               "variable": [],
@@ -3043,7 +3043,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
+                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
                 ]
               }
             }
@@ -3053,7 +3053,7 @@
           }
         },
         {
-          "id": "19927b98-0461-4f8a-8cd7-57fb4f67b4ea",
+          "id": "554c9547-b01d-402f-99d7-36f26ff42023",
           "name": "POST /api/v1/projects",
           "request": {
             "name": "create 2",
@@ -3086,7 +3086,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3102,7 +3102,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
                   "function setVar(key, value) { if (pm.environment.has(key)) { pm.environment.set(key, value); } else { pm.collectionVariables.set(key, value); } }",
                   "if (pm.response.code < 300) { const value = pm.response.json()[\"id\"]; setVar(\"newProjectId\", String(value)); }"
                 ]
@@ -3114,7 +3114,7 @@
           }
         },
         {
-          "id": "da575b69-bc96-45b3-a812-25ec4d254544",
+          "id": "a6861e93-7c54-473a-a986-743f35c31996",
           "name": "GET /api/v1/projects/:id",
           "request": {
             "name": "get 1",
@@ -3162,7 +3162,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
                 ]
               }
             }
@@ -3172,7 +3172,7 @@
           }
         },
         {
-          "id": "fc7fa9ec-45bf-4ff1-9c71-a18dc819823f",
+          "id": "d4eb667e-8315-4310-b6c2-e5c5ba3c0021",
           "name": "GET /api/v1/projects/:id/detail",
           "request": {
             "name": "detail",
@@ -3231,7 +3231,7 @@
           }
         },
         {
-          "id": "48b3293e-34f3-48bc-bea5-83b92e2b8f19",
+          "id": "d0fb5bb4-c675-430c-9c20-aae555eaa7e7",
           "name": "GET /api/v1/projects/:id/history",
           "request": {
             "name": "history",
@@ -3290,7 +3290,7 @@
           }
         },
         {
-          "id": "6501e913-4242-409e-83d5-953555f8a7aa",
+          "id": "0825a85d-31db-4f64-b14f-bd9796be00d9",
           "name": "GET /api/v1/projects/:id/impact-chain",
           "request": {
             "name": "impact Chain",
@@ -3349,7 +3349,7 @@
           }
         },
         {
-          "id": "785bcf94-7d46-4ce3-9754-bc7e9d0c67c1",
+          "id": "f647a7f8-aff9-43a1-8020-e95caf1e4b8a",
           "name": "GET /api/v1/projects/:id/contribution-chain",
           "request": {
             "name": "contribution Chain",
@@ -3408,7 +3408,7 @@
           }
         },
         {
-          "id": "b772cd4d-d63b-44d3-aa72-81c197a8c792",
+          "id": "bb1173f3-b9c5-420f-b567-c50f4dfa52cf",
           "name": "PUT /api/v1/projects/:id",
           "request": {
             "name": "update 2",
@@ -3453,7 +3453,7 @@
             "method": "PUT",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}} editado\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}} editado\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3469,7 +3469,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
                 ]
               }
             }
@@ -3479,7 +3479,7 @@
           }
         },
         {
-          "id": "ef1b1b8a-85b0-43b6-aa95-37635ee7409c",
+          "id": "1daf5c99-40fe-47af-8487-0f4df9cf76c1",
           "name": "POST /api/v1/projects/:id/teachers",
           "request": {
             "name": "assign Teacher",
@@ -3551,7 +3551,7 @@
           }
         },
         {
-          "id": "0469bcdc-3f20-40bc-b3ac-4c59759f32b6",
+          "id": "baec30d7-9251-4b7c-a6c7-9929bf9c1786",
           "name": "GET /api/v1/projects/:id/teachers",
           "request": {
             "name": "list Teachers",
@@ -3610,7 +3610,7 @@
           }
         },
         {
-          "id": "2a281d8e-571c-42ab-91b9-a9b49fdc54d1",
+          "id": "039e66d0-5153-4c48-8cde-9d19b8ad7fae",
           "name": "DELETE /api/v1/projects/:id/teachers/:teacherId/roles/:roleId",
           "request": {
             "name": "remove Teacher",
@@ -3686,7 +3686,7 @@
           }
         },
         {
-          "id": "8e01b137-f827-4e49-9790-a6f3d641ff50",
+          "id": "81973437-38ca-43a7-825a-773071cc0a51",
           "name": "POST /api/v1/projects/:id/progress",
           "request": {
             "name": "register Progress",
@@ -3758,7 +3758,7 @@
           }
         },
         {
-          "id": "1f2c3720-4864-4e61-9845-f780d8fea373",
+          "id": "90dc29cb-17f2-4bb1-8762-41ad11f3f5f2",
           "name": "PATCH /api/v1/projects/:id/status",
           "request": {
             "name": "update Status",
@@ -3820,7 +3820,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
                 ]
               }
             }
@@ -3830,7 +3830,7 @@
           }
         },
         {
-          "id": "d16dcf76-6883-4130-a899-13997cbc5415",
+          "id": "c9af7219-da38-4e83-9ec3-2c42b153d2e7",
           "name": "POST /api/v1/projects/sync/trayectoria",
           "request": {
             "name": "sync Trayectoria",
@@ -3860,7 +3860,7 @@
                   "type": "text/plain"
                 },
                 "key": "Authorization",
-                "value": "sed cillum dolor"
+                "value": "dolor irure eiusmod"
               },
               {
                 "key": "Accept",
@@ -3894,7 +3894,7 @@
       "description": "Endpoints del tag project-key-result-link-controller.",
       "item": [
         {
-          "id": "9ea01546-bda6-475c-ba48-7052fd2b3c91",
+          "id": "e8659f4c-59b5-4d18-96a3-f2f8c06a031e",
           "name": "GET /api/v1/project-key-result-links",
           "request": {
             "name": "list 3",
@@ -3927,7 +3927,7 @@
                     "type": "text/plain"
                   },
                   "key": "keyResultId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -3949,7 +3949,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"projectId\",\"projectName\",\"keyResultId\",\"keyResultDescription\",\"contributionWeight\",\"contributionType\",\"totalWeightForKeyResult\",\"overweightWarning\",\"active\",\"createdAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
+                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"projectId\",\"projectName\",\"keyResultId\",\"keyResultDescription\",\"active\",\"createdAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
                 ]
               }
             }
@@ -3959,7 +3959,7 @@
           }
         },
         {
-          "id": "250733fd-2e09-4331-94d5-f35d7020306c",
+          "id": "168eae50-4ec1-42f3-b81f-26d36196c116",
           "name": "POST /api/v1/project-key-result-links",
           "request": {
             "name": "link",
@@ -3992,7 +3992,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"projectId\": {{newProjectId}},\n  \"keyResultId\": 3,\n  \"contributionWeight\": 5,\n  \"contributionType\": \"SOPORTE\"\n}",
+              "raw": "{\n  \"projectId\": {{newProjectId}},\n  \"keyResultId\": 3\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4008,7 +4008,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"projectId\",\"projectName\",\"keyResultId\",\"keyResultDescription\",\"contributionWeight\",\"contributionType\",\"totalWeightForKeyResult\",\"overweightWarning\",\"active\",\"createdAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"projectId\",\"projectName\",\"keyResultId\",\"keyResultDescription\",\"active\",\"createdAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
                   "function setVar(key, value) { if (pm.environment.has(key)) { pm.environment.set(key, value); } else { pm.collectionVariables.set(key, value); } }",
                   "if (pm.response.code < 300) { const value = pm.response.json()[\"id\"]; setVar(\"newLinkId\", String(value)); }"
                 ]
@@ -4020,78 +4020,7 @@
           }
         },
         {
-          "id": "ab8a0b52-8c41-4aeb-9401-fed37fe21742",
-          "name": "PATCH /api/v1/project-key-result-links/:id",
-          "request": {
-            "name": "update 5",
-            "description": {
-              "type": "text/plain"
-            },
-            "url": {
-              "path": [
-                "api",
-                "v1",
-                "project-key-result-links",
-                ":id"
-              ],
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "query": [],
-              "variable": [
-                {
-                  "disabled": false,
-                  "description": {
-                    "content": "(Required) ",
-                    "type": "text/plain"
-                  },
-                  "type": "any",
-                  "value": "{{newLinkId}}",
-                  "key": "id"
-                }
-              ],
-              "raw": "{{baseUrl}}/api/v1/project-key-result-links/:id"
-            },
-            "header": [
-              {
-                "key": "Accept",
-                "value": "*/*"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "method": "PATCH",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"contributionType\": \"INDIRECTA\",\n  \"contributionWeight\": 8\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"projectId\",\"projectName\",\"keyResultId\",\"keyResultDescription\",\"contributionWeight\",\"contributionType\",\"totalWeightForKeyResult\",\"overweightWarning\",\"active\",\"createdAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          }
-        },
-        {
-          "id": "0e85638a-a9b3-431a-af10-d5cbaa69a081",
+          "id": "263601ca-df6d-4127-a3f8-7e4af21c0257",
           "name": "DELETE /api/v1/project-key-result-links/:id",
           "request": {
             "name": "unlink",
@@ -4149,7 +4078,7 @@
       "description": "Endpoints del tag people-controller.",
       "item": [
         {
-          "id": "0b9a7e0f-e8fc-4f40-8fa0-70970b375891",
+          "id": "0d17b087-11d5-4eb8-b2be-0f88efd47c04",
           "name": "GET /api/v1/roles",
           "request": {
             "name": "list Roles",
@@ -4195,7 +4124,7 @@
           }
         },
         {
-          "id": "90b54649-7236-4256-801c-94a6ba947faa",
+          "id": "42dbfa36-d8f7-42b4-8734-3ea77c3849f9",
           "name": "POST /api/v1/roles",
           "request": {
             "name": "create Role",
@@ -4256,7 +4185,7 @@
           }
         },
         {
-          "id": "9e95a29e-52c3-4f08-830e-d279b216689d",
+          "id": "f923eed0-5d3d-4f56-8ae5-0ac1ec3d01f1",
           "name": "PUT /api/v1/roles/:id",
           "request": {
             "name": "update Role",
@@ -4327,7 +4256,7 @@
           }
         },
         {
-          "id": "3159384d-c667-4a45-ae76-2993922e3c7e",
+          "id": "e9512008-0a18-4354-9052-3aaafef908fc",
           "name": "DELETE /api/v1/roles/:id",
           "request": {
             "name": "delete Role",
@@ -4379,7 +4308,7 @@
           }
         },
         {
-          "id": "d6f4b4d3-4b89-40cc-8b16-e096f280cf67",
+          "id": "30cd300d-137c-47b3-91b7-edfbbea3ff1a",
           "name": "GET /api/v1/positions",
           "request": {
             "name": "list Positions",
@@ -4425,7 +4354,7 @@
           }
         },
         {
-          "id": "fde47022-84da-4530-97bd-9290a31df5ff",
+          "id": "1ed0abb3-5d0c-4c4b-96f6-7fe11ff4c14a",
           "name": "POST /api/v1/positions",
           "request": {
             "name": "create Position",
@@ -4486,7 +4415,7 @@
           }
         },
         {
-          "id": "0ebc02e6-4aaa-437f-93ec-ecc9b1b200b7",
+          "id": "995ab746-86a8-4001-a7be-a7a68b2a50f9",
           "name": "PUT /api/v1/positions/:id",
           "request": {
             "name": "update Position",
@@ -4557,7 +4486,7 @@
           }
         },
         {
-          "id": "031e4943-0868-40ae-888a-c791d265e9c8",
+          "id": "c6572c61-b78d-45f3-990a-1b7085995f22",
           "name": "GET /api/v1/professors",
           "request": {
             "name": "list Professors",
@@ -4613,7 +4542,7 @@
           }
         },
         {
-          "id": "6b1f83f4-5cd0-476a-8699-de03c8fa1af6",
+          "id": "d6ba5f8b-0a4d-468d-8e5c-9c7585d98f4c",
           "name": "POST /api/v1/professors",
           "request": {
             "name": "create Professor",
@@ -4674,7 +4603,7 @@
           }
         },
         {
-          "id": "6f1be983-4549-4d86-a3fe-3bb94e203328",
+          "id": "98dc68cb-7e98-4c44-b2e2-930336c52bf0",
           "name": "PUT /api/v1/professors/:id",
           "request": {
             "name": "update Professor",
@@ -4745,7 +4674,7 @@
           }
         },
         {
-          "id": "00edc235-35a7-448f-af30-fbd5348f1baf",
+          "id": "ea106db9-25b8-4f1c-8314-42e220b5727e",
           "name": "POST /api/v1/professors/:id/positions",
           "request": {
             "name": "assign Position",
@@ -4817,7 +4746,7 @@
           }
         },
         {
-          "id": "c9e07321-fe5c-4d84-98e0-0c375cb12b96",
+          "id": "3bd759ae-f00f-4f82-a10b-1f63515ebf70",
           "name": "GET /api/v1/professors/:id/positions",
           "request": {
             "name": "list Teacher Positions",
@@ -4876,7 +4805,7 @@
           }
         },
         {
-          "id": "a39be723-574e-447e-9875-822ac816a6ff",
+          "id": "14d41054-d082-41dd-918a-2acdf0dc9b90",
           "name": "DELETE /api/v1/professors/:id/positions/:positionId",
           "request": {
             "name": "remove Position",
@@ -4940,7 +4869,7 @@
           }
         },
         {
-          "id": "cdd0661b-e02f-4e5a-bf4a-8f60ebc84904",
+          "id": "09650c4d-59c3-4122-9493-c9ede24e4c7c",
           "name": "DELETE /api/v1/professors/:id",
           "request": {
             "name": "delete Professor",
@@ -4992,7 +4921,7 @@
           }
         },
         {
-          "id": "8e793964-5e2a-4e3c-99ef-bf565e579000",
+          "id": "eddd2fe4-a991-4784-a7c2-d142100cf371",
           "name": "DELETE /api/v1/positions/:id",
           "request": {
             "name": "delete Position",
@@ -5044,7 +4973,7 @@
           }
         },
         {
-          "id": "e12d8aa4-f2fd-4f09-8977-d837f9c664fd",
+          "id": "5a12c394-8c34-4e57-a7ec-ebe4b32957ae",
           "name": "GET /api/v1/directory-users",
           "request": {
             "name": "list Directory Users",
@@ -5068,7 +4997,7 @@
                     "type": "text/plain"
                   },
                   "key": "search",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -5077,7 +5006,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 },
                 {
                   "disabled": false,
@@ -5095,7 +5024,7 @@
                     "type": "text/plain"
                   },
                   "key": "active",
-                  "value": "false"
+                  "value": "true"
                 }
               ],
               "variable": [],
@@ -5127,7 +5056,7 @@
           }
         },
         {
-          "id": "a0a0cbbf-9d9d-443e-a515-64c20ac46d91",
+          "id": "c08b76e9-8764-4b2f-866e-f2df8d401f9e",
           "name": "POST /api/v1/directory-users",
           "request": {
             "name": "create Directory User",
@@ -5188,7 +5117,7 @@
           }
         },
         {
-          "id": "29c5f6b9-6660-41c3-b9a1-3a89401a6b6a",
+          "id": "514ac37e-6dae-4991-95f9-acb441fbc2a4",
           "name": "PUT /api/v1/directory-users/:id",
           "request": {
             "name": "update Directory User",
@@ -5259,7 +5188,7 @@
           }
         },
         {
-          "id": "60acec1c-993d-4350-ad1e-b9950fa03962",
+          "id": "f122af26-5edb-4c84-9631-1807759c7efe",
           "name": "POST /api/v1/directory-users/:id/access-link",
           "request": {
             "name": "create Access Link",
@@ -5318,7 +5247,7 @@
           }
         },
         {
-          "id": "ae0137fc-5504-48ca-bd46-0fe03354b78c",
+          "id": "604428e3-d32d-48ce-85e1-8db9be695d0b",
           "name": "PATCH /api/v1/directory-users/:id/active",
           "request": {
             "name": "update Directory User Active",
@@ -5390,7 +5319,7 @@
           }
         },
         {
-          "id": "fb9b58dd-dffb-4e27-9b17-1bcd1cb5aa4f",
+          "id": "dcb9e2e3-6ee6-47d2-88e8-eda9a990559f",
           "name": "DELETE /api/v1/directory-users/:id",
           "request": {
             "name": "delete Directory User",
@@ -5448,7 +5377,7 @@
       "description": "Endpoints del tag strategic-hierarchy-controller.",
       "item": [
         {
-          "id": "14cc3459-ff13-4a59-af1b-2bca9a1c0490",
+          "id": "d10a9e11-ae54-4cb7-a6a9-c76c6a5294af",
           "name": "GET /api/v1/strategic-hierarchy/tree",
           "request": {
             "name": "tree",
@@ -5511,7 +5440,7 @@
       "description": "Endpoints del tag dashboard-controller.",
       "item": [
         {
-          "id": "219df9d7-ae47-4423-9353-37fe4303006b",
+          "id": "dc48e360-3baf-4efa-a40c-292fa2dcaf5f",
           "name": "GET /api/v1/dashboard/summary",
           "request": {
             "name": "summary",
@@ -5568,7 +5497,7 @@
           }
         },
         {
-          "id": "5b759dcd-83f8-4fcb-9710-11ef20ee43d9",
+          "id": "147d5765-a157-4561-95db-9b710847eff2",
           "name": "GET /api/v1/dashboard/strategic-bets/summary",
           "request": {
             "name": "strategic Bets",
@@ -5626,7 +5555,7 @@
           }
         },
         {
-          "id": "9de7093d-ec93-4553-a361-0179e33574dc",
+          "id": "3e1e5f41-d854-48a8-a073-20c518330344",
           "name": "GET /api/v1/dashboard/projects/by-status",
           "request": {
             "name": "projects By Status",
@@ -5684,7 +5613,7 @@
           }
         },
         {
-          "id": "4a5a1fa6-b250-47ed-aa3c-8277c3adcfd0",
+          "id": "f96b2d09-da4b-47ac-bba2-a72905fd1344",
           "name": "GET /api/v1/dashboard/key-results/by-status",
           "request": {
             "name": "key Results By Status",
@@ -5742,7 +5671,7 @@
           }
         },
         {
-          "id": "c2651007-7fec-4073-92c6-5b26fb89616d",
+          "id": "925ee272-3a7b-4e7f-937c-9fbd1f7d1426",
           "name": "GET /api/v1/dashboard/goals/summary",
           "request": {
             "name": "goals",
@@ -5800,7 +5729,7 @@
           }
         },
         {
-          "id": "15384829-3c6e-4527-9d25-20cee9cb7315",
+          "id": "c2bcda38-02bd-4fd7-a10c-be9735519af0",
           "name": "GET /api/v1/dashboard/departments/summary",
           "request": {
             "name": "departments 1",
@@ -5864,7 +5793,7 @@
       "description": "Endpoints del tag report-controller.",
       "item": [
         {
-          "id": "feabb829-9208-4dbe-8bf1-17a57a45a7a6",
+          "id": "6d00aebd-ce8a-40f0-b2ca-eb18fe6d0d83",
           "name": "GET /api/v1/reports",
           "request": {
             "name": "consolidated",
@@ -5897,7 +5826,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -5929,7 +5858,7 @@
           }
         },
         {
-          "id": "2adf1657-d0a3-431a-8120-03100cb9aebd",
+          "id": "fac9a3a0-c3fc-4af0-ac57-8012ecbc0e47",
           "name": "GET /api/v1/reports/general",
           "request": {
             "name": "general",
@@ -5963,7 +5892,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -5995,7 +5924,7 @@
           }
         },
         {
-          "id": "4f541659-a820-4a02-a1b4-3d4b756cc716",
+          "id": "2361dc5c-a2d0-4200-80bb-bf4987cdf04b",
           "name": "GET /api/v1/reports/departments",
           "request": {
             "name": "departments",
@@ -6052,7 +5981,7 @@
           }
         },
         {
-          "id": "a757d99b-3c14-4920-904e-f70167600c52",
+          "id": "a1acd237-f5e1-4d0a-8675-c47420ef1511",
           "name": "GET /api/v1/reports/key-results/ranking",
           "request": {
             "name": "key Result Ranking",
@@ -6087,7 +6016,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -6109,7 +6038,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"keyResultId\",\"keyResultName\",\"goalNames\",\"strategicBetNames\",\"period\",\"progressPercentage\",\"linkedProjects\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
+                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"keyResultId\",\"keyResultName\",\"goalNames\",\"strategicBetNames\",\"period\",\"progressPercentage\",\"linkedProjects\",\"linkedProjectItems\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
                 ]
               }
             }
@@ -6119,7 +6048,7 @@
           }
         },
         {
-          "id": "8da539e4-5b59-4074-bc53-beebdc8d6ccd",
+          "id": "70ce6970-6d4e-4c5c-b5b1-6f920094fae0",
           "name": "GET /api/v1/reports/period-comparison",
           "request": {
             "name": "period Comparison",
@@ -6162,7 +6091,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -6194,7 +6123,7 @@
           }
         },
         {
-          "id": "70a1c4c3-370b-43fb-8ed6-7bbc82e63439",
+          "id": "8213270b-3c77-4404-b550-254485690ff1",
           "name": "GET /api/v1/reports/export.csv",
           "request": {
             "name": "csv",
@@ -6228,7 +6157,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -6260,7 +6189,7 @@
           }
         },
         {
-          "id": "a7cf6d25-19b1-460d-815b-6dd474cc7141",
+          "id": "78dd6582-0232-45cc-9c57-a6e617c2f69f",
           "name": "GET /api/v1/reports/export.pdf",
           "request": {
             "name": "pdf",
@@ -6294,7 +6223,7 @@
                     "type": "text/plain"
                   },
                   "key": "departmentId",
-                  "value": "91534842"
+                  "value": "-72394705"
                 }
               ],
               "variable": [],
@@ -6332,7 +6261,7 @@
       "description": "Endpoints del tag presentation-controller.",
       "item": [
         {
-          "id": "dedf7a51-d2ca-46d3-98e2-88075e4e9230",
+          "id": "91809f3a-5320-4601-9a01-ce6362285a9c",
           "name": "GET /api/v1/presentation",
           "request": {
             "name": "presentation",
@@ -6394,7 +6323,7 @@
       "description": "Endpoints del tag consistency-controller.",
       "item": [
         {
-          "id": "e0846d21-4ccc-4bb3-810f-795efbdce58f",
+          "id": "0a2cef44-a296-47db-b3cb-6aa5186946d5",
           "name": "GET /api/v1/consistency/check",
           "request": {
             "name": "check",
@@ -6419,7 +6348,7 @@
                     "type": "text/plain"
                   },
                   "key": "severity",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6428,7 +6357,7 @@
                     "type": "text/plain"
                   },
                   "key": "module",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6437,7 +6366,7 @@
                     "type": "text/plain"
                   },
                   "key": "staleDays",
-                  "value": "-89950246"
+                  "value": "-44586423"
                 }
               ],
               "variable": [],
@@ -6469,7 +6398,7 @@
           }
         },
         {
-          "id": "5cc6bf86-7a64-4465-8e4d-8f563a004976",
+          "id": "f850e490-ccaa-4ab0-95b8-b930b94e388e",
           "name": "GET /api/v1/consistency/check/export.csv",
           "request": {
             "name": "csv 1",
@@ -6495,7 +6424,7 @@
                     "type": "text/plain"
                   },
                   "key": "severity",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6504,7 +6433,7 @@
                     "type": "text/plain"
                   },
                   "key": "module",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6513,7 +6442,7 @@
                     "type": "text/plain"
                   },
                   "key": "staleDays",
-                  "value": "-89950246"
+                  "value": "-44586423"
                 }
               ],
               "variable": [],
@@ -6551,7 +6480,7 @@
       "description": "Endpoints del tag audit-controller.",
       "item": [
         {
-          "id": "afaf2362-a90e-44e6-b7b0-c297b4311cd2",
+          "id": "ca7b0a8e-e54e-4206-ba01-7ea0c175487c",
           "name": "GET /api/v1/audit-logs",
           "request": {
             "name": "list 6",
@@ -6593,7 +6522,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityId",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6602,7 +6531,7 @@
                     "type": "text/plain"
                   },
                   "key": "actorUsername",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6611,7 +6540,7 @@
                     "type": "text/plain"
                   },
                   "key": "from",
-                  "value": "2023-04-01T19:34:11.400Z"
+                  "value": "2023-01-14T13:48:56.335Z"
                 },
                 {
                   "disabled": true,
@@ -6620,7 +6549,7 @@
                     "type": "text/plain"
                   },
                   "key": "to",
-                  "value": "2023-04-01T19:34:11.400Z"
+                  "value": "2023-01-14T13:48:56.335Z"
                 }
               ],
               "variable": [],
@@ -6652,7 +6581,7 @@
           }
         },
         {
-          "id": "ba286952-cacd-4382-bcf8-2cbf9377dccf",
+          "id": "8b102f5a-7942-422d-b755-e76553f25fd7",
           "name": "GET /api/v1/audit-logs/summary",
           "request": {
             "name": "summary 1",
@@ -6686,7 +6615,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityType",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6695,7 +6624,7 @@
                     "type": "text/plain"
                   },
                   "key": "entityId",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6704,7 +6633,7 @@
                     "type": "text/plain"
                   },
                   "key": "actorUsername",
-                  "value": "sed cillum dolor"
+                  "value": "dolor irure eiusmod"
                 },
                 {
                   "disabled": true,
@@ -6713,7 +6642,7 @@
                     "type": "text/plain"
                   },
                   "key": "from",
-                  "value": "2023-04-01T19:34:11.400Z"
+                  "value": "2023-01-14T13:48:56.335Z"
                 },
                 {
                   "disabled": true,
@@ -6722,7 +6651,7 @@
                     "type": "text/plain"
                   },
                   "key": "to",
-                  "value": "2023-04-01T19:34:11.400Z"
+                  "value": "2023-01-14T13:48:56.335Z"
                 }
               ],
               "variable": [],
@@ -7521,7 +7450,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
+                  "pm.test('Forma: lista con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('array'); body.forEach(function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); }); });"
                 ]
               }
             }
@@ -7653,7 +7582,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -8140,7 +8069,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -8765,7 +8694,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 13,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 13,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-project\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9124,7 +9053,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-otro\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"https://planner.cloud.microsoft/webui/plan/postman-otro\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9139,7 +9068,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
                   "pm.test(\"plannerUrl guardado\", function () { pm.expect(pm.response.json().plannerUrl).to.equal(\"https://planner.cloud.microsoft/webui/plan/postman-otro\"); });"
                 ]
               }
@@ -9170,7 +9099,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": null\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9185,7 +9114,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"contributionWeight\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
+                  "pm.test('Forma: objeto con campos documentados', function () { const body = pm.response.json(); pm.expect(body).to.be.an('object'); (function (item) { const documented = [\"id\",\"externalProjectId\",\"externalSource\",\"name\",\"description\",\"type\",\"departmentId\",\"departmentName\",\"status\",\"startPeriod\",\"endPeriod\",\"startDate\",\"endDate\",\"actualEndDate\",\"globalProgress\",\"keyResultId\",\"keyResultName\",\"linkStatus\",\"jiraKey\",\"plannerUrl\",\"tutors\",\"linkedKeyResults\",\"origin\",\"syncStatus\",\"lastSyncedAt\",\"createdAt\",\"updatedAt\"]; Object.keys(item).forEach(function (key) { pm.expect(documented, 'campo no documentado: ' + key).to.include(key); }); [\"id\"].forEach(function (key) { pm.expect(item, 'falta ' + key).to.have.property(key); }); })(body); });",
                   "pm.test(\"plannerUrl vacio\", function () { pm.expect(pm.response.json().plannerUrl == null).to.equal(true); });"
                 ]
               }
@@ -9215,7 +9144,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"contributionWeight\": 15,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"http://planner.cloud.microsoft/plan\"\n}",
+              "raw": "{\n  \"name\": \"Proyecto Postman {{runId}}\",\n  \"description\": \"Creado por la coleccion Postman\",\n  \"type\": \"EXTENSION\",\n  \"departmentId\": 1,\n  \"startPeriod\": \"2026-1\",\n  \"endPeriod\": \"2026-2\",\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-11-30\",\n  \"keyResultId\": 2,\n  \"tutors\": [\n    \"Tutor Postman\"\n  ],\n  \"plannerUrl\": \"http://planner.cloud.microsoft/plan\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

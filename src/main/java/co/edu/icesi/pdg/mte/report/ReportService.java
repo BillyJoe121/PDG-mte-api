@@ -166,7 +166,30 @@ public class ReportService {
                         Mapper.strategicBetNames(keyResult),
                         keyResult.getAcademicPeriod() == null ? null : keyResult.getAcademicPeriod().getName(),
                         keyResult.getProgressPercentage(),
-                        snapshot.linksByKeyResult().getOrDefault(keyResult.getId(), List.of()).size()
+                        snapshot.linksByKeyResult().getOrDefault(keyResult.getId(), List.of()).size(),
+                        rankingProjectItems(snapshot.linksByKeyResult().getOrDefault(keyResult.getId(), List.of()))
+                ))
+                .toList();
+    }
+
+    private List<ReportDtos.RankingProjectItem> rankingProjectItems(List<ProjectKeyResultLink> links) {
+        Map<Long, Project> projectsById = new LinkedHashMap<>();
+        for (ProjectKeyResultLink link : links) {
+            Project project = link.getProject();
+            if (project != null && project.getId() != null) {
+                projectsById.putIfAbsent(project.getId(), project);
+            }
+        }
+        return projectsById.values()
+                .stream()
+                .sorted(Comparator.comparing(Project::getGlobalProgress,
+                                Comparator.nullsLast(Comparator.<BigDecimal>reverseOrder()))
+                        .thenComparing(Project::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .map(project -> new ReportDtos.RankingProjectItem(
+                        project.getId(),
+                        project.getName(),
+                        project.getGlobalProgress(),
+                        project.getStatus() == null ? null : project.getStatus().name()
                 ))
                 .toList();
     }

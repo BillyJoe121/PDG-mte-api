@@ -3,7 +3,6 @@ package co.edu.icesi.pdg.mte.strategy;
 import co.edu.icesi.pdg.mte.TestFixtures;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.common.BusinessException;
-import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.Project;
@@ -11,7 +10,6 @@ import co.edu.icesi.pdg.mte.project.ProjectStatus;
 import co.edu.icesi.pdg.mte.project.ProjectType;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,8 +117,6 @@ class StrategyExecutionSummaryBranchesTest {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setProject(project);
-        link.setContributionWeight(BigDecimal.TEN);
-        link.setContributionType(ContributionType.DIRECTA);
         return link;
     }
 }

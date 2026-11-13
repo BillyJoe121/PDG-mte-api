@@ -112,7 +112,7 @@ class AuditTrailE2ETest {
                 """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 201);
         Long projectId = project.get("id").asLong();
         JsonNode link = post("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 50, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(projectId, keyResultId), 201);
         post("/api/v1/projects/" + projectId + "/progress", """
                 {"progressPercent": 45, "comment": "Avance auditado", "milestones": "Hito 1"}

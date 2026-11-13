@@ -5,7 +5,6 @@ import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.audit.AuditService;
 import co.edu.icesi.pdg.mte.catalog.Department;
 import co.edu.icesi.pdg.mte.catalog.DepartmentRepository;
-import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ExternalProjectPayload;
 import co.edu.icesi.pdg.mte.integration.IntegrationProperties;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
@@ -108,7 +107,6 @@ abstract class ProjectServiceTestSupport {
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 6, 1),
                 1L,
-                BigDecimal.valueOf(25),
                 "ACTIVO",
                 null,
                 null,
@@ -129,16 +127,11 @@ abstract class ProjectServiceTestSupport {
                 null,
                 null,
                 keyResultId,
-                BigDecimal.valueOf(25),
                 "ACTIVO",
                 null,
                 null,
                 List.of(),
-                List.of(new ProjectDtos.ProjectKeyResultDraftRequest(
-                        keyResultId,
-                        BigDecimal.valueOf(25),
-                        ContributionType.DIRECTA
-                ))
+                List.of(new ProjectDtos.ProjectKeyResultDraftRequest(keyResultId))
         );
     }
 
@@ -172,18 +165,15 @@ abstract class ProjectServiceTestSupport {
         project.setEndPeriod("2026-2");
         project.setGlobalProgress(BigDecimal.ZERO);
         project.setKeyResult(keyResult);
-        project.setContributionWeight(BigDecimal.valueOf(25));
         project.setLinkStatus("ACTIVO");
         project.setTutors(List.of("Tutora Uno"));
         return project;
     }
 
-    protected ProjectKeyResultLink link(Project project, KeyResult keyResult, int weight) {
+    protected ProjectKeyResultLink link(Project project, KeyResult keyResult) {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setProject(project);
         link.setKeyResult(keyResult);
-        link.setContributionWeight(BigDecimal.valueOf(weight));
-        link.setContributionType(ContributionType.DIRECTA);
         return link;
     }
 

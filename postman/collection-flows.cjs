@@ -12,7 +12,7 @@ const KR_SHAPE = "GET /api/v1/key-results/:id";
 const PROJECT_SHAPE = "GET /api/v1/projects/:id";
 const DIRECTORY_SHAPE = "POST /api/v1/directory-users";
 const PLANNER_OTHER = "https://planner.cloud.microsoft/webui/plan/postman-otro";
-const projectWithoutKr = (({ keyResultId, contributionWeight, ...rest }) => rest)(projectBody);
+const projectWithoutKr = (({ keyResultId, ...rest }) => rest)(projectBody);
 
 const check = (title, body) => `pm.test(${JSON.stringify(title)}, function () { ${body} });`;
 

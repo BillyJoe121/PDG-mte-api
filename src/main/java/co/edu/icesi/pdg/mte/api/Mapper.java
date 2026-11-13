@@ -220,7 +220,6 @@ public final class Mapper {
                 project.getGlobalProgress(),
                 project.getKeyResult() == null ? null : project.getKeyResult().getId(),
                 project.getKeyResult() == null ? null : project.getKeyResult().getName(),
-                project.getContributionWeight(),
                 project.getLinkStatus(),
                 project.getJiraKey(),
                 project.getPlannerUrl(),

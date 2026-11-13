@@ -2,7 +2,6 @@ package co.edu.icesi.pdg.mte.project;
 
 import co.edu.icesi.pdg.mte.api.dto.ProjectDtos;
 import co.edu.icesi.pdg.mte.common.BusinessException;
-import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.people.Professor;
 import co.edu.icesi.pdg.mte.people.Role;
@@ -64,14 +63,12 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
                 null,
                 null,
                 List.of("Tutor"),
-                List.of(new ProjectDtos.ProjectKeyResultDraftRequest(1L, BigDecimal.valueOf(35), ContributionType.SOPORTE))
+                List.of(new ProjectDtos.ProjectKeyResultDraftRequest(1L))
         ));
 
         assertThat(response.id()).isEqualTo(10L);
         verify(linkRepository).save(argThat(link -> link.getProject().getId().equals(10L)
-                && link.getKeyResult().getId().equals(1L)
-                && link.getContributionWeight().compareTo(BigDecimal.valueOf(35)) == 0
-                && link.getContributionType() == ContributionType.SOPORTE));
+                && link.getKeyResult().getId().equals(1L)));
         verify(keyResultRepository, never()).save(any());
     }
 
@@ -164,10 +161,10 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
 
         var created = service.create(new ProjectDtos.ProjectRequest(
                 "Proyecto borrador", "Descripcion", ProjectType.GRADO, 1L, null, "2026-1", null, null, null,
-                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, null, null));
+                1L, "ACTIVO", null, null, null, null));
         var updated = service.update(1L, new ProjectDtos.ProjectUpdateRequest(
                 "Proyecto actualizado", "Descripcion", ProjectType.EXTENSION, 1L, "2026-1", null, null, null, null,
-                1L, BigDecimal.valueOf(25), "ACTIVO", null, null, new ArrayList<>()));
+                1L, "ACTIVO", null, null, new ArrayList<>()));
         var active = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.ACTIVO));
         project.setActualEndDate(LocalDate.of(2026, 12, 1));
         var finalized = service.updateStatus(1L, new ProjectDtos.ProjectStatusRequest(ProjectStatus.FINALIZADO));

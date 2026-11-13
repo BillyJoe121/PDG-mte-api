@@ -29,13 +29,12 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
         entry.setProject(project);
         entry.setProgressPercent(BigDecimal.valueOf(80));
         entry.setComment("Avance");
-        ProjectKeyResultLink link = link(project, keyResult, 60);
-        ProjectKeyResultLink overweightLink = link(project, keyResult, 50);
+        ProjectKeyResultLink link = link(project, keyResult);
+        ProjectKeyResultLink secondLink = link(project, keyResult);
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(entry));
-        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link, overweightLink));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link, overweightLink));
+        when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link, secondLink));
 
         var detail = service.detail(1L);
 
@@ -46,28 +45,24 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
         assertThat(detail.contributionChain().impacts()).hasSize(2);
         assertThat(detail.kpis().progressEntries()).isEqualTo(1);
         assertThat(detail.kpis().linkedKeyResults()).isEqualTo(2);
-        assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("110.00");
         assertThat(detail.kpis().completed()).isTrue();
-        assertThat(detail.kpis().overweightWarning()).isTrue();
     }
 
     @Test
     void returnsProjectDetailForActiveProjectAndNullExternalLinkProject() {
         Project project = localProject();
-        ProjectKeyResultLink linkWithoutLocalProject = link(null, keyResult, 40);
+        ProjectKeyResultLink linkWithoutLocalProject = link(null, keyResult);
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutLocalProject));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutLocalProject));
 
         var detail = service.detail(1L);
 
-        assertThat(detail.kpis().declaredContributionWeight()).isEqualByComparingTo("40.00");
+        assertThat(detail.kpis().linkedKeyResults()).isEqualTo(1);
         assertThat(detail.kpis().completed()).isFalse();
-        assertThat(detail.kpis().overweightWarning()).isFalse();
         assertThat(detail.linkedKeyResults().get(0).projectId()).isNull();
-        assertThat(detail.linkedKeyResults().get(0).overweightWarning()).isFalse();
+        assertThat(detail.linkedKeyResults().get(0).keyResultId()).isEqualTo(1L);
         assertThat(detail.contributionChain().impacts().get(0).period()).isNull();
         assertThat(detail.contributionChain().impacts().get(0).projectCompleted()).isFalse();
     }
@@ -76,12 +71,11 @@ class ProjectServiceDetailTest extends ProjectServiceTestSupport {
     void contributionChainFallsBackToStartPeriodWhenEndPeriodIsBlank() {
         Project project = localProject();
         project.setEndPeriod(" ");
-        ProjectKeyResultLink link = link(project, keyResult, 40);
+        ProjectKeyResultLink link = link(project, keyResult);
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(progressRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
 
         var detail = service.detail(1L);
 

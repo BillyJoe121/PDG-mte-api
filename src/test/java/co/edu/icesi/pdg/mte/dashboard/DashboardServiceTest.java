@@ -291,7 +291,6 @@ class DashboardServiceTest {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setProject(project);
-        link.setContributionWeight(BigDecimal.valueOf(25));
         return link;
     }
 }
