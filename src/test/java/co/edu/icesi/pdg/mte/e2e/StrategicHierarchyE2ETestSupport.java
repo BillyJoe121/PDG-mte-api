@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -71,7 +70,6 @@ abstract class StrategicHierarchyE2ETestSupport {
                   "startDate": "2026-01-15",
                   "endDate": "2026-06-30",
                   "keyResultId": %d,
-                  "contributionWeight": 35,
                   "linkStatus": "ACTIVO",
                   "tutors": ["Tutora A"]
                 }
@@ -153,7 +151,6 @@ abstract class StrategicHierarchyE2ETestSupport {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResultRepository.findById(keyResultId).orElseThrow());
         link.setExternalProjectId(externalProjectId);
-        link.setContributionWeight(java.math.BigDecimal.valueOf(35));
         linkRepository.save(link);
     }
 

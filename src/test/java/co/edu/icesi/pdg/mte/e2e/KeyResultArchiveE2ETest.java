@@ -131,12 +131,12 @@ class KeyResultArchiveE2ETest extends StrategicHierarchyE2ETestSupport {
                 {"currentValue": 10, "progressPercentage": 10}
                 """, 409);
         doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 50, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(projectId, id), 409);
         doPost("/api/v1/projects", """
                 {"name": "Proyecto sobre archivado %d", "description": "No debe crearse", "type": "INVESTIGACION",
                  "departmentId": %d, "status": "ACTIVO", "startPeriod": "2026-1", "endPeriod": "2026-1",
-                 "keyResultId": %d, "contributionWeight": 10, "linkStatus": "ACTIVO"}
+                 "keyResultId": %d, "linkStatus": "ACTIVO"}
                 """.formatted(SEQUENCE.incrementAndGet(), scenario.departmentId(), id), 409);
 
         assertThat(update.get("message").asText()).contains("archivado");

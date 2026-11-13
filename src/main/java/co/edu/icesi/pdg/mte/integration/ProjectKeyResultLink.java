@@ -4,7 +4,6 @@ import co.edu.icesi.pdg.mte.project.Project;
 import co.edu.icesi.pdg.mte.strategy.KeyResult;
 import jakarta.persistence.*;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -25,13 +24,6 @@ public class ProjectKeyResultLink {
 
     @Column(nullable = false)
     private String externalProjectSource = "TRAYECTORIA_DOCENTE";
-
-    @Column(nullable = false, precision = 5, scale = 2)
-    private BigDecimal contributionWeight;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ContributionType contributionType = ContributionType.DIRECTA;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -77,22 +69,6 @@ public class ProjectKeyResultLink {
 
     public void setExternalProjectSource(String externalProjectSource) {
         this.externalProjectSource = externalProjectSource;
-    }
-
-    public BigDecimal getContributionWeight() {
-        return contributionWeight;
-    }
-
-    public void setContributionWeight(BigDecimal contributionWeight) {
-        this.contributionWeight = contributionWeight;
-    }
-
-    public ContributionType getContributionType() {
-        return contributionType;
-    }
-
-    public void setContributionType(ContributionType contributionType) {
-        this.contributionType = contributionType;
     }
 
     public boolean isActive() {

@@ -61,21 +61,20 @@ class StrategicHierarchyTreeBranchesTest extends StrategyServiceTestSupport {
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of());
         when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any()))
-                .thenReturn(List.of(link(keyResult, started, 60), link(keyResult, notStarted, 40)));
+                .thenReturn(List.of(link(keyResult, started), link(keyResult, notStarted)));
 
         var projects = service.getStrategicHierarchyTree(null).get(0).children().get(0).children();
 
         assertThat(projects).extracting(StrategyDtos.StrategicHierarchyNodeResponse::id).containsExactly("10", "11");
         assertThat(projects.get(0).progressPercentage()).isEqualByComparingTo("45");
         assertThat(projects.get(1).progressPercentage()).isEqualByComparingTo("0");
-        assertThat(projects.get(0).badge()).isEqualTo("Peso: 60%");
+        assertThat(projects.get(0).badge()).isNull();
     }
 
     @Test
     void externalLinksWithoutAnIdentifierUseAPlaceholder() {
         ProjectKeyResultLink external = new ProjectKeyResultLink();
         external.setKeyResult(keyResult);
-        external.setContributionWeight(BigDecimal.TEN);
         when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
         when(strategicBetRepository.findAll()).thenReturn(List.of(bet));
         when(goalRepository.findAll()).thenReturn(List.of());

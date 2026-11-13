@@ -67,21 +67,18 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
-    void linksProjectToKeyResultWarnsWhenWeightExceedsOneHundredAndKeepsRecordedValues() {
-        ProjectKeyResultLink saved = link(project, keyResult, 60);
-        ProjectKeyResultLink existing = link(project(2L, ProjectStatus.ACTIVO, "2026-Q1", "2026-Q2"), keyResult, 50);
+    void linksProjectToKeyResultAndKeepsRecordedValues() {
+        ProjectKeyResultLink saved = link(project, keyResult);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         when(linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L)).thenReturn(false);
         when(linkRepository.save(any(ProjectKeyResultLink.class))).thenReturn(saved);
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(existing, saved));
 
-        var response = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(60), ContributionType.DIRECTA));
+        var response = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L));
 
         assertThat(response.projectId()).isEqualTo(1L);
-        assertThat(response.contributionType()).isEqualTo(ContributionType.DIRECTA);
-        assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("110.00");
-        assertThat(response.overweightWarning()).isTrue();
+        assertThat(response.keyResultId()).isEqualTo(1L);
+        assertThat(response.active()).isTrue();
         assertRecordedKeyResultValuesUnchanged();
     }
 
@@ -92,11 +89,9 @@ class ProjectKeyResultLinkServiceTest {
         when(keyResultRepository.findById(1L)).thenReturn(Optional.of(keyResult));
         when(keyResultRepository.findById(2L)).thenReturn(Optional.of(secondKeyResult));
         when(linkRepository.save(any(ProjectKeyResultLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of());
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(2L)).thenReturn(List.of());
 
-        var first = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.valueOf(40), ContributionType.DIRECTA));
-        var second = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 2L, BigDecimal.valueOf(30), ContributionType.INDIRECTA));
+        var first = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L));
+        var second = service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 2L));
 
         assertThat(first.keyResultId()).isEqualTo(1L);
         assertThat(second.keyResultId()).isEqualTo(2L);
@@ -107,29 +102,11 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
-    void updatesTheDeclaredWeightWithoutChangingTheRecordedKeyResultValues() {
-        ProjectKeyResultLink existing = link(project, keyResult, 30);
-        when(linkRepository.findById(9L)).thenReturn(Optional.of(existing));
-        when(linkRepository.save(existing)).thenReturn(existing);
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(existing));
-
-        var response = service.update(9L, new ProjectDtos.ProjectKeyResultLinkUpdateRequest(
-                BigDecimal.valueOf(55), ContributionType.INDIRECTA
-        ));
-
-        assertThat(response.contributionWeight()).isEqualByComparingTo("55");
-        assertThat(response.contributionType()).isEqualTo(ContributionType.INDIRECTA);
-        assertThat(response.totalWeightForKeyResult()).isEqualByComparingTo("55.00");
-        assertRecordedKeyResultValuesUnchanged();
-        verify(auditService).record(eq(co.edu.icesi.pdg.mte.audit.AuditAction.UPDATE), eq("PROJECT_KEY_RESULT_LINK"), eq(9L), anyString(), any(), any());
-    }
-
-    @Test
     void listsLinksByProjectByKeyResultAndWithoutFilters() {
-        ProjectKeyResultLink link = link(project, keyResult, 35);
+        ProjectKeyResultLink link = link(project, keyResult);
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
         when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(link));
-        when(linkRepository.findAll()).thenReturn(List.of(link, inactiveLink(project, keyResult, 20)));
+        when(linkRepository.findAll()).thenReturn(List.of(link, inactiveLink(project, keyResult)));
 
         assertThat(service.list(1L, null)).hasSize(1);
         assertThat(service.list(1L, 1L)).hasSize(1);
@@ -140,21 +117,20 @@ class ProjectKeyResultLinkServiceTest {
 
     @Test
     void listsActiveExternalStyleLinkWithoutLocalProject() {
-        ProjectKeyResultLink linkWithoutProject = link(null, keyResult, 35);
+        ProjectKeyResultLink linkWithoutProject = link(null, keyResult);
         when(linkRepository.findAll()).thenReturn(List.of(linkWithoutProject));
-        when(linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutProject));
 
         var response = service.list(null, null);
 
         assertThat(response).hasSize(1);
         assertThat(response.get(0).projectId()).isNull();
         assertThat(response.get(0).projectName()).isNull();
-        assertThat(response.get(0).totalWeightForKeyResult()).isEqualByComparingTo("35.00");
+        assertThat(response.get(0).keyResultId()).isEqualTo(1L);
     }
 
     @Test
     void unlinksWithoutChangingTheRecordedKeyResultValues() {
-        ProjectKeyResultLink link = link(project, keyResult, 35);
+        ProjectKeyResultLink link = link(project, keyResult);
         when(linkRepository.findById(9L)).thenReturn(Optional.of(link));
 
         service.unlink(9L);
@@ -165,21 +141,20 @@ class ProjectKeyResultLinkServiceTest {
     }
 
     @Test
-    void returnsImpactChainWithDeclaredWeightsOnly() {
+    void returnsImpactChainWithCompletionAndPeriodPerLink() {
         Project completed = project(2L, ProjectStatus.FINALIZADO, "2026-Q2", null);
         completed.setGlobalProgress(BigDecimal.valueOf(100));
         project.setGlobalProgress(BigDecimal.valueOf(20));
-        ProjectKeyResultLink activeLink = link(project, keyResult, 35);
-        ProjectKeyResultLink completedLink = link(completed, keyResult, 65);
+        ProjectKeyResultLink activeLink = link(project, keyResult);
+        ProjectKeyResultLink completedLink = link(completed, keyResult);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(activeLink, completedLink));
 
         var response = service.impactChain(1L);
 
         assertThat(response.impacts()).hasSize(2);
-        assertThat(response.impacts().get(0).contributionWeight()).isEqualByComparingTo("35");
+        assertThat(response.impacts().get(0).keyResultId()).isEqualTo(1L);
         assertThat(response.impacts().get(0).projectCompleted()).isFalse();
-        assertThat(response.impacts().get(1).contributionWeight()).isEqualByComparingTo("65");
         assertThat(response.impacts().get(1).projectCompleted()).isTrue();
         assertThat(response.impacts().get(1).period()).isEqualTo("2026-Q2");
     }
@@ -187,8 +162,8 @@ class ProjectKeyResultLinkServiceTest {
     @Test
     void impactChainHandlesNullProjectAndBlankEndPeriod() {
         Project blankEndPeriod = project(3L, ProjectStatus.ACTIVO, "2026-Q1", " ");
-        ProjectKeyResultLink linkWithoutProject = link(null, keyResult, 25);
-        ProjectKeyResultLink blankEndPeriodLink = link(blankEndPeriod, keyResult, 35);
+        ProjectKeyResultLink linkWithoutProject = link(null, keyResult);
+        ProjectKeyResultLink blankEndPeriodLink = link(blankEndPeriod, keyResult);
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(linkRepository.findByProjectIdAndActiveTrueOrderByIdAsc(1L)).thenReturn(List.of(linkWithoutProject, blankEndPeriodLink));
 
@@ -209,13 +184,13 @@ class ProjectKeyResultLinkServiceTest {
         when(linkRepository.existsByProjectIdAndKeyResultIdAndActiveTrue(1L, 1L)).thenReturn(true);
         when(linkRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(404L, 1L, BigDecimal.TEN, ContributionType.DIRECTA)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(404L, 1L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Proyecto");
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 404L, BigDecimal.TEN, ContributionType.DIRECTA)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 404L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Key Result");
-        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L, BigDecimal.TEN, ContributionType.DIRECTA)))
+        assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(1L, 1L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ya esta vinculado");
         assertThatThrownBy(() -> service.unlink(404L))
@@ -226,16 +201,15 @@ class ProjectKeyResultLinkServiceTest {
                 .hasMessageContaining("Proyecto");
     }
 
-    private ProjectKeyResultLink link(Project project, KeyResult keyResult, int weight) {
+    private ProjectKeyResultLink link(Project project, KeyResult keyResult) {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setProject(project);
         link.setKeyResult(keyResult);
-        link.setContributionWeight(BigDecimal.valueOf(weight));
         return link;
     }
 
-    private ProjectKeyResultLink inactiveLink(Project project, KeyResult keyResult, int weight) {
-        ProjectKeyResultLink link = link(project, keyResult, weight);
+    private ProjectKeyResultLink inactiveLink(Project project, KeyResult keyResult) {
+        ProjectKeyResultLink link = link(project, keyResult);
         link.setActive(false);
         return link;
     }

@@ -7,7 +7,6 @@ import co.edu.icesi.pdg.mte.catalog.AcademicPeriod;
 import co.edu.icesi.pdg.mte.catalog.AcademicPeriodRepository;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnit;
 import co.edu.icesi.pdg.mte.catalog.MeasurementUnitRepository;
-import co.edu.icesi.pdg.mte.integration.ContributionType;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLink;
 import co.edu.icesi.pdg.mte.integration.ProjectKeyResultLinkRepository;
 import co.edu.icesi.pdg.mte.project.ProjectRepository;
@@ -134,12 +133,10 @@ abstract class StrategyServiceTestSupport {
         );
     }
 
-    protected ProjectKeyResultLink link(KeyResult keyResult, Project project, int weight) {
+    protected ProjectKeyResultLink link(KeyResult keyResult, Project project) {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setProject(project);
-        link.setContributionWeight(BigDecimal.valueOf(weight));
-        link.setContributionType(ContributionType.DIRECTA);
         return link;
     }
 

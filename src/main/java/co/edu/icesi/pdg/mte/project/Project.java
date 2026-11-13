@@ -61,9 +61,6 @@ public class Project {
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private KeyResult keyResult;
 
-    @Column(precision = 5, scale = 2)
-    private BigDecimal contributionWeight;
-
     private String linkStatus;
 
     @Column(nullable = false, precision = 5, scale = 2)
@@ -233,14 +230,6 @@ public class Project {
 
     public void setKeyResult(KeyResult keyResult) {
         this.keyResult = keyResult;
-    }
-
-    public BigDecimal getContributionWeight() {
-        return contributionWeight;
-    }
-
-    public void setContributionWeight(BigDecimal contributionWeight) {
-        this.contributionWeight = contributionWeight;
     }
 
     public String getLinkStatus() {

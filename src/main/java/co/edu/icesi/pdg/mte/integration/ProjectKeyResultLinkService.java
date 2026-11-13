@@ -15,8 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -51,30 +49,9 @@ public class ProjectKeyResultLinkService {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setProject(project);
         link.setKeyResult(keyResult);
-        link.setContributionWeight(request.contributionWeight());
-        link.setContributionType(request.contributionType());
         ProjectKeyResultLink saved = linkRepository.save(link);
         ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
         auditService.record(AuditAction.LINK_CREATED, "PROJECT_KEY_RESULT_LINK", response.id(), "Proyecto vinculado a Key Result.", null, response);
-        return response;
-    }
-
-    @Transactional
-    public ProjectDtos.ProjectKeyResultLinkResponse update(Long id, ProjectDtos.ProjectKeyResultLinkUpdateRequest request) {
-        ProjectKeyResultLink link = linkRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Vinculo Proyecto-KR no encontrado."));
-        if (!link.isActive()) {
-            throw new BusinessException(HttpStatus.CONFLICT, "No se puede actualizar un vinculo Proyecto-KR inactivo.");
-        }
-
-        ProjectDtos.ProjectKeyResultLinkResponse before = toResponse(link);
-        link.setContributionWeight(request.contributionWeight());
-        link.setContributionType(request.contributionType());
-        ProjectKeyResultLink saved = linkRepository.save(link);
-
-        ProjectDtos.ProjectKeyResultLinkResponse response = toResponse(saved);
-        auditService.record(AuditAction.UPDATE, "PROJECT_KEY_RESULT_LINK", id,
-                "Peso de vinculacion Proyecto-KR actualizado.", before, response);
         return response;
     }
 
@@ -126,17 +103,12 @@ public class ProjectKeyResultLinkService {
     }
 
     private ProjectDtos.ProjectKeyResultLinkResponse toResponse(ProjectKeyResultLink link) {
-        BigDecimal totalWeight = totalWeightForKeyResult(link.getKeyResult().getId());
         return new ProjectDtos.ProjectKeyResultLinkResponse(
                 link.getId(),
                 link.getProject() == null ? null : link.getProject().getId(),
                 link.getProject() == null ? null : link.getProject().getName(),
                 link.getKeyResult().getId(),
                 link.getKeyResult().getDescription(),
-                link.getContributionWeight(),
-                link.getContributionType(),
-                totalWeight,
-                totalWeight.compareTo(BigDecimal.valueOf(100)) > 0,
                 link.isActive(),
                 link.getCreatedAt()
         );
@@ -151,19 +123,9 @@ public class ProjectKeyResultLinkService {
                 keyResult.getDescription(),
                 Mapper.goalNames(keyResult),
                 Mapper.strategicBetNames(keyResult),
-                link.getContributionWeight(),
-                link.getContributionType(),
                 completed,
                 periodOf(link.getProject())
         );
-    }
-
-    private BigDecimal totalWeightForKeyResult(Long keyResultId) {
-        return linkRepository.findByKeyResultIdAndActiveTrueOrderByIdAsc(keyResultId)
-                .stream()
-                .map(ProjectKeyResultLink::getContributionWeight)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private String periodOf(Project project) {

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -25,13 +24,13 @@ class ProjectPlannerLinkTest extends ProjectServiceTestSupport {
     private ProjectDtos.ProjectRequest createRequest(String plannerUrl) {
         return new ProjectDtos.ProjectRequest(
                 "Proyecto MSP", "Descripcion", ProjectType.INVESTIGACION, 1L, ProjectStatus.ACTIVO, "2026-1", "2026-2",
-                null, null, 1L, BigDecimal.valueOf(25), "ACTIVO", null, plannerUrl, null, null);
+                null, null, 1L, "ACTIVO", null, plannerUrl, null, null);
     }
 
     private ProjectDtos.ProjectUpdateRequest updateRequest(String plannerUrl) {
         return new ProjectDtos.ProjectUpdateRequest(
                 "Proyecto MSP", "Descripcion", ProjectType.INVESTIGACION, 1L, "2026-1", "2026-2", null, null, null,
-                1L, BigDecimal.valueOf(25), "ACTIVO", null, plannerUrl, new ArrayList<>());
+                1L, "ACTIVO", null, plannerUrl, new ArrayList<>());
     }
 
     @Test

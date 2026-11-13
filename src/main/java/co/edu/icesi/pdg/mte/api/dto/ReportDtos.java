@@ -35,7 +35,17 @@ public final class ReportDtos {
             List<String> strategicBetNames,
             String period,
             BigDecimal progressPercentage,
-            int linkedProjects
+            int linkedProjects,
+            List<RankingProjectItem> linkedProjectItems
+    ) {
+    }
+
+    /** Initiative linked to a ranked key result; its progress is informative only. */
+    public record RankingProjectItem(
+            Long id,
+            String name,
+            BigDecimal globalProgress,
+            String status
     ) {
     }
 

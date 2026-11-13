@@ -74,7 +74,6 @@ class PlannerLinkE2ETest extends StrategicHierarchyE2ETestSupport {
         node.put("startPeriod", "2026-Q1");
         node.put("endPeriod", "2026-Q2");
         node.put("keyResultId", keyResultId);
-        node.put("contributionWeight", 35);
         node.put("linkStatus", "ACTIVO");
         node.put("plannerUrl", plannerUrl);
         node.putArray("tutors").add("Tutora A");

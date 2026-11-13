@@ -203,7 +203,7 @@ class ProjectModuleE2ETest {
         JsonNode detail = doGet("/api/v1/projects/" + projectId + "/detail");
         JsonNode chainBefore = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
         assertThat(detail.get("linkedKeyResults")).hasSize(1);
-        assertThat(chainBefore.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("45");
+        assertThat(chainBefore.get("impacts").get(0).get("keyResultId").asLong()).isEqualTo(keyResultId);
         assertThat(chainBefore.get("impacts").get(0).has("appliedContribution")).isFalse();
 
         doPost("/api/v1/projects/" + projectId + "/progress", """
@@ -213,7 +213,7 @@ class ProjectModuleE2ETest {
                 }
                 """, 201);
         JsonNode chainWithProgress = doGet("/api/v1/projects/" + projectId + "/contribution-chain");
-        assertThat(chainWithProgress.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("45");
+        assertThat(chainWithProgress.get("impacts").get(0).get("keyResultId").asLong()).isEqualTo(keyResultId);
         assertThat(chainWithProgress.get("impacts").get(0).get("projectCompleted").asBoolean()).isFalse();
 
         doPatch("/api/v1/projects/" + projectId + "/status", """
@@ -239,14 +239,14 @@ class ProjectModuleE2ETest {
                   "status": "ACTIVO",
                   "startPeriod": "2026-1",
                   "keyResultLinks": [
-                    {"keyResultId": %d, "contributionWeight": 40}
+                    {}
                   ]
                 }
-                """.formatted(SEQUENCE.incrementAndGet(), departmentId, keyResultId), 400);
+                """.formatted(SEQUENCE.incrementAndGet(), departmentId), 400);
     }
 
     @Test
-    void managesProjectKeyResultLinksWarningsDuplicatesAndLogicalUnlink() throws Exception {
+    void managesProjectKeyResultLinksDuplicatesAndLogicalUnlink() throws Exception {
         Long unitId = firstId("/api/v1/measurement-units");
         Long periodId = firstId("/api/v1/academic-periods");
         Long departmentId = firstId("/api/v1/departments");
@@ -266,25 +266,24 @@ class ProjectModuleE2ETest {
                 .get("id").asLong();
 
         JsonNode firstLink = doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 70, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(firstProjectId, keyResultId), 201);
         JsonNode secondLink = doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 40, "contributionType": "INDIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(secondProjectId, keyResultId), 201);
 
-        assertThat(firstLink.get("overweightWarning").asBoolean()).isFalse();
-        assertThat(secondLink.get("overweightWarning").asBoolean()).isTrue();
-        assertThat(secondLink.get("totalWeightForKeyResult").decimalValue()).isEqualByComparingTo("110.00");
+        assertThat(firstLink.get("projectId").asLong()).isEqualTo(firstProjectId);
+        assertThat(secondLink.get("projectId").asLong()).isEqualTo(secondProjectId);
         assertThat(doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId)).hasSize(1);
         assertThat(doGet("/api/v1/project-key-result-links?keyResultId=" + keyResultId)).hasSize(2);
         assertThat(doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId + "&keyResultId=99999")).isEmpty();
 
         doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 10, "contributionType": "SOPORTE"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(firstProjectId, keyResultId), 409);
         doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 10}
-                """.formatted(firstProjectId, keyResultId), 400);
+                {"projectId": %d}
+                """.formatted(firstProjectId), 400);
 
         doDelete("/api/v1/project-key-result-links/" + firstLink.get("id").asLong(), 204);
         JsonNode remainingByProject = doGet("/api/v1/project-key-result-links?projectId=" + firstProjectId);
@@ -336,7 +335,7 @@ class ProjectModuleE2ETest {
                   "endPeriod": "2026-2",
                   "tutors": ["Tutora inmediata"],
                   "keyResultLinks": [
-                    {"keyResultId": %d, "contributionWeight": 45, "contributionType": "DIRECTA"}
+                    {"keyResultId": %d}
                   ]
                 }
                 """.formatted(name, departmentId, keyResultId);

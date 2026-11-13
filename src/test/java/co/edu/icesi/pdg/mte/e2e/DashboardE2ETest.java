@@ -41,7 +41,7 @@ class DashboardE2ETest {
         Long projectId = createProject(departmentId, keyResultId);
 
         doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 100, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(projectId, keyResultId), 201);
         doPost("/api/v1/projects/" + projectId + "/progress", """
                 {
@@ -108,8 +108,8 @@ class DashboardE2ETest {
         assertThat(summary.get("keyResultsInFollowUp").isNumber()).isTrue();
         assertThat(departments.findValues("keyResults").stream().map(JsonNode::asLong))
                 .anyMatch(value -> value >= 1);
-        assertThat(contributionChain.get("impacts").get(0).get("contributionWeight").decimalValue())
-                .isEqualByComparingTo("100");
+        assertThat(contributionChain.get("impacts").get(0).get("keyResultId").asLong())
+                .isEqualTo(keyResultId);
         assertThat(contributionChain.get("impacts").get(0).has("appliedContribution")).isFalse();
         assertThat(generalReport.get("totalProjects").asLong()).isGreaterThanOrEqualTo(1);
         assertThat(departmentsReport).isNotEmpty();
@@ -156,7 +156,7 @@ class DashboardE2ETest {
         Long projectId = createProject(departmentId, keyResultId);
 
         doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 75, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(projectId, keyResultId), 201);
         doPost("/api/v1/projects/" + projectId + "/progress", """
                 {

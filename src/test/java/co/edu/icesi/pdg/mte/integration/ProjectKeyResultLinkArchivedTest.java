@@ -16,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,25 +51,9 @@ class ProjectKeyResultLinkArchivedTest {
         when(keyResultRepository.findById(1L)).thenReturn(Optional.of(archived));
 
         assertThatThrownBy(() -> service.link(new ProjectDtos.ProjectKeyResultLinkRequest(
-                1L, 1L, BigDecimal.valueOf(40), ContributionType.DIRECTA)))
+                1L, 1L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("archivado")
-                .extracting("status").isEqualTo(HttpStatus.CONFLICT);
-        verify(linkRepository, never()).save(any());
-    }
-
-    @Test
-    void updatingAnInactiveLinkIsRejectedWithoutSavingAnything() {
-        ProjectKeyResultLinkService service =
-                new ProjectKeyResultLinkService(linkRepository, projectRepository, keyResultRepository, auditService);
-        ProjectKeyResultLink inactive = new ProjectKeyResultLink();
-        inactive.setActive(false);
-        when(linkRepository.findById(4L)).thenReturn(Optional.of(inactive));
-
-        assertThatThrownBy(() -> service.update(4L, new ProjectDtos.ProjectKeyResultLinkUpdateRequest(
-                BigDecimal.valueOf(30), ContributionType.DIRECTA)))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("inactivo")
                 .extracting("status").isEqualTo(HttpStatus.CONFLICT);
         verify(linkRepository, never()).save(any());
     }

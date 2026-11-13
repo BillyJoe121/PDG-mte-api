@@ -254,14 +254,14 @@ class StrategicHierarchyCrudE2ETest extends StrategicHierarchyE2ETestSupport {
         Long projectId = createProject("Proyecto vinculado " + SEQUENCE.incrementAndGet(), departmentId);
 
         JsonNode link = doPost("/api/v1/project-key-result-links", """
-                {"projectId": %d, "keyResultId": %d, "contributionWeight": 60, "contributionType": "DIRECTA"}
+                {"projectId": %d, "keyResultId": %d}
                 """.formatted(projectId, keyResultId), 201);
         JsonNode links = doGet("/api/v1/project-key-result-links?projectId=" + projectId);
         JsonNode chainBefore = doGet("/api/v1/projects/" + projectId + "/impact-chain");
 
-        assertThat(link.get("overweightWarning").asBoolean()).isFalse();
+        assertThat(link.get("keyResultId").asLong()).isEqualTo(keyResultId);
         assertThat(links).hasSize(1);
-        assertThat(chainBefore.get("impacts").get(0).get("contributionWeight").decimalValue()).isEqualByComparingTo("60");
+        assertThat(chainBefore.get("impacts").get(0).get("keyResultId").asLong()).isEqualTo(keyResultId);
         assertThat(chainBefore.get("impacts").get(0).has("appliedContribution")).isFalse();
         JsonNode linkAudit = doGet("/api/v1/audit-logs?entityType=PROJECT_KEY_RESULT_LINK&entityId=" + link.get("id").asLong());
         assertThat(linkAudit.findValues("action").stream().map(JsonNode::asText)).contains("LINK_CREATED");

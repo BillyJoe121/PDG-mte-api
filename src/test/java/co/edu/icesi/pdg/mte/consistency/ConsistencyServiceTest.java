@@ -190,7 +190,6 @@ class ConsistencyServiceTest {
         ProjectKeyResultLink link = new ProjectKeyResultLink();
         link.setKeyResult(keyResult);
         link.setProject(project);
-        link.setContributionWeight(BigDecimal.valueOf(100));
         return link;
     }
 }

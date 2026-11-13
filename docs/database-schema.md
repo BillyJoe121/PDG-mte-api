@@ -1,6 +1,6 @@
 # Esquema de la base de datos
 
-Describe el esquema PostgreSQL del MTE tal como queda despues de aplicar las migraciones Flyway `V1` a `V15` (carpeta [src/main/resources/db/migration](../src/main/resources/db/migration)). La fuente de verdad son esas migraciones; este documento las resume.
+Describe el esquema PostgreSQL del MTE tal como queda despues de aplicar las migraciones Flyway `V1` a `V16` (carpeta [src/main/resources/db/migration](../src/main/resources/db/migration)). La fuente de verdad son esas migraciones; este documento las resume.
 
 - Motor: PostgreSQL 17 (recurso PostgreSQL del servidor Coolify de la universidad).
 - Esquema: `public`. Flyway guarda su historial en `flyway_schema_history`.
@@ -287,7 +287,6 @@ Una fila por cada registro de avance. Guarda el valor anterior y el nuevo para m
 | actual_end_date | DATE | si | |
 | jira_key | VARCHAR(255) | si | |
 | key_result_id | BIGINT | no | FK `key_result.id`. KR principal del proyecto |
-| contribution_weight | NUMERIC(5,2) | si | |
 | link_status | VARCHAR(255) | si | |
 | department_id | BIGINT | si | FK `department.id` |
 | department_name | VARCHAR(255) | si | Copia del nombre para proyectos externos |
@@ -313,8 +312,6 @@ Vinculo de un proyecto, local o externo, con un KR. Un vinculo desactivado se co
 | project_id | BIGINT | si | FK `project.id` (vacio si el proyecto solo existe afuera) |
 | external_project_id | BIGINT | si | |
 | external_project_source | VARCHAR(255) | no | |
-| contribution_weight | NUMERIC(5,2) | no | |
-| contribution_type | VARCHAR(255) | no | `ContributionType`, por defecto `DIRECTA` |
 | active | BOOLEAN | no | Por defecto `TRUE` |
 | created_at | TIMESTAMPTZ | no | |
 
@@ -387,7 +384,6 @@ Se conserva para no perder datos. No tiene entidad JPA. Columnas: `id`, `name`, 
 | `project.type` | `ProjectType` | `GRADO`, `INVESTIGACION`, `EXTENSION`, `MACROPROYECTO` |
 | `project.origin` | `ProjectOrigin` | `LOCAL`, `SYNCED` |
 | `project.sync_status` | `ProjectSyncStatus` | `LOCAL_ONLY`, `SYNCED`, `SYNC_FAILED` |
-| `project_key_result_link.contribution_type` | `ContributionType` | `DIRECTA`, `INDIRECTA`, `SOPORTE` |
 | `professor.access_role` | (texto con check) | `ADMIN`, `MANAGER`, `CONTRIBUTOR`, `VISITOR` |
 | `audit_log.action` | `AuditAction` | `CREATE`, `DELETE`, `UPDATE`, `STATUS_CHANGE`, `PROGRESS_REGISTERED`, `LINK_CREATED`, `LINK_REMOVED`, `EXTERNAL_SYNC`, `ACCOUNT_LOCKED`, `ACCESS_LINK_CREATED`, `PASSWORD_CHANGED`, `PASSWORD_SET` |
 
@@ -432,5 +428,6 @@ Ademas de las llaves primarias y los unicos:
 | V13 | `add_key_result_archive` | `key_result.archived` y `archived_at` |
 | V14 | `add_key_result_progress_record` | Tabla `key_result_progress_record` |
 | V15 | `add_local_credentials` | Tablas `auth_credential`, `auth_link_token` y `auth_revoked_token`; crea una cuenta sin contrasena para cada persona que ya tenia `auth_user_id` |
+| V16 | `remove_link_weight` | Quita de `project` y de `project_key_result_link` las columnas de peso y tipo de aporte: los vinculos proyecto-KR ya no llevan peso ni tipo |
 
 Para cambiar el esquema se crea una migracion nueva (nunca se edita una ya aplicada), se prueba en una base desechable y se actualiza este documento. El procedimiento de respaldo antes de migrar esta en [backup-restore.md](backup-restore.md).

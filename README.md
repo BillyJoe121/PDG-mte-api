@@ -48,7 +48,7 @@ H2 console: http://localhost:8081/h2-console
 
 ## Modelo de Datos
 
-El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V15`) esta en [docs/database-schema.md](docs/database-schema.md).
+El esquema completo (tablas, columnas, relaciones, diagrama, valores de estados, indices e historial de migraciones `V1` a `V16`) esta en [docs/database-schema.md](docs/database-schema.md).
 
 [V10__retire_objective_links.sql](src/main/resources/db/migration/V10__retire_objective_links.sql) retira el Objetivo como nivel de la jerarquia: crea `key_result_goal` y `key_result_strategic_bet` (vinculos N:M del KR con Metas y Apuestas), traslada los vinculos de cada objetivo a sus KRs y vuelve opcional `key_result.objective_id`. La tabla `objective` queda como legado y ningun codigo la usa.
 
@@ -129,7 +129,7 @@ Las migraciones viven en:
 src/main/resources/db/migration
 ```
 
-Las migraciones actuales van de `V1` a `V15`; la lista con lo que cambia cada una esta en [docs/database-schema.md](docs/database-schema.md#historial-de-migraciones). `V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de la primera aplicacion.
+Las migraciones actuales van de `V1` a `V16`; la lista con lo que cambia cada una esta en [docs/database-schema.md](docs/database-schema.md#historial-de-migraciones). `V2` y `V3` son no-op porque los campos quedaron incorporados en `V1` antes de la primera aplicacion.
 
 Reglas:
 

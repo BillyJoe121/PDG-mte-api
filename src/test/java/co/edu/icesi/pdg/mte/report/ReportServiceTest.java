@@ -271,6 +271,37 @@ class ReportServiceTest {
         assertThat(csv).contains("krAvanceRegistrado,,\n");
     }
 
+    @Test
+    void rankingListsLinkedProjectsSortedByProgressDescending() {
+        Project slow = project(1L, ProjectStatus.ACTIVO, department, "2026-1", "2026-2");
+        slow.setGlobalProgress(BigDecimal.valueOf(15));
+        Project fast = project(2L, ProjectStatus.FINALIZADO, department, "2026-1", "2026-2");
+        fast.setGlobalProgress(BigDecimal.valueOf(90));
+        Project withoutProgress = project(3L, ProjectStatus.ACTIVO, department, "2026-1", "2026-2");
+        withoutProgress.setGlobalProgress(null);
+        Project middle = project(4L, ProjectStatus.SUSPENDIDO, department, "2026-1", "2026-2");
+        middle.setGlobalProgress(BigDecimal.valueOf(40));
+        when(projectRepository.findAll()).thenReturn(List.of(slow, fast, withoutProgress, middle));
+        when(keyResultRepository.findAll()).thenReturn(List.of(keyResult));
+        when(linkRepository.findByKeyResultIdInAndActiveTrueOrderByIdAsc(any())).thenReturn(List.of(
+                link(keyResult, slow),
+                link(keyResult, withoutProgress),
+                link(keyResult, fast),
+                link(keyResult, middle),
+                link(keyResult, null)
+        ));
+
+        var ranking = service.keyResultRanking(null, null);
+
+        assertThat(ranking).singleElement().satisfies(item -> {
+            assertThat(item.linkedProjectItems()).extracting(project -> project.id()).containsExactly(2L, 4L, 1L, 3L);
+            assertThat(item.linkedProjectItems().get(0).name()).isEqualTo("Proyecto 2");
+            assertThat(item.linkedProjectItems().get(0).globalProgress()).isEqualByComparingTo("90");
+            assertThat(item.linkedProjectItems().get(0).status()).isEqualTo("FINALIZADO");
+            assertThat(item.linkedProjectItems().get(3).globalProgress()).isNull();
+        });
+    }
+
     private Project project(Long id, ProjectStatus status, Department department, String startPeriod, String endPeriod) {
         Project project = new Project();
         project.setId(id);
