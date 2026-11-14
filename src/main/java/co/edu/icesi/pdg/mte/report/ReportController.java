@@ -45,6 +45,8 @@ public class ReportController {
         return reportService.keyResultRanking(period, departmentId);
     }
 
+    // Presentation mode is open to every role and reads this report and the consolidated one below.
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR','VISITOR')")
     @GetMapping("/period-comparison")
     public ReportDtos.PeriodComparisonResponse periodComparison(
             @RequestParam String basePeriod,
@@ -54,6 +56,7 @@ public class ReportController {
         return reportService.periodComparison(basePeriod, comparePeriod, departmentId);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR','VISITOR')")
     @GetMapping
     public ReportDtos.ConsolidatedReportResponse consolidated(
             @RequestParam(required = false) String period,

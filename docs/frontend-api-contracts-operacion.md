@@ -6,20 +6,22 @@ Continuacion de [frontend-api-contracts.md](frontend-api-contracts.md), donde es
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
-| POST | `/api/v1/projects` | - | `ProjectRequest` | `ProjectResponse` | ADMIN, MANAGER |
+| POST | `/api/v1/projects` | - | `ProjectRequest` | `ProjectResponse` | ADMIN, MANAGER, CONTRIBUTOR |
 | GET | `/api/v1/projects` | `search?`, `status?`, `type?`, `departmentId?`, `period?` | - | `ProjectResponse[]` | autenticado |
 | GET | `/api/v1/projects/{id}` | - | - | `ProjectResponse` | autenticado |
 | GET | `/api/v1/projects/{id}/detail` | - | - | `ProjectDetailResponse` | autenticado |
-| PUT | `/api/v1/projects/{id}` | - | `ProjectUpdateRequest` | `ProjectResponse` | ADMIN, MANAGER |
+| PUT | `/api/v1/projects/{id}` | - | `ProjectUpdateRequest` | `ProjectResponse` | ADMIN, MANAGER, CONTRIBUTOR |
 | PATCH | `/api/v1/projects/{id}/status` | - | `ProjectStatusRequest` | `ProjectResponse` | ADMIN, MANAGER |
 | POST | `/api/v1/projects/{id}/progress` | - | `ProjectProgressRequest` | `ProjectProgressResponse` | ADMIN, MANAGER, CONTRIBUTOR |
 | GET | `/api/v1/projects/{id}/history` | - | - | `ProjectProgressResponse[]` | autenticado |
 | GET | `/api/v1/projects/{id}/impact-chain` | - | - | `ImpactChainResponse` | autenticado |
 | GET | `/api/v1/projects/{id}/contribution-chain` | - | - | `ImpactChainResponse` | autenticado |
 | GET | `/api/v1/projects/{id}/teachers` | - | - | `ProjectTeacherResponse[]` | autenticado |
-| POST | `/api/v1/projects/{id}/teachers` | - | `ProjectTeacherRequest` | `ProjectTeacherResponse` | ADMIN, MANAGER |
-| DELETE | `/api/v1/projects/{id}/teachers/{teacherId}/roles/{roleId}` | - | - | 204 | ADMIN, MANAGER |
+| POST | `/api/v1/projects/{id}/teachers` | - | `ProjectTeacherRequest` | `ProjectTeacherResponse` | ADMIN, MANAGER, CONTRIBUTOR |
+| DELETE | `/api/v1/projects/{id}/teachers/{teacherId}/roles/{roleId}` | - | - | 204 | ADMIN, MANAGER, CONTRIBUTOR |
 | POST | `/api/v1/projects/sync/trayectoria` | - | - | `ProjectSyncResponse`; `503` si la integracion esta en modo `mock` (`MTE_TRAYECTORIA_PROJECTS_MODE`) | ADMIN |
+
+CONTRIBUTOR crea, edita, asigna responsables y vincula iniciativas, pero no cambia su estado: si crea una iniciativa, queda en `BORRADOR` aunque el `status` pida otro. Solo ADMIN y MANAGER eligen el estado inicial.
 
 Schemas:
 
@@ -119,9 +121,9 @@ ProjectTeacherRequest: {"teacherId": 1, "roleId": 1, "joinedAt": "2026-01-01", "
 
 | Metodo | Endpoint | Query | Body | Respuesta | Acceso |
 |---|---|---|---|---|---|
-| POST | `/api/v1/project-key-result-links` | - | `ProjectKeyResultLinkRequest` | `ProjectKeyResultLinkResponse` | ADMIN, MANAGER |
+| POST | `/api/v1/project-key-result-links` | - | `ProjectKeyResultLinkRequest` | `ProjectKeyResultLinkResponse` | ADMIN, MANAGER, CONTRIBUTOR |
 | GET | `/api/v1/project-key-result-links` | `projectId?`, `keyResultId?` | - | `ProjectKeyResultLinkResponse[]` | autenticado |
-| DELETE | `/api/v1/project-key-result-links/{id}` | - | - | 204 | ADMIN, MANAGER |
+| DELETE | `/api/v1/project-key-result-links/{id}` | - | - | 204 | ADMIN, MANAGER, CONTRIBUTOR |
 
 Schemas:
 
@@ -145,6 +147,8 @@ Acceso:
 ```text
 ADMIN, MANAGER
 ```
+
+Excepcion: `GET /api/v1/reports` y `GET /api/v1/reports/period-comparison` responden a los cuatro roles (ADMIN, MANAGER, CONTRIBUTOR, VISITOR) porque el modo presentacion los usa.
 
 | Metodo | Endpoint | Query | Body | Respuesta |
 |---|---|---|---|---|

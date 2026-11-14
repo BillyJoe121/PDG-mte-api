@@ -89,7 +89,8 @@ public class ProjectService {
                 request.startPeriod(), request.endPeriod(), request.startDate(), request.endDate(), null, request.tutors());
         applyDirectKeyResult(project, request.keyResultId(), request.linkStatus(), request.jiraKey(), request.keyResultLinks());
         project.setPlannerUrl(plannerUrl);
-        project.setStatus(request.status() == null ? ProjectStatus.BORRADOR : request.status());
+        boolean choosesStatus = request.status() != null && accessControlService.canChooseInitialProjectStatus(currentRoles());
+        project.setStatus(choosesStatus ? request.status() : ProjectStatus.BORRADOR);
         project.setOrigin(ProjectOrigin.LOCAL);
         project.setSyncStatus(ProjectSyncStatus.LOCAL_ONLY);
         Project saved = projectRepository.save(project);

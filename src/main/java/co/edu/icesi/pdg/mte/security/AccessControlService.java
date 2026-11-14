@@ -30,12 +30,12 @@ public class AccessControlService {
         capabilities.put("manageStrategicBets", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("manageGoals", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("manageKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
-        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN, MANAGER));
-        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("createProjects", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
+        capabilities.put("updateProjects", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
         capabilities.put("registerProjectProgress", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
         capabilities.put("changeProjectStatus", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("syncExternalProjects", hasAny(normalizedRoles, ADMIN));
-        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER));
+        capabilities.put("linkProjectsToKeyResults", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR));
         capabilities.put("viewReports", hasAny(normalizedRoles, ADMIN, MANAGER));
         capabilities.put("viewPresentation", hasAny(normalizedRoles, ADMIN, MANAGER, CONTRIBUTOR, VISITOR));
         capabilities.put("viewConsistency", hasAny(normalizedRoles, ADMIN, MANAGER));
@@ -45,6 +45,11 @@ public class AccessControlService {
 
     public List<String> normalizeToList(Collection<String> roles) {
         return normalize(roles).stream().toList();
+    }
+
+    /** Only roles that manage status transitions may create a project in a status other than BORRADOR. */
+    public boolean canChooseInitialProjectStatus(Collection<String> roles) {
+        return hasAny(normalize(roles), ADMIN, MANAGER);
     }
 
     public boolean canChangeProjectStatus(ProjectStatus currentStatus, ProjectStatus requestedStatus, Collection<String> roles) {

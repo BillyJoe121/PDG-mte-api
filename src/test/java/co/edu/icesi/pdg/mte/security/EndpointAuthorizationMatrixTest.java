@@ -202,7 +202,7 @@ class EndpointAuthorizationMatrixTest {
         allow(expected, ALL, "DashboardController", "summary", "projectsByStatus", "keyResultsByStatus",
                 "departments", "strategicBets", "goals");
         allow(expected, ALL, "ProjectKeyResultLinkController", "list");
-        allow(expected, ADMIN_MANAGER, "ProjectKeyResultLinkController", "link", "unlink");
+        allow(expected, WORKING_ROLES, "ProjectKeyResultLinkController", "link", "unlink");
         allow(expected, ALL, "PeopleController", "listRoles", "listPositions", "listProfessors", "listTeacherPositions");
         allow(expected, ADMIN, "PeopleController", "listDirectoryUsers", "createDirectoryUser", "updateDirectoryUser",
                 "updateDirectoryUserActive", "createAccessLink", "deleteDirectoryUser",
@@ -211,12 +211,12 @@ class EndpointAuthorizationMatrixTest {
         allow(expected, ALL, "PresentationController", "presentation");
         allow(expected, ALL, "ProjectController", "list", "get", "detail", "history", "impactChain",
                 "contributionChain", "listTeachers");
-        allow(expected, ADMIN_MANAGER, "ProjectController", "create", "update", "updateStatus",
-                "assignTeacher", "removeTeacher");
-        allow(expected, WORKING_ROLES, "ProjectController", "registerProgress");
+        allow(expected, ADMIN_MANAGER, "ProjectController", "updateStatus");
+        allow(expected, WORKING_ROLES, "ProjectController", "create", "update", "assignTeacher", "removeTeacher",
+                "registerProgress");
         allow(expected, ADMIN, "ProjectController", "syncTrayectoria");
-        allow(expected, ADMIN_MANAGER, "ReportController", "general", "departments", "keyResultRanking",
-                "periodComparison", "consolidated", "csv", "pdf");
+        allow(expected, ADMIN_MANAGER, "ReportController", "general", "departments", "keyResultRanking", "csv", "pdf");
+        allow(expected, ALL, "ReportController", "periodComparison", "consolidated");
         allow(expected, ALL, "GoalController", "list", "get");
         allow(expected, ADMIN_MANAGER, "GoalController", "create", "update", "setActive", "attachPeriod", "detachPeriod");
         allow(expected, ALL, "KeyResultController", "list", "get", "progressRecords");

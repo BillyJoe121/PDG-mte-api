@@ -41,7 +41,7 @@ class AccessControlServiceTest {
     }
 
     @Test
-    void contributorCanConsultAndRegisterProgressOnly() {
+    void contributorManagesInitiativesButNotStrategyOrStatus() {
         var capabilities = service.capabilities(List.of("ROLE_CONTRIBUTOR"));
 
         assertThat(capabilities.get("viewDashboard")).isTrue();
@@ -50,10 +50,13 @@ class AccessControlServiceTest {
         assertThat(capabilities.get("registerProjectProgress")).isTrue();
         assertThat(capabilities.get("viewPresentation")).isTrue();
         assertThat(capabilities.get("manageKeyResults")).isFalse();
-        assertThat(capabilities.get("createProjects")).isFalse();
-        assertThat(capabilities.get("updateProjects")).isFalse();
-        assertThat(capabilities.get("linkProjectsToKeyResults")).isFalse();
+        assertThat(capabilities.get("createProjects")).isTrue();
+        assertThat(capabilities.get("updateProjects")).isTrue();
+        assertThat(capabilities.get("linkProjectsToKeyResults")).isTrue();
+        assertThat(capabilities.get("changeProjectStatus")).isFalse();
         assertThat(capabilities.get("viewReports")).isFalse();
+        assertThat(service.canChooseInitialProjectStatus(List.of("ROLE_CONTRIBUTOR"))).isFalse();
+        assertThat(service.canChooseInitialProjectStatus(List.of("MANAGER"))).isTrue();
     }
 
     @Test

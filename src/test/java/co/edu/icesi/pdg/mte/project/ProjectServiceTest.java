@@ -41,6 +41,20 @@ class ProjectServiceTest extends ProjectServiceTestSupport {
     }
 
     @Test
+    void createsContributorProjectsAsDraftWhateverStatusIsRequested() {
+        when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var activeRequest = new ProjectDtos.ProjectRequest("Proyecto", "Descripcion", ProjectType.GRADO, 1L, ProjectStatus.ACTIVO,
+                "2026-1", "2026-2", null, null, List.of("Tutor"), List.of(new ProjectDtos.ProjectKeyResultDraftRequest(1L)));
+
+        setRoles("CONTRIBUTOR");
+        assertThat(service.create(activeRequest).status()).isEqualTo(ProjectStatus.BORRADOR);
+
+        setRoles("MANAGER");
+        assertThat(service.create(activeRequest).status()).isEqualTo(ProjectStatus.ACTIVO);
+    }
+
+    @Test
     void createsLocalProjectWithImmediateKeyResultLinks() {
         when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {

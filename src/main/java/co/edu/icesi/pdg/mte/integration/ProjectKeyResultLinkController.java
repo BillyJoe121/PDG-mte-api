@@ -20,7 +20,7 @@ public class ProjectKeyResultLinkController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public ProjectDtos.ProjectKeyResultLinkResponse link(@Valid @RequestBody ProjectDtos.ProjectKeyResultLinkRequest request) {
         return service.link(request);
     }
@@ -35,7 +35,7 @@ public class ProjectKeyResultLinkController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public void unlink(@PathVariable Long id) {
         service.unlink(id);
     }

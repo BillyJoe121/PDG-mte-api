@@ -27,7 +27,7 @@ public class ProjectController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public ProjectDtos.ProjectResponse create(@Valid @RequestBody ProjectDtos.ProjectRequest request) {
         return projectService.create(request);
     }
@@ -54,7 +54,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public ProjectDtos.ProjectResponse update(
             @PathVariable Long id,
             @Valid @RequestBody ProjectDtos.ProjectUpdateRequest request
@@ -103,7 +103,7 @@ public class ProjectController {
 
     @PostMapping("/{id}/teachers")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public ProjectDtos.ProjectTeacherResponse assignTeacher(
             @PathVariable Long id,
             @Valid @RequestBody ProjectDtos.ProjectTeacherRequest request
@@ -113,7 +113,7 @@ public class ProjectController {
 
     @DeleteMapping("/{id}/teachers/{teacherId}/roles/{roleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CONTRIBUTOR')")
     public void removeTeacher(@PathVariable Long id, @PathVariable Long teacherId, @PathVariable Long roleId) {
         projectService.removeTeacher(id, teacherId, roleId);
     }
